@@ -13,7 +13,6 @@ import {
   Avatar,
 } from "@mui/material";
 import {
-  Home,
   Layers,
   Settings,
   ExitToApp,
@@ -64,23 +63,15 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
 
   const sidebarItems = [
     { type: "headline", text: "Main" },
-    {
-      type: "item",
-      title: "Dashboard",
-      icon: <Home fontSize="small" />,
-      href: "/home",
-    },
     { type: "headline", text: "Administration" },
     {
       type: "nested",
-      title: "P2P Section",
+      title: "Dashboard",
       icon: <Layers fontSize="small" />,
       children: [
-        { title: "Production Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
-        { title: "Production Update", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/production" },
-        { title: "Day Plan Upload", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
-        { title: "Reports", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayReport" },
-        { title: "Summary", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/daySummary" },
+        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
+        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/production" },
+        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
       ],
     },
     { type: "divider" },
@@ -95,6 +86,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
     },
+        {
+      type: "item",
+      title: "Reports",
+      icon: <Help fontSize="small" />,
+      href: "/help",
+    },
     {
       type: "item",
       title: "System Management",
@@ -105,15 +102,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     { type: "headline", text: "Components" },
     {
       type: "item",
-      title: "User Profile",
+      title: "Help",
       icon: <SupervisedUserCircle fontSize="small" />,
       href: "/userProfile",
-    },
-    {
-      type: "item",
-      title: "Help",
-      icon: <Help fontSize="small" />,
-      href: "/help",
     },
     {
       type: "item",
