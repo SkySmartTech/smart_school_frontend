@@ -1,5 +1,5 @@
 // src/context/ThemeContext.tsx
-import { createContext, useContext, useState, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, type ReactNode, useMemo } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 
 type ThemeMode = 'light' | 'dark';

@@ -1,5 +1,5 @@
 import { createTheme, responsiveFontSizes } from '@mui/material/styles';
-import { PaletteMode } from '@mui/material';
+import type { PaletteMode } from '@mui/material';
 
 // Define your custom colors
 const customColors = {

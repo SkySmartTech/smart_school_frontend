@@ -27,7 +27,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser } from "../../api/userApi";
-import { User } from "../../api/userApi";
+import type { User } from "../../api/userApi";
 import { useState } from "react";
 import { motion } from "framer-motion";
 

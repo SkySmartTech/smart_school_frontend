@@ -64,16 +64,23 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
 
   const sidebarItems = [
     { type: "headline", text: "Main" },
-
+    {
+      type: "item",
+      title: "Dashboard",
+      icon: <Home fontSize="small" />,
+      href: "/home",
+    },
     { type: "headline", text: "Administration" },
     {
       type: "nested",
-      title: "Dashboard",
+      title: "P2P Section",
       icon: <Layers fontSize="small" />,
       children: [
-        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
-        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/production" },
-        { title: "Common", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
+        { title: "Production Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
+        { title: "Production Update", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/production" },
+        { title: "Day Plan Upload", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
+        { title: "Reports", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayReport" },
+        { title: "Summary", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/daySummary" },
       ],
     },
     { type: "divider" },
@@ -88,12 +95,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
     },
-        {
-      type: "item",
-      title: "Reports",
-      icon: <SupervisedUserCircle fontSize="small" />,
-      href: "/userProfile",
-    },
     {
       type: "item",
       title: "System Management",
@@ -102,6 +103,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     },
     { type: "divider" },
     { type: "headline", text: "Components" },
+    {
+      type: "item",
+      title: "User Profile",
+      icon: <SupervisedUserCircle fontSize="small" />,
+      href: "/userProfile",
+    },
     {
       type: "item",
       title: "Help",

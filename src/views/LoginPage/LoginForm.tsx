@@ -105,11 +105,8 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
           transition={{ duration: 0.5 }}
         >
           <img src="/images/lgo1.png" alt="Buildtek Logo" width="50px" />
-          <Typography variant="h5" fontWeight="bold">
-            Smart Flow
-          </Typography>
           <Typography variant="subtitle1" fontWeight="bold">
-            Seamless Production, Smarter Management
+            Student Management Sysetem
           </Typography>
         </motion.div>
         <motion.div

@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 // Session timeout variables
-let inactivityTimer: NodeJS.Timeout;
+let inactivityTimer: ReturnType<typeof setTimeout>;
 const SESSION_TIMEOUT = 15 * 60 * 1000; 
 let isUserActive = true;
 

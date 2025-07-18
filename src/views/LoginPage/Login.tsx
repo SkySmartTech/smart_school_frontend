@@ -13,8 +13,8 @@ const Login = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundImage: 'url("/images/l1.png")',
-        backgroundSize: "768px 1000px",
+        backgroundImage: 'url("/images/2.png")',
+        backgroundSize: "808px 1000px",
         backgroundPosition: "left",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
@@ -25,7 +25,7 @@ const Login = () => {
         <Box
           sx={{
             flex: 1,
-            backgroundImage: 'url("/images/l1.png")',
+            backgroundImage: 'url("/images/b2.png")',
             backgroundSize: "cover",
             backgroundPosition: "center",
             borderTopLeftRadius: "25px",
