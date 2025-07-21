@@ -140,7 +140,13 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
             })}
             error={!!errors.username}
             helperText={errors.username?.message}
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                height: "55px"
+              }
+            }}
             autoComplete="username"
             autoFocus
             InputProps={{
@@ -173,7 +179,13 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
             })}
             error={!!errors.password}
             helperText={errors.password?.message}
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                height: "55px"
+              }
+            }}
             autoComplete="current-password"
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
@@ -245,6 +257,7 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
             sx={{ 
               mb: 2, 
               height: 48,
+              borderRadius: "9px",
               fontSize: '1rem',
               fontWeight: 'bold',
               textTransform: 'none',
@@ -257,13 +270,13 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
             {isPending ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                Sign In
-              </motion.span>
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              Sign In
+            </motion.span>
             )}
           </Button>
         </motion.div>

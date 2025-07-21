@@ -1,3 +1,4 @@
+// src/App.tsx (Make sure TeacherDashboard is NOT imported here)
 import { CssBaseline, styled } from "@mui/material";
 import { SnackbarContent, SnackbarProvider } from "notistack";
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -5,7 +6,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { QueryClientProvider } from '@tanstack/react-query';
 import queryClient from "./state/queryClient";
 import { ThemeProvider } from "./context/ThemeContext";
-import AppRoutes from "./Routes";
+import AppRoutes from "./Routes"; // AppRoutes is handling all your routing
 
 function App() {
   return (
@@ -22,7 +23,7 @@ function App() {
             Components={{
               success: styled(SnackbarContent)(({ theme }) => ({
                 backgroundColor: theme.palette.success.main,
-                fontSize: '2rem', // Base size for regular messages
+                fontSize: '2rem',
                 '&.large-message': {
                   fontSize: '2.5rem',
                   padding: '50px',
@@ -35,7 +36,7 @@ function App() {
             }}
           >
             <CssBaseline />
-            <AppRoutes />
+            <AppRoutes /> {/* All your routes are handled here */}
           </SnackbarProvider>
         </ThemeProvider>
       </LocalizationProvider>

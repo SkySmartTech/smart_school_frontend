@@ -13,25 +13,33 @@ const Login = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundImage: 'url("/images/2.png")',
-        backgroundSize: "808px 1000px",
-        backgroundPosition: "left",
+        backgroundImage: 'url("/images/b.jpg")',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
       }}
     >
-      <Card sx={{ width: "100%", maxWidth: 1000, boxShadow: 4, borderRadius: "30px", display: "flex" }}>
+      <Card 
+        sx={{ 
+          width: "90%", 
+          maxWidth: 1000, 
+          maxHeight: "90vh", 
+          boxShadow: 4, 
+          borderRadius: "30px", 
+          display: "flex",
+          overflow: "hidden", 
+          margin: "20px 0" 
+        }}
+      >
         {/* Left Side with Image */}
         <Box
           sx={{
             flex: 1,
-            backgroundImage: 'url("/images/b2.png")',
+            backgroundImage: 'url("/images/b5.jpg")',
             backgroundSize: "cover",
             backgroundPosition: "center",
-            borderTopLeftRadius: "25px",
-            borderBottomLeftRadius: "25px",
-            margin: "12px",
-            position: "relative",
+            display: { xs: "none", md: "block" }, 
+            minHeight: "400px", 
           }}
         >
           {/* Logo Box */}
@@ -43,27 +51,30 @@ const Login = () => {
               padding: "8px 16px",
               borderRadius: "10px",
               fontWeight: "bold",
+              backgroundColor: "rgba(255,255,255,0.8)",
             }}
           >
-            BUILDTECK
+            
           </Box>
         </Box>
 
-        {/* Right Side Login Form */}
-        <Stack
+        {/* Right Side - Registration Form */}
+        <Box
           sx={{
-            flex: 1, 
+            flex: 1,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            padding: 4,
+            padding: { xs: 2, sm: 3, md: 4 }, 
+             
+            maxHeight: "90vh", 
           }}
         >
           {/* Use the LoginForm component here */}
           <LoginForm
             onForgotPasswordClick={() => setOpenForgotPasswordDialog(true)} 
           />
-        </Stack>
+        </Box>
       </Card>
 
       {/* Forgot Password Dialog */}

@@ -70,7 +70,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       icon: <Layers fontSize="small" />,
       children: [
         { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
-        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/production" },
+        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherdashboard" },
         { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
       ],
     },
