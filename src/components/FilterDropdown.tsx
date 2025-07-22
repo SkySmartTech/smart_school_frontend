@@ -1,4 +1,4 @@
-// src/components/FilterDropdown.tsx
+
 import React from 'react';
 import { FormControl, Select, MenuItem, Typography, Box } from '@mui/material'; // Removed InputLabel
 
@@ -10,11 +10,11 @@ interface FilterDropdownProps {
   minWidth?: number;
 }
 
-const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, value, options, onChange, minWidth = 120 }) => {
+const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, value, options, onChange }) => {
   return (
     <Box>
-      <Typography variant="body2" sx={{ mb: 0.5, color: '#0B2347' }}>{label}</Typography>
-      <FormControl sx={{ minWidth: minWidth, bgcolor: 'white', borderRadius: '4px' }} size="small">
+      <Typography variant="body2" sx={{ mb: 0.3, color: '#0B2347' }}>{label}</Typography>
+      <FormControl sx={{ minWidth: 250, bgcolor: 'white', borderRadius: '4px' }} size="small">
         <Select
           value={value}
           onChange={(e) => onChange(e.target.value as string)}
