@@ -16,7 +16,6 @@ import {
   Layers,
   Settings,
   ExitToApp,
-  Help,
   ExpandLess,
   ExpandMore,
   SubdirectoryArrowRight,
@@ -86,11 +85,15 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
     },
-        {
-      type: "item",
+    {
+      type: "nested",
       title: "Reports",
-      icon: <Help fontSize="small" />,
-      href: "/help",
+      icon: <SupervisedUserCircleTwoTone fontSize="small" />,
+      children: [
+        { title: "Summary", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/summary" },
+        { title: "Details", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userManagement" },
+        { title: "Students", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
+      ],
     },
     {
       type: "item",
