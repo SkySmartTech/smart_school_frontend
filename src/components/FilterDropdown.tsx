@@ -10,7 +10,7 @@ interface FilterDropdownProps {
   minWidth?: number;
 }
 
-const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, value, options, onChange, minWidth = 120 }) => {
+const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, value, options, onChange }) => {
   return (
     <Box>
       <Typography variant="body2" sx={{ mb: 0.3, color: '#0B2347' }}>{label}</Typography>
