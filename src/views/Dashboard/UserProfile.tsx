@@ -14,6 +14,7 @@ import { Edit as EditIcon } from "@mui/icons-material";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import { motion } from "framer-motion";
+import Footer from "../../components/Footer";
 
 const dummyUser = {
   employeeName: "John Doe",
@@ -92,7 +93,9 @@ const UserProfile: React.FC = () => {
           </Box>
         </motion.div>
       </Box>
+      <Footer />
     </Box>
+    
   );
 };
 

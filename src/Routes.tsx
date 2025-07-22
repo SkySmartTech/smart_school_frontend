@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import MainLayout from "./components/Layout/MainLayout";
 import PageLoader from "./components/PageLoader";
 import { useCurrentUser } from "./hooks/useCurrentUser";
+
 // import { useCurrentUser } from "./hooks/useCurrentUser";
 // import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
 
@@ -12,10 +13,12 @@ const LoginPage = React.lazy(() => import("./views/LoginPage/Login"));
 const RegistrationPage = React.lazy(() => import("./views/RegistrationPage/Register"));
 
 // Dashboard pages
-const TeacherDashboard = React.lazy(() => import("./views/Dashboard/TeacherDashboard"));
+const AddMarks = React.lazy(() => import("./views/Dashboard/AddMarks"));
+const StudentDashboard = React.lazy(() => import("./views/Dashboard/StudentDashboard"));
 // const ProductionUpdatePage = React.lazy(() => import("./views/Dashboard/ProductionUpdatePage"));
 // const SystemManagementPage = React.lazy(() => import("./views/Dashboard/SystemMangementPage"));
 const UserProfile = React.lazy(() => import("./views/Dashboard/UserProfile"));
+
 // const HelpPage = React.lazy(() => import("./views/Dashboard/HelpPage"));
 // const SettingPage = React.lazy(() => import("./views/Dashboard/SettingPage"));
 // const DayPlanUpload = React.lazy(() => import("./views/Dashboard/DayPlan/DayPlanUpload"));
@@ -57,7 +60,7 @@ function PublicRoute() {
       <Outlet />
     </Suspense>
   ) : (
-    <Navigate to="/teachersdashboard" replace />
+    <Navigate to="/addmarks" replace />
   );
 }
 
@@ -68,9 +71,9 @@ function AppRoutes() {
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegistrationPage />} />
-        <Route path="/teacherdashboard" element={<TeacherDashboard />} />
+        <Route path="/addmarks" element={<AddMarks />} />
+        <Route path="/studentdashboard" element={<StudentDashboard />} />
         {/* <Route path="/dayPlan" element={<DayPlanUpload />} />
-        <Route path="/techaerdashboard" element={<Dashboard />} />
         <Route path="/production" element={<ProductionUpdatePage />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} /> */}
         <Route path="/userProfile" element={<UserProfile />} />
@@ -80,6 +83,7 @@ function AppRoutes() {
         <Route path="/daySummary" element={<DayPlanSummary />} />
         <Route path="/userManagement" element={<UserManagement />} />
         <Route path="/userAccessManagement" element={<UserAccessManagement/>} /> */}
+        
 
       </Route>
 
@@ -92,7 +96,8 @@ function AppRoutes() {
 
       {/* Redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/" element={<Navigate to="/teacherdashboard" replace />} />
+      <Route path="/" element={<Navigate to="/addmarks" replace />} />
+      <Route path="/" element={<Navigate to="/studentdashboard" replace />} />
     </Routes>
   );
 }

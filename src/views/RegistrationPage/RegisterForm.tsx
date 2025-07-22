@@ -36,6 +36,7 @@ import type { User } from "../../api/userApi";
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { styled } from '@mui/material/styles';
+import Footer from "../../components/Footer";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -717,6 +718,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
           </Box>
         </motion.div>
       </form>
+      <Footer />
     </Box>
   );
 };
