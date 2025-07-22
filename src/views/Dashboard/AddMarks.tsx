@@ -221,7 +221,7 @@ const TeacherDashboard: React.FC = () => {
           </Stack>
 
           {/* Search Bar */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}> {/* Centered the search bar */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 3 }}> 
             <TextField
               label="Search Students" // Placeholder text
               variant="outlined"

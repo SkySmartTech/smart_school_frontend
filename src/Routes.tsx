@@ -12,7 +12,7 @@ const LoginPage = React.lazy(() => import("./views/LoginPage/Login"));
 const RegistrationPage = React.lazy(() => import("./views/RegistrationPage/Register"));
 
 // Dashboard pages
-const TeacherDashboard = React.lazy(() => import("./views/Dashboard/TeacherDashboard"));
+const AddMarks = React.lazy(() => import("./views/Dashboard/AddMarks"));
 const StudentDashboard = React.lazy(() => import("./views/Dashboard/StudentDashboard"));
 // const ProductionUpdatePage = React.lazy(() => import("./views/Dashboard/ProductionUpdatePage"));
 // const SystemManagementPage = React.lazy(() => import("./views/Dashboard/SystemMangementPage"));
@@ -58,7 +58,7 @@ function PublicRoute() {
       <Outlet />
     </Suspense>
   ) : (
-    <Navigate to="/teachersdashboard" replace />
+    <Navigate to="/addmarks" replace />
   );
 }
 
@@ -69,7 +69,7 @@ function AppRoutes() {
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegistrationPage />} />
-        <Route path="/teacherdashboard" element={<TeacherDashboard />} />
+        <Route path="/addmarks" element={<AddMarks />} />
         <Route path="/studentdashboard" element={<StudentDashboard />} />
         {/* <Route path="/dayPlan" element={<DayPlanUpload />} />
         <Route path="/production" element={<ProductionUpdatePage />} />
@@ -93,7 +93,7 @@ function AppRoutes() {
 
       {/* Redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/" element={<Navigate to="/teacherdashboard" replace />} />
+      <Route path="/" element={<Navigate to="/addmarks" replace />} />
       <Route path="/" element={<Navigate to="/studentdashboard" replace />} />
     </Routes>
   );
