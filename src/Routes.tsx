@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import MainLayout from "./components/Layout/MainLayout";
 import PageLoader from "./components/PageLoader";
 import { useCurrentUser } from "./hooks/useCurrentUser";
+import DataViewPage from "./views/DataViewPage";
 // import { useCurrentUser } from "./hooks/useCurrentUser";
 // import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
 
@@ -16,6 +17,7 @@ const RegistrationPage = React.lazy(() => import("./views/RegistrationPage/Regis
 // const ProductionUpdatePage = React.lazy(() => import("./views/Dashboard/ProductionUpdatePage"));
 // const SystemManagementPage = React.lazy(() => import("./views/Dashboard/SystemMangementPage"));
 const UserProfile = React.lazy(() => import("./views/Dashboard/UserProfile"));
+
 // const HelpPage = React.lazy(() => import("./views/Dashboard/HelpPage"));
 // const SettingPage = React.lazy(() => import("./views/Dashboard/SettingPage"));
 // const DayPlanUpload = React.lazy(() => import("./views/Dashboard/DayPlan/DayPlanUpload"));
@@ -79,6 +81,7 @@ function AppRoutes() {
         <Route path="/daySummary" element={<DayPlanSummary />} />
         <Route path="/userManagement" element={<UserManagement />} />
         <Route path="/userAccessManagement" element={<UserAccessManagement/>} /> */}
+         <Route path="/table" element={<DataViewPage/>} />
 
       </Route>
 
