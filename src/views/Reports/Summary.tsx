@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState } from "react";
 import {
     Box,
     CssBaseline,
@@ -6,9 +7,7 @@ import {
     Stack,
     Typography,
     Paper,
-    Select,
     MenuItem,
-    InputBase,
     Table,
     TableBody,
     TableCell,
@@ -16,47 +15,56 @@ import {
     TableHead,
     TableRow,
     useTheme,
+    InputAdornment,
+    TextField,
+    CircularProgress,
+    Snackbar,
+    Alert,
+    IconButton
 } from "@mui/material";
-import { Search } from "@mui/icons-material";
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
+import { DateRange, School, CalendarMonth } from "@mui/icons-material";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSummaryData } from "../../api/summaryApi";
+import type { SummaryData } from "../../api/summaryApi";
 
-const subjectData = [
-    { name: "Sinhala", value: 25 },
-    { name: "English", value: 25 },
-    { name: "Maths", value: 25 },
-    { name: "Science", value: 25 },
-];
-
+const years = ["2020", "2021", "2022", "2023"];
+const grades = ["A", "B", "C", "D"];
+const terms = ["All Terms", "Term 1", "Term 2", "Term 3"];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 
-const classData = [
-    { name: "Class A", marks: 98 },
-    { name: "Class B", marks: 55 },
-    { name: "Class C", marks: 85 },
-    { name: "Class D", marks: 88 },
-    { name: "Class E", marks: 40 },
-];
-
-const tableData = [
-    { class: "A", sinhala: 85, english: 78, maths: 92, science: 88 },
-    { class: "B", sinhala: 72, english: 85, maths: 78, science: 80 },
-    { class: "C", sinhala: 90, english: 82, maths: 88, science: 85 },
-    { class: "D", sinhala: 78, english: 75, maths: 82, science: 79 },
-    { class: "E", sinhala: 65, english: 70, maths: 68, science: 72 },
-];
 
 const Summary: React.FC = () => {
-    const [sidebarOpen, setSidebarOpen] = React.useState(false);
-    const [] = React.useState("2025");
-    const [] = React.useState("07");
-    const [term, setTerm] = React.useState("ALL");
     const theme = useTheme();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [year, setYear] = useState<string>(years[0]);
+    const [grade, setGrade] = useState<string>(grades[0]);
+    const [term, setTerm] = useState<string>(terms[0]);
+    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({ open: false, message: '', severity: 'info' });
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // Calculate totals and averages for the table
-    const calculateTotals = () => {
+    const handleClearSearch = () => setSearchTerm('');
+
+    const { data, isLoading, isError, error } = useQuery<SummaryData, Error>({
+        queryKey: ["summary", year, grade, term],
+        queryFn: () => fetchSummaryData(year, grade, term),
+        retry: 1,
+    });
+
+    React.useEffect(() => {
+        if (isError && error) {
+            setSnackbar({ open: true, message: error.message || 'Error loading summary data', severity: 'error' });
+        }
+    }, [isError, error]);
+
+    // Calculate averages for the table
+    const calculateAverages = (tableData: any[] = []) => {
+        if (!tableData.length) return { sinhala: '0', english: '0', maths: '0', science: '0', overall: '0' };
         const totals = { sinhala: 0, english: 0, maths: 0, science: 0 };
         tableData.forEach(row => {
             totals.sinhala += row.sinhala;
@@ -64,7 +72,6 @@ const Summary: React.FC = () => {
             totals.maths += row.maths;
             totals.science += row.science;
         });
-
         const averages = {
             sinhala: (totals.sinhala / tableData.length).toFixed(1),
             english: (totals.english / tableData.length).toFixed(1),
@@ -72,120 +79,210 @@ const Summary: React.FC = () => {
             science: (totals.science / tableData.length).toFixed(1),
             overall: ((totals.sinhala + totals.english + totals.maths + totals.science) / (tableData.length * 4)).toFixed(1)
         };
-
-        return { totals, averages };
+        return averages;
     };
+    const averages = calculateAverages((data as SummaryData | undefined)?.tableData);
 
-    const { averages } = calculateTotals();
+    const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
 
     return (
-        <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh", bgcolor: theme.palette.background.paper }}>
+        <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
             <CssBaseline />
             <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-
             <Box sx={{ flexGrow: 1 }}>
-                <AppBar position="static" sx={{  borderBottom: "1px solid #ddd", boxShadow: "none" }}>
+                <AppBar position="static" sx={{
+                    boxShadow: "none",
+                    bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}`,
+                    color: theme.palette.text.primary
+                }}>
                     <Navbar title="Academic Summary" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
                 </AppBar>
-
                 <Stack spacing={3} sx={{ px: 4, py: 3 }}>
                     {/* Top Filters */}
                     <Paper elevation={1} sx={{ p: 2 }}>
-                        <Stack direction="row" spacing={3} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Typography fontWeight={600}>Year</Typography>
-                                <Select
-                                    size="small"
-                                    value={term}
-                                    onChange={(e) => setTerm(e.target.value)}
-                                    sx={{ width: 120 , borderRadius: 5}}
-                                >
-                                    <MenuItem value="ALL">2020</MenuItem>
-                                    <MenuItem value="1">2021</MenuItem>
-                                    <MenuItem value="2">2022</MenuItem>
-                                    <MenuItem value="3">2023</MenuItem>
-                                </Select>
-                            </Stack>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Typography fontWeight={600}>Grade</Typography>
-                                <Select
-                                    size="small"
-                                    value={term}
-                                    onChange={(e) => setTerm(e.target.value)}
-                                    sx={{ width: 120, borderRadius: 3 }}
-                                >
-                                    <MenuItem value="ALL">A</MenuItem>
-                                    <MenuItem value="1">B</MenuItem>
-                                    <MenuItem value="2">C</MenuItem>
-                                    <MenuItem value="3">D</MenuItem>
-                                </Select>
-                            </Stack>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Typography fontWeight={600}>Term</Typography>
-                                <Select
-                                    size="small"
-                                    value={term}
-                                    onChange={(e) => setTerm(e.target.value)}
-                                    sx={{ width: 120,borderRadius: 3 }}
-                                >
-                                    <MenuItem value="ALL">All Terms</MenuItem>
-                                    <MenuItem value="1">Term 1</MenuItem>
-                                    <MenuItem value="2">Term 2</MenuItem>
-                                    <MenuItem value="3">Term 3</MenuItem>
-                                </Select>
-                            </Stack>
-                            <Stack direction="row" alignItems="center" spacing={1} sx={{ flexGrow: 1, maxWidth: 300, height:45 , border: `1px solid ${theme.palette.divider}`, borderRadius: 5, px: 1 }}>
-                                <Search color="action" />
-                                <InputBase
-                                    fullWidth
-                                    placeholder="Search classes or subjects..."
-                                    sx={{ ml: 1  }}
-                                />
-                            </Stack>
-                        </Stack>
-                    </Paper>
+                        <Stack
+                            direction="row"
+                            spacing={3}
+                            alignItems="center"
+                            justifyContent="space-between"
+                            flexWrap="wrap"
+                            sx={{ width: '100%' }}
+                        >
+                            {/* Left side dropdowns */}
+                            <Stack direction="row" spacing={20} flexWrap="wrap">
+                                {/* Year */}
+                                <Stack direction="column" spacing={1}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Year"
+                                        variant="outlined"
+                                        value={year}
+                                        onChange={e => setYear(e.target.value)}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <DateRange color="action" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{
+                                            "& .MuiOutlinedInput-root": {
+                                                borderRadius: "10px",
+                                                height: "45px",
+                                            },
+                                            width: 150,
+                                        }}
+                                    >
+                                        {years.map((y) => (
+                                            <MenuItem key={y} value={y}>
+                                                {y}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Stack>
 
+                                {/* Grade */}
+                                <Stack direction="column" spacing={1}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Grade"
+                                        variant="outlined"
+                                        value={grade}
+                                        onChange={e => setGrade(e.target.value)}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <School color="action" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{
+                                            "& .MuiOutlinedInput-root": {
+                                                borderRadius: "10px",
+                                                height: "45px",
+                                            },
+                                            width: 150,
+                                        }}
+                                    >
+                                        {grades.map((g) => (
+                                            <MenuItem key={g} value={g}>
+                                                {g}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Stack>
+
+                                {/* Term */}
+                                <Stack direction="column" spacing={1}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Term"
+                                        variant="outlined"
+                                        value={term}
+                                        onChange={e => setTerm(e.target.value)}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <CalendarMonth color="action" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{
+                                            "& .MuiOutlinedInput-root": {
+                                                borderRadius: "10px",
+                                                height: "45px",
+                                            },
+                                            width: 150,
+                                        }}
+                                    >
+                                        {terms.map((t) => (
+                                            <MenuItem key={t} value={t}>
+                                                {t}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Stack>
+                            </Stack>
+
+                            {/* Right side search bar */}
+                            <Box>
+                                <TextField
+                                    placeholder="Search users..."
+                                    variant="outlined"
+                                    size="small"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    sx={{
+                                        width: 300,
+                                        '& .MuiOutlinedInput-root': {
+                                            pr: 1,
+                                            borderRadius: '10px',
+                                            height: '45px',
+                                        },
+                                    }}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SearchIcon color="action" />
+                                            </InputAdornment>
+                                        ),
+                                        endAdornment: searchTerm && (
+                                            <IconButton
+                                                size="small"
+                                                onClick={handleClearSearch}
+                                                sx={{ visibility: searchTerm ? 'visible' : 'hidden' }}
+                                            >
+                                                <ClearIcon fontSize="small" />
+                                            </IconButton>
+                                        ),
+                                    }}
+                                />
+                            </Box>
+                        </Stack>
+
+                    </Paper>
                     {/* Charts Section */}
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
                         <Paper elevation={2} sx={{ p: 3, minWidth: 300, flex: 1 }}>
                             <Typography variant="h6" fontWeight={600} mb={2}>Subject Distribution</Typography>
                             <ResponsiveContainer width="100%" height={250}>
-                                <PieChart>
-                                    <Pie
-                                        data={subjectData}
-                                        dataKey="value"
-                                        outerRadius={80}
-                                        label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
-                                        labelLine={false}
-                                    >
-                                        {subjectData.map((_entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <RechartsTooltip
-                                        formatter={(value: number) => [`${value}%`, 'Percentage']}
-                                    />
-                                    <Legend />
-                                </PieChart>
+                                {isLoading ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                                    <PieChart>
+                                        <Pie
+                                            data={(data as SummaryData | undefined)?.subjectData || []}
+                                            dataKey="value"
+                                            outerRadius={80}
+                                            label={({ name, percent }: { name: string; percent?: number }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
+                                            labelLine={false}
+                                        >
+                                            {((data as SummaryData | undefined)?.subjectData || []).map((_entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip formatter={(value: number) => [`${value}%`, 'Percentage']} />
+                                        <Legend />
+                                    </PieChart>
+                                )}
                             </ResponsiveContainer>
                         </Paper>
-
                         <Paper elevation={2} sx={{ p: 3, minWidth: 400, flex: 2 }}>
                             <Typography variant="h6" fontWeight={600} mb={2}>Class Performance</Typography>
                             <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={classData}>
-                                    <XAxis dataKey="name" />
-                                    <YAxis domain={[0, 100]} />
-                                    <RechartsTooltip
-                                        formatter={(value: number) => [`${value}%`, 'Average Marks']}
-                                    />
-                                    <Legend />
-                                    <Bar dataKey="marks" name="Average Marks" fill="#42A5F5" radius={[4, 4, 0, 0]} />
-                                </BarChart>
+                                {isLoading ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                                    <BarChart data={(data as SummaryData | undefined)?.classData || []}>
+                                        <XAxis dataKey="name" />
+                                        <YAxis domain={[0, 100]} />
+                                        <RechartsTooltip formatter={(value: number) => [`${value}%`, 'Average Marks']} />
+                                        <Legend />
+                                        <Bar dataKey="marks" name="Average Marks" fill="#42A5F5" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                )}
                             </ResponsiveContainer>
                         </Paper>
                     </Stack>
-
                     {/* Table Section */}
                     <Paper elevation={2} sx={{ p: 2, overflow: 'auto' }}>
                         <Typography variant="h6" fontWeight={600} mb={2}>Detailed Marks Breakdown</Typography>
@@ -203,7 +300,11 @@ const Summary: React.FC = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {tableData.map((row, idx) => (
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7} align="center"><CircularProgress size={24} /></TableCell>
+                                        </TableRow>
+                                    ) : ((data as SummaryData | undefined)?.tableData || []).map((row: any, idx: number) => (
                                         <TableRow key={idx} hover>
                                             <TableCell sx={{ fontWeight: 'bold' }}>{row.class}</TableCell>
                                             <TableCell align="right">{row.sinhala}</TableCell>
@@ -211,9 +312,7 @@ const Summary: React.FC = () => {
                                             <TableCell align="right">{row.maths}</TableCell>
                                             <TableCell align="right">{row.science}</TableCell>
                                             <TableCell align="right">{row.sinhala + row.english + row.maths + row.science}</TableCell>
-                                            <TableCell align="right">
-                                                {((row.sinhala + row.english + row.maths + row.science) / 4).toFixed(1)}
-                                            </TableCell>
+                                            <TableCell align="right">{((row.sinhala + row.english + row.maths + row.science) / 4).toFixed(1)}</TableCell>
                                         </TableRow>
                                     ))}
                                     <TableRow sx={{ backgroundColor: theme.palette.grey[100] }}>
@@ -237,9 +336,22 @@ const Summary: React.FC = () => {
                         </TableContainer>
                     </Paper>
                 </Stack>
-
                 <Footer />
             </Box>
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

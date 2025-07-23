@@ -80,7 +80,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "User Management",
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
-        { title: "User Account", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userProfile" },
         { title: "User Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userManagement" },
         { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
@@ -103,6 +102,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     },
     { type: "divider" },
     { type: "headline", text: "Components" },
+    {
+      type: "item",
+      title: "User Profile",
+      icon: <Settings fontSize="small" />,
+      href: "/userProfile",
+    },
     {
       type: "item",
       title: "Help",
@@ -242,7 +247,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                     </>
                   )}
                 </ListItemButton>
-                
+
                 <Collapse in={openSections[item.title!] && open} timeout="auto" unmountOnExit>
                   <List disablePadding sx={{ pl: 2 }}>
                     {item.children?.map((child, childIndex) => (
