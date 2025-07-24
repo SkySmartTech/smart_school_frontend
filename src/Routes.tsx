@@ -4,6 +4,7 @@ import MainLayout from "./components/Layout/MainLayout";
 import PageLoader from "./components/PageLoader";
 import { useCurrentUser } from "./hooks/useCurrentUser";
 import Summary from "./views/Reports/Summary";
+import ClassTeacherReport from "./views/Reports/ClassTeacherReport";
 
 // import { useCurrentUser } from "./hooks/useCurrentUser";
 // import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
@@ -79,6 +80,7 @@ function AppRoutes() {
         <Route path="/systemManagement" element={<SystemManagementPage />} /> */}
         <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/summary" element={<Summary/>} />
+          <Route path="/teacherReport" element={<ClassTeacherReport/>} />
         {/* <Route path="/help" element={<HelpPage />} />
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />

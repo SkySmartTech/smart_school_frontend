@@ -82,7 +82,7 @@ const Summary: React.FC = () => {
     const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
 
     return (
-        <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
+        <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
             <CssBaseline />
             <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
             <Box sx={{ flexGrow: 1 }}>
