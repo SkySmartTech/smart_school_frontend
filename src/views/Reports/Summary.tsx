@@ -19,11 +19,7 @@ import {
     TextField,
     CircularProgress,
     Snackbar,
-    Alert,
-    IconButton
-} from "@mui/material";
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
+    Alert} from "@mui/material";
 import { DateRange, School, CalendarMonth } from "@mui/icons-material";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
@@ -46,9 +42,8 @@ const Summary: React.FC = () => {
     const [grade, setGrade] = useState<string>(grades[0]);
     const [term, setTerm] = useState<string>(terms[0]);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({ open: false, message: '', severity: 'info' });
-    const [searchTerm, setSearchTerm] = useState('');
+    const [] = useState('');
 
-    const handleClearSearch = () => setSearchTerm('');
 
     const { data, isLoading, isError, error } = useQuery<SummaryData, Error>({
         queryKey: ["summary", year, grade, term],
@@ -147,7 +142,7 @@ const Summary: React.FC = () => {
                                     <TextField
                                         select
                                         fullWidth
-                                        label="Grade"
+                                        label="Student Grade"
                                         variant="outlined"
                                         value={grade}
                                         onChange={e => setGrade(e.target.value)}
@@ -179,7 +174,7 @@ const Summary: React.FC = () => {
                                     <TextField
                                         select
                                         fullWidth
-                                        label="Term"
+                                        label="Exam"
                                         variant="outlined"
                                         value={term}
                                         onChange={e => setTerm(e.target.value)}
@@ -205,42 +200,7 @@ const Summary: React.FC = () => {
                                         ))}
                                     </TextField>
                                 </Stack>
-                            </Stack>
-
-                            {/* Right side search bar */}
-                            <Box>
-                                <TextField
-                                    placeholder="Search users..."
-                                    variant="outlined"
-                                    size="small"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    sx={{
-                                        width: 300,
-                                        '& .MuiOutlinedInput-root': {
-                                            pr: 1,
-                                            borderRadius: '10px',
-                                            height: '45px',
-                                        },
-                                    }}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <SearchIcon color="action" />
-                                            </InputAdornment>
-                                        ),
-                                        endAdornment: searchTerm && (
-                                            <IconButton
-                                                size="small"
-                                                onClick={handleClearSearch}
-                                                sx={{ visibility: searchTerm ? 'visible' : 'hidden' }}
-                                            >
-                                                <ClearIcon fontSize="small" />
-                                            </IconButton>
-                                        ),
-                                    }}
-                                />
-                            </Box>
+                            </Stack>                         
                         </Stack>
 
                     </Paper>
@@ -294,7 +254,6 @@ const Summary: React.FC = () => {
                                         <TableCell align="right">Sinhala</TableCell>
                                         <TableCell align="right">English</TableCell>
                                         <TableCell align="right">Maths</TableCell>
-                                        <TableCell align="right">Science</TableCell>
                                         <TableCell align="right">Total</TableCell>
                                         <TableCell align="right">Average</TableCell>
                                     </TableRow>
@@ -310,26 +269,65 @@ const Summary: React.FC = () => {
                                             <TableCell align="right">{row.sinhala}</TableCell>
                                             <TableCell align="right">{row.english}</TableCell>
                                             <TableCell align="right">{row.maths}</TableCell>
-                                            <TableCell align="right">{row.science}</TableCell>
-                                            <TableCell align="right">{row.sinhala + row.english + row.maths + row.science}</TableCell>
-                                            <TableCell align="right">{((row.sinhala + row.english + row.maths + row.science) / 4).toFixed(1)}</TableCell>
+                                            <TableCell align="right">{row.sinhala + row.english + row.maths }</TableCell>
+                                            <TableCell align="right">{((row.sinhala + row.english + row.maths) / 3).toFixed(1)}</TableCell>
                                         </TableRow>
                                     ))}
-                                    <TableRow sx={{ backgroundColor: theme.palette.grey[100] }}>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Average</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{averages.sinhala}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{averages.english}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{averages.maths}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{averages.science}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                            {(
-                                                parseFloat(averages.sinhala) +
-                                                parseFloat(averages.english) +
-                                                parseFloat(averages.maths) +
-                                                parseFloat(averages.science)
-                                            ).toFixed(1)}
-                                        </TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{averages.overall}</TableCell>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Araliya</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Olu</TableCell>
+                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Nelum</TableCell>
+                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Rosa</TableCell>
+                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Manel</TableCell>
+                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Sooriya</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Kumudu</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.english}</TableCell>
+                                        <TableCell align="right">{averages.maths}</TableCell>
+                                        <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
+                                        <TableCell align="right">{averages.overall}</TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>
