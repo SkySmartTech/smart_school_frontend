@@ -75,7 +75,7 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
         localStorage.removeItem("rememberedUsername");
       }
       enqueueSnackbar("Welcome Back!", { variant: "success" });
-      navigate("/home");
+      navigate("/summary");
     },
     onError: () => {
       enqueueSnackbar(`Login Failed`, {

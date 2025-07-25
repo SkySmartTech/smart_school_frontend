@@ -32,7 +32,7 @@ interface SidebarProps {
   setOpen: (open: boolean) => void;
 }
 
-const drawerWidth = 250;
+const drawerWidth = 300;
 const collapsedWidth = 56;
 
 const Sidebar = ({ open, setOpen }: SidebarProps) => {
@@ -90,7 +90,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
         { title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/summary" },
-        { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userManagement" },
+        { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherReport" },
         { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
     },

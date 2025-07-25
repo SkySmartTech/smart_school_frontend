@@ -19,7 +19,8 @@ import {
     TextField,
     CircularProgress,
     Snackbar,
-    Alert} from "@mui/material";
+    Alert
+} from "@mui/material";
 import { DateRange, School, CalendarMonth } from "@mui/icons-material";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
@@ -81,7 +82,7 @@ const Summary: React.FC = () => {
     const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
 
     return (
-        <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
+        <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
             <CssBaseline />
             <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
             <Box sx={{ flexGrow: 1 }}>
@@ -90,119 +91,112 @@ const Summary: React.FC = () => {
                     bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}`,
                     color: theme.palette.text.primary
                 }}>
-                    <Navbar title="Academic Summary" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+                    <Navbar title="Management Staff Report" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
                 </AppBar>
                 <Stack spacing={3} sx={{ px: 4, py: 3 }}>
                     {/* Top Filters */}
                     <Paper elevation={1} sx={{ p: 2 }}>
                         <Stack
                             direction="row"
-                            spacing={3}
-                            alignItems="center"
                             justifyContent="space-between"
+                            alignItems="center"
+                            spacing={3}
                             flexWrap="wrap"
                             sx={{ width: '100%' }}
                         >
-                            {/* Left side dropdowns */}
-                            <Stack direction="row" spacing={20} flexWrap="wrap">
-                                {/* Year */}
-                                <Stack direction="column" spacing={1}>
-                                    <TextField
-                                        select
-                                        fullWidth
-                                        label="Year"
-                                        variant="outlined"
-                                        value={year}
-                                        onChange={e => setYear(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <DateRange color="action" />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                        sx={{
-                                            "& .MuiOutlinedInput-root": {
-                                                borderRadius: "10px",
-                                                height: "45px",
-                                            },
-                                            width: 150,
-                                        }}
-                                    >
-                                        {years.map((y) => (
-                                            <MenuItem key={y} value={y}>
-                                                {y}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                </Stack>
+                            {/* Year */}
+                            <TextField
+                                select
+                                label="Year"
+                                variant="outlined"
+                                value={year}
+                                onChange={e => setYear(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <DateRange color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                sx={{
+                                    minWidth: 150,
+                                    flex: 1,
+                                    maxWidth: 250,
+                                    "& .MuiOutlinedInput-root": {
+                                        borderRadius: "10px",
+                                        height: "45px",
+                                    },
+                                }}
+                            >
+                                {years.map((y) => (
+                                    <MenuItem key={y} value={y}>
+                                        {y}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
 
-                                {/* Grade */}
-                                <Stack direction="column" spacing={1}>
-                                    <TextField
-                                        select
-                                        fullWidth
-                                        label="Student Grade"
-                                        variant="outlined"
-                                        value={grade}
-                                        onChange={e => setGrade(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <School color="action" />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                        sx={{
-                                            "& .MuiOutlinedInput-root": {
-                                                borderRadius: "10px",
-                                                height: "45px",
-                                            },
-                                            width: 150,
-                                        }}
-                                    >
-                                        {grades.map((g) => (
-                                            <MenuItem key={g} value={g}>
-                                                {g}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                </Stack>
+                            {/* Grade */}
+                            <TextField
+                                select
+                                label="Student Grade"
+                                variant="outlined"
+                                value={grade}
+                                onChange={e => setGrade(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <School color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                sx={{
+                                    minWidth: 150,
+                                    flex: 1,
+                                    maxWidth: 250,
+                                    "& .MuiOutlinedInput-root": {
+                                        borderRadius: "10px",
+                                        height: "45px",
+                                    },
+                                }}
+                            >
+                                {grades.map((g) => (
+                                    <MenuItem key={g} value={g}>
+                                        {g}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
 
-                                {/* Term */}
-                                <Stack direction="column" spacing={1}>
-                                    <TextField
-                                        select
-                                        fullWidth
-                                        label="Exam"
-                                        variant="outlined"
-                                        value={term}
-                                        onChange={e => setTerm(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <CalendarMonth color="action" />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                        sx={{
-                                            "& .MuiOutlinedInput-root": {
-                                                borderRadius: "10px",
-                                                height: "45px",
-                                            },
-                                            width: 150,
-                                        }}
-                                    >
-                                        {terms.map((t) => (
-                                            <MenuItem key={t} value={t}>
-                                                {t}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                </Stack>
-                            </Stack>                         
+                            {/* Term */}
+                            <TextField
+                                select
+                                label="Exam"
+                                variant="outlined"
+                                value={term}
+                                onChange={e => setTerm(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <CalendarMonth color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                sx={{
+                                    minWidth: 150,
+                                    flex: 1,
+                                    maxWidth: 250,
+                                    "& .MuiOutlinedInput-root": {
+                                        borderRadius: "10px",
+                                        height: "45px",
+                                    },
+                                }}
+                            >
+                                {terms.map((t) => (
+                                    <MenuItem key={t} value={t}>
+                                        {t}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Stack>
-
                     </Paper>
                     {/* Charts Section */}
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
@@ -269,7 +263,7 @@ const Summary: React.FC = () => {
                                             <TableCell align="right">{row.sinhala}</TableCell>
                                             <TableCell align="right">{row.english}</TableCell>
                                             <TableCell align="right">{row.maths}</TableCell>
-                                            <TableCell align="right">{row.sinhala + row.english + row.maths }</TableCell>
+                                            <TableCell align="right">{row.sinhala + row.english + row.maths}</TableCell>
                                             <TableCell align="right">{((row.sinhala + row.english + row.maths) / 3).toFixed(1)}</TableCell>
                                         </TableRow>
                                     ))}
@@ -283,7 +277,7 @@ const Summary: React.FC = () => {
                                     </TableRow>
                                     <TableRow>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Olu</TableCell>
-                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
                                         <TableCell align="right">{averages.english}</TableCell>
                                         <TableCell align="right">{averages.maths}</TableCell>
                                         <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
@@ -291,7 +285,7 @@ const Summary: React.FC = () => {
                                     </TableRow>
                                     <TableRow>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Nelum</TableCell>
-                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
                                         <TableCell align="right">{averages.english}</TableCell>
                                         <TableCell align="right">{averages.maths}</TableCell>
                                         <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
@@ -299,7 +293,7 @@ const Summary: React.FC = () => {
                                     </TableRow>
                                     <TableRow>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Rosa</TableCell>
-                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
                                         <TableCell align="right">{averages.english}</TableCell>
                                         <TableCell align="right">{averages.maths}</TableCell>
                                         <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
@@ -307,7 +301,7 @@ const Summary: React.FC = () => {
                                     </TableRow>
                                     <TableRow>
                                         <TableCell sx={{ fontWeight: 'bold' }}>Manel</TableCell>
-                                       <TableCell align="right">{averages.sinhala}</TableCell>
+                                        <TableCell align="right">{averages.sinhala}</TableCell>
                                         <TableCell align="right">{averages.english}</TableCell>
                                         <TableCell align="right">{averages.maths}</TableCell>
                                         <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
