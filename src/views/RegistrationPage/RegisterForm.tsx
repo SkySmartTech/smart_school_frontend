@@ -22,8 +22,6 @@ import {
   Work,
   Home,
   Cake,
-  Group,
-  Business,
   CloudUpload,
   AssignmentInd,
   School,
@@ -52,9 +50,7 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-const genders = ["Male", "Female", "Other", "Prefer not to say"];
 const roles = ["Teacher", "Student", "Parent"];
-const mediums = ["Email", "Phone", "SMS", "WhatsApp", "All"];
 const professions = ["Engineer", "Doctor", "Teacher", "Designer", "Other"];
 const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
@@ -148,7 +144,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   };
 
   return (
-    <Box sx={{ width: "90%", maxWidth: 500, overflowY: "auto" }}>
+    <Box sx={{ width: "100%", maxWidth: 500, overflowY: "auto" }}>
       <CardContent sx={{ textAlign: "center", p: 1 }}>
         <motion.div
           initial={{ y: 20, opacity: 0 }}
@@ -159,7 +155,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       </CardContent>
 
       <form onSubmit={handleSubmit(onSubmit)} encType="multipart/form-data">
-        <Stack spacing={2}>
+        <Stack spacing={2.5} >
           {/* Full Name */}
           <motion.div
             initial={{ x: -20, opacity: 0 }}
@@ -183,7 +179,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "10px",
-                  height: "35px"
+                  height: "32px"
                 }
               }}
             />
@@ -219,7 +215,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "10px",
-                  height: "35px"
+                  height: "32px"
                 }
               }}
             />
@@ -248,7 +244,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "10px",
-                  height: "35px"
+                  height: "32px"
                 }
               }}
             />
@@ -280,7 +276,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               />
@@ -301,76 +297,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               />
-            </Stack>
-          </motion.div>
-
-          {/* Medium and Gender */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.7, duration: 0.5 }}
-          >
-            <Stack direction="row" spacing={2}>
-              <TextField
-                select
-                label="Medium"
-                fullWidth
-                variant="outlined"
-                {...register("medium", { required: "Medium is required" })}
-                error={!!errors.medium}
-                helperText={errors.medium?.message}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Business color={errors.medium ? "error" : "action"} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "10px",
-                    height: "35px"
-                  }
-                }}
-              >
-                {mediums.map((medium) => (
-                  <MenuItem key={medium} value={medium}>
-                    {medium}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Gender"
-                fullWidth
-                variant="outlined"
-                {...register("gender", { required: "Gender is required" })}
-                error={!!errors.gender}
-                helperText={errors.gender?.message}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Group color={errors.gender ? "error" : "action"} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "10px",
-                    height: "35px"
-                  }
-                }}
-              >
-                {genders.map((gender) => (
-                  <MenuItem key={gender} value={gender}>
-                    {gender}
-                  </MenuItem>
-                ))}
-              </TextField>
             </Stack>
           </motion.div>
 
@@ -398,7 +328,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               />
@@ -423,7 +353,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               >
@@ -462,7 +392,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "10px",
-                      height: "35px"
+                      height: "32px"
                     }
                   }}
                 >
@@ -490,7 +420,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "10px",
-                      height: "35px"
+                      height: "32px"
                     }
                   }}
                 >
@@ -520,7 +450,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "10px",
-                      height: "35px"
+                      height: "32px"
                     }
                   }}
                 >
@@ -558,7 +488,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               >
@@ -596,7 +526,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "10px",
-                      height: "35px"
+                      height: "32px"
                     }
                   }}
                 >
@@ -608,7 +538,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 </TextField>
                 <TextField
                   select
-                  label="Number of Children"
+                  label="Number"
                   fullWidth
                   variant="outlined"
                   {...register("numberOfChildren", {
@@ -630,7 +560,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "10px",
-                      height: "35px"
+                      height: "32px"
                     }
                   }}
                 >
@@ -644,49 +574,43 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
             </motion.div>
           )}
 
-          
-          <Stack direction="row" spacing={2}>
-            <motion.div
+          <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.7, duration: 0.5 }}
           >
-            <TextField
-              label="Username"
-              fullWidth
-              variant="outlined"
-              {...register("username", {
-                required: "Username is required",
-                minLength: {
-                  value: 3,
-                  message: "Username must be at least 3 characters",
-                },
-              })}
-              error={!!errors.username}
-              helperText={errors.username?.message}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <AccountCircle color={errors.username ? "error" : "action"} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "10px",
-                  height: "35px",
-                  width: "200px"
-                }
-              }}
-            />
-                </motion.div>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Username"
+                fullWidth
+                variant="outlined"
+                {...register("username", {
+                  required: "Username is required",
+                  minLength: {
+                    value: 3,
+                    message: "Username must be at least 3 characters",
+                  },
+                })}
+                error={!!errors.username}
+                helperText={errors.username?.message}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AccountCircle color={errors.username ? "error" : "action"} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "10px",
+                    height: "32px",
+                    width: "225px"
+                  }
+                }}
+              >
+              </TextField>
 
-            {/* Image Upload */}
-            <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 1.0, duration: 0.5 }}
-            >
+              {/* Image Upload */}
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Button
                   component="label"
@@ -694,10 +618,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   startIcon={<CloudUpload />}
                   fullWidth
                   sx={{
-                    height: '36px',
+                    height: '35px',
                     borderRadius: '10px',
-                    width: "200px",
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    width: '225px'
                   }}
                 >
                   Upload Profile Picture
@@ -716,8 +640,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   />
                 )}
               </Box>
-            </motion.div>
-          </Stack>
+            </Stack>
+          </motion.div>
 
           {/* Password */}
           <motion.div
@@ -772,8 +696,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px",
-                    width: "200px"
+                    height: "32px",
+                    width: "225px"
                   }
                 }}
               />
@@ -827,8 +751,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "10px",
-                      height: "35px",
-                      width: "200px"
+                      height: "32px",
+                      width: "225px"
                     }
                   }}
                 />
@@ -856,7 +780,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               disabled={isPending}
               sx={{
                 borderRadius: "10px",
-                height: 40,
+                height: 35,
                 fontSize: "1rem",
                 fontWeight: "bold",
                 textTransform: "none",
@@ -905,7 +829,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
           </Box>
         </motion.div>
       </form>
-    </Box>
+    </Box >
   );
 };
 
