@@ -58,12 +58,12 @@ const classes = ["Class A", "Class B", "Class C", "Class D", "Class E"];
 
 interface FormData extends Omit<User, 'image'> {
   image: FileList | null;
-  confirmPassword: string;
+  password_confirmation: string;
   grade?: string;
   subject?: string;
   class?: string;
   profession?: string;
-  numberOfChildren?: string;
+  parentContact?: string;
 }
 
 interface RegisterFormProps {
@@ -90,11 +90,11 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   } = useForm<FormData>();
 
   const password = watch("password");
-  const role = watch("role");
+  const userType = watch("userType");
 
   useEffect(() => {
-    setSelectedRole(role);
-  }, [role]);
+    setSelectedRole(userType);
+  }, [userType]);
 
   const { mutate: registerMutation, isPending } = useMutation({
     mutationFn: registerUser,
@@ -166,13 +166,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               label="Full Name"
               fullWidth
               variant="outlined"
-              {...register("fullName", { required: "Full name is required" })}
-              error={!!errors.fullName}
-              helperText={errors.fullName?.message}
+              {...register("name", { required: "Full name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Person color={errors.fullName ? "error" : "action"} />
+                    <Person color={errors.name ? "error" : "action"} />
                   </InputAdornment>
                 ),
               }}
@@ -284,13 +284,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 label="Phone"
                 fullWidth
                 variant="outlined"
-                {...register("phone", { required: "Phone is required" })}
-                error={!!errors.phone}
-                helperText={errors.phone?.message}
+                {...register("contact", { required: "Phone is required" })}
+                error={!!errors.contact}
+                helperText={errors.contact?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Phone color={errors.phone ? "error" : "action"} />
+                      <Phone color={errors.contact ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
@@ -315,13 +315,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 label="ID Number"
                 fullWidth
                 variant="outlined"
-                {...register("idNumber", { required: "ID is required" })}
-                error={!!errors.idNumber}
-                helperText={errors.idNumber?.message}
+                {...register("userId", { required: "ID is required" })}
+                error={!!errors.userId}
+                helperText={errors.userId?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <AssignmentInd color={errors.idNumber ? "error" : "action"} />
+                      <AssignmentInd color={errors.userId ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
@@ -337,16 +337,16 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 label="Role"
                 fullWidth
                 variant="outlined"
-                {...register("role", {
+                {...register("userType", {
                   required: "Role is required",
                   onChange: (e) => setSelectedRole(e.target.value)
                 })}
-                error={!!errors.role}
-                helperText={errors.role?.message}
+                error={!!errors.userType}
+                helperText={errors.userType?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Work color={errors.role ? "error" : "action"} />
+                      <Work color={errors.userType ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
@@ -357,9 +357,9 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   }
                 }}
               >
-                {roles.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {role}
+                {roles.map((userType) => (
+                  <MenuItem key={userType} value={userType}>
+                    {userType}
                   </MenuItem>
                 ))}
               </TextField>
@@ -538,22 +538,22 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 </TextField>
                 <TextField
                   select
-                  label="Number"
+                  label="Parent Number"
                   fullWidth
                   variant="outlined"
-                  {...register("numberOfChildren", {
+                  {...register("parentContact", {
                     required: selectedRole === "Parent" ? "Number of children is required" : false,
                     validate: (value) =>
                       selectedRole !== "Parent" ||
                       (value && parseInt(value) > 0) ||
                       "Must have at least 1 child"
                   })}
-                  error={!!errors.numberOfChildren}
-                  helperText={errors.numberOfChildren?.message}
+                  error={!!errors.parentContact}
+                  helperText={errors.parentContact?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Numbers color={errors.numberOfChildren ? "error" : "action"} />
+                        <Numbers color={errors.parentContact ? "error" : "action"} />
                       </InputAdornment>
                     ),
                   }}
@@ -712,19 +712,19 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   type={showConfirmPassword ? "text" : "password"}
                   fullWidth
                   variant="outlined"
-                  {...register("confirmPassword", {
+                  {...register("password_confirmation", {
                     required: "Please confirm your password",
                     validate: (value) =>
                       value === password || "Passwords do not match",
                   })}
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword?.message}
+                  error={!!errors.password_confirmation}
+                  helperText={errors.password_confirmation?.message}
                   onFocus={() => setConfirmPasswordFocused(true)}
                   onBlur={() => setConfirmPasswordFocused(false)}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Lock color={errors.confirmPassword ? "error" : confirmPasswordFocused ? "primary" : "action"} />
+                        <Lock color={errors.password_confirmation ? "error" : confirmPasswordFocused ? "primary" : "action"} />
                       </InputAdornment>
                     ),
                     endAdornment: (
