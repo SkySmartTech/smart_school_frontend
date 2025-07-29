@@ -1,7 +1,5 @@
-// src/pages/TeacherDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box,
   Container,
   Stack,
   CircularProgress,
@@ -11,25 +9,36 @@ import {
   Button,
   Typography,
   Paper,
-  TextField, // Ensure TextField is imported
+  TextField,
+  Snackbar,
+  Alert,
+  Box
 } from '@mui/material';
 
 // Import DataGrid components
-import { DataGrid, gridClasses } from '@mui/x-data-grid';
+import { DataGrid } from '@mui/x-data-grid';
 import type {
   GridColDef,
   GridRenderCellParams,
+  GridRowId,
+  GridCellParams,
 } from '@mui/x-data-grid';
-
 
 // Import existing components
 import FilterDropdown from '../../components/FilterDropdown';
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 
-// Fix the typo here: changed 'SchoolTabelData' to 'SchoolTableData'
-import { type TableData, marks_table } from '../../data/SchoolTabelData';
+// Import the API functions and the interface
+import { fetchStudentMarks, submitStudentMarks, type StudentMark } from '../../api/addmarksApi';
 
+// Import icons for FilterDropdowns
+import SchoolIcon from '@mui/icons-material/School'; // For Grade
+import ClassIcon from '@mui/icons-material/Class'; // For Class
+import SubjectIcon from '@mui/icons-material/Subject'; // For Subject
+import EventIcon from '@mui/icons-material/Event'; // For Exam/Term
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // For Month
+import SearchIcon from '@mui/icons-material/Search'; // For Search field
 
 const gradeOptions = [
   { label: 'Grade 1', value: '1' }, { label: 'Grade 2', value: '2' },
@@ -42,10 +51,10 @@ const gradeOptions = [
 ];
 
 const classOptions = [
-  { label: 'Class A', value: 'A' }, { label: 'Class B', value: 'B' },
-  { label: 'Class C', value: 'C' }, { label: 'Class D', value: 'D' },
-  { label: 'Class E', value: 'E' }, { label: 'Class F', value: 'F' },
-  { label: 'Class G', value: 'G' }, { label: 'Class H', value: 'H' },
+  { label: 'Araliya', value: 'Araliya' }, { label: 'Olu', value: 'Olu' },
+  { label: 'Nelum', value: 'Nelum' }, { label: 'Rosa', value: 'Rosa' },
+  { label: 'Manel', value: 'Manel' }, { label: 'Sooriya', value: 'Sooriya' },
+  { label: 'Kumudu', value: 'Kumudu' }
 ];
 
 const subjectOptions = [
@@ -56,87 +65,165 @@ const subjectOptions = [
   { label: 'English', value: 'english' },
 ];
 
-const termOptions = [
+const examOptions = [
   { label: '1st Term', value: '1st' },
   { label: '2nd Term', value: '2nd' },
   { label: '3rd Term', value: '3rd' },
+  { label: 'Monthly', value: 'monthly' },
 ];
+
+const monthOptions = [
+  { label: 'January', value: 'January' }, { label: 'February', value: 'February' },
+  { label: 'March', value: 'March' }, { label: 'April', value: 'April' },
+  { label: 'May', value: 'May' }, { label: 'June', value: 'June' },
+  { label: 'July', value: 'July' }, { label: 'August', value: 'August' },
+  { label: 'September', value: 'September' }, { label: 'October', value: 'October' },
+  { label: 'November', value: 'November' }, { label: 'December', value: 'December' },
+];
+
+const drawerWidth = 250;
+const collapsedWidth = 56;
 
 const TeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hovered] = useState(false);
+  const [hovered] = useState(false); // hovered state is not used in the provided snippet
   const theme = useTheme();
 
-  // Filter states
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [selectedTerm, setSelectedTerm] = useState<string>('');
-  // State for the search query
-  const [searchQuery, setSearchQuery] = useState<string>(''); // 👈 NEW: State for search bar
-  // Use TableData for the students state
-  const [students, setStudents] = useState<TableData[]>([]);
+  const [selectedExam, setSelectedExam] = useState<string>('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const [students, setStudents] = useState<StudentMark[]>([]);
+  const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<StudentMark>>>({});
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+
+  const isMonthFilterEnabled = selectedExam === 'monthly';
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setStudents([]);
+    setModifiedMarks({});
+    try {
+      const data = await fetchStudentMarks({
+        grade: selectedGrade,
+        class: selectedClass,
+        subject: selectedSubject,
+        term: selectedExam,
+        month: isMonthFilterEnabled ? selectedMonth : '',
+        searchQuery: searchQuery,
+      });
+      setStudents(data);
+      setSnackbarMessage('Student marks loaded successfully.');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch student marks:', error);
+      setSnackbarMessage('Failed to load student marks. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, searchQuery, isMonthFilterEnabled]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      console.log('Fetching data for:', { selectedGrade, selectedClass, selectedSubject, selectedTerm, searchQuery }); // Include searchQuery
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In a real application, you would filter marks_table based on all selected filters and searchQuery here
-      let filteredData = marks_table;
-      
-      // Basic filtering based on search query (example: by student name or admission number)
-      if (searchQuery) {
-        const lowerCaseQuery = searchQuery.toLowerCase();
-        filteredData = filteredData.filter(student => 
-          student.student_name.toLowerCase().includes(lowerCaseQuery) 
-          //student.student_admission.toLowerCase().includes(lowerCaseQuery)
-        );
-      }
-      
-      setStudents(filteredData); // Use filtered data
-      setLoading(false);
-    };
-
     fetchData();
-  }, [selectedGrade, selectedClass, selectedSubject, selectedTerm, searchQuery]); // 👈 NEW: Add searchQuery to dependencies
+  }, [fetchData]);
 
-  // handleMarksChange now works directly with the students state in TeacherDashboard
-  const handleMarksChange = (id: number, field: keyof TableData, value: any) => {
+  const handleMarksChange = (id: GridRowId, field: keyof StudentMark, value: any) => {
     setStudents((prevStudents) =>
       prevStudents.map((student) =>
         student.id === id ? { ...student, [field]: value } : student
       )
     );
+    setModifiedMarks((prevModified) => ({
+      ...prevModified,
+      [id]: { ...prevModified[id], [field]: value },
+    }));
   };
 
-  const handleSubmitMarks = () => {
-    console.log('Submitting Marks:', students);
-    alert('Marks submitted successfully! (Check console for data)');
+  const handleSubmitMarks = async () => {
+    setLoading(true);
+    const marksToSubmit: Partial<StudentMark>[] = students.filter(student =>
+      modifiedMarks[student.id] && modifiedMarks[student.id].marks !== undefined
+    ).map(student => ({
+      id: student.id,
+      marks: student.marks,
+      subject: student.subject,
+      term: student.term,
+      student_admission: student.student_admission,
+      student_grade: student.student_grade,
+      student_class: student.student_class,
+      ...(isMonthFilterEnabled && selectedMonth && { month: selectedMonth }),
+    }));
+
+    if (marksToSubmit.length === 0) {
+      setSnackbarMessage('No marks to submit.');
+      setSnackbarSeverity('info');
+      setSnackbarOpen(true);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await submitStudentMarks(marksToSubmit);
+      setSnackbarMessage('Marks submitted successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      setModifiedMarks({});
+    } catch (error) {
+      console.error('Failed to submit marks:', error);
+      setSnackbarMessage('Failed to submit marks. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Define columns for DataGrid directly in TeacherDashboard
-  const columns: GridColDef[] = [
+  const handleCloseSnackbar = (_event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedGrade('');
+    setSelectedClass('');
+    setSelectedSubject('');
+    setSelectedExam('');
+    setSelectedMonth('');
+    setSearchQuery('');
+  };
+
+  const columns: GridColDef<StudentMark>[] = [
     { field: 'student_admission', headerName: 'Admission No', width: 130, editable: false },
-    { field: 'student_name', headerName: 'Student Name', width: 500, editable: false },
-    { field: 'term', headerName: 'Term', width: 150, editable: false },
+    { field: 'student_name', headerName: 'Student Name', width: 200, editable: false },
+    { field: 'subject', headerName: 'Subject', width: 150, editable: false },
+    { field: 'term', headerName: 'Term', width: 100, editable: false },
     {
       field: 'marks',
       headerName: 'Marks',
-      width: 150,
+      width: 100,
       editable: true,
       type: 'string',
-      renderCell: (params: GridRenderCellParams<TableData, string>) => (
+      renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
         <TextField
           variant="outlined"
           size="small"
           value={params.value || ''}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             const newValue = e.target.value;
-            // Allow empty string or 0-3 digit numbers
             if (newValue === '' || /^\d{0,3}$/.test(newValue)) {
-              handleMarksChange(params.id as number, 'marks', newValue); // Call local handler
+              handleMarksChange(params.id, 'marks', newValue);
             }
           }}
           inputProps={{ style: { textAlign: 'center', padding: '8px 10px' } }}
@@ -150,177 +237,226 @@ const TeacherDashboard: React.FC = () => {
           }}
         />
       ),
-      valueFormatter: (params: { value: string | null | undefined; }) => {
+      valueFormatter: (params: GridCellParams<StudentMark, string>) => {
+        if (params.value === undefined || params.value === null) {
+          return '';
+        }
         return params.value === '0' || params.value === '' ? '' : params.value;
       },
     },
-    { field: 'student_grade', headerName: 'Grade', width: 150, editable: false },
+    { field: 'student_grade', headerName: 'Marks Grade', width: 100, editable: false },
+    { field: 'student_class', headerName: 'Class', width: 100, editable: false },
   ];
 
-
   return (
-    <Box sx={{ display: 'flex', width: '100%', height: '100vh', minHeight: '100vh', bgcolor: theme.palette.background.default }}>
+    <>
       <CssBaseline />
       <Sidebar open={sidebarOpen || hovered} setOpen={setSidebarOpen} />
 
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        <AppBar
-          position="static"
+      <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
+        {/* Main content area, dynamically adjusting margin-left based on sidebar state */}
+        <Box
+          component="main"
           sx={{
-            bgcolor: 'background.default',
-            boxShadow: 'none',
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            zIndex: theme.zIndex.drawer + 1,
-            color: theme.palette.text.primary,
+            flexGrow: 1,
+            minHeight: '100vh',
+            bgcolor: theme.palette.background.default,
+            transition: theme.transitions.create('margin', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.leavingScreen,
+            }),
+            ml: sidebarOpen ? `${drawerWidth}px` : `${collapsedWidth}px`, // Dynamic margin-left
           }}
         >
-          <Navbar
-            title="Add Marks"
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        </AppBar>
-
-        <Container maxWidth="lg" sx={{ p: 3, bgcolor: '#fcfcfcff', minHeight: 'calc(100vh - 64px)' }}>
-          {/* Filter Dropdowns */}
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={{ xs: 2, sm: 3 }}
-            justifyContent="space-around"
-            alignItems="flex-start"
-            sx={{ mb: 3, p: { xs: 2, sm: 0 } }}
+          <AppBar
+            position="static"
+            sx={{
+              bgcolor: theme.palette.background.paper, // Changed background color
+              boxShadow: 'none',
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              zIndex: theme.zIndex.drawer + 1,
+              color: theme.palette.text.primary,
+              // Removed width and ml from AppBar as the Navbar handles it.
+            }}
           >
-            <FilterDropdown
-              label="Grade"
-              value={selectedGrade}
-              options={gradeOptions}
-              onChange={setSelectedGrade}
-              minWidth={180}
+            <Navbar
+              title="Add Marks"
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
             />
-            <FilterDropdown
-              label="Class"
-              value={selectedClass}
-              options={classOptions}
-              onChange={setSelectedClass}
-              minWidth={180}
-            />
-            <FilterDropdown
-              label="Subject"
-              value={selectedSubject}
-              options={subjectOptions}
-              onChange={setSelectedSubject}
-              minWidth={180}
-            />
-            <FilterDropdown
-              label="Term"
-              value={selectedTerm}
-              options={termOptions}
-              onChange={setSelectedTerm}
-              minWidth={180}
-            />
-          </Stack>
+          </AppBar>
 
-          {/* Search Bar */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 3 }}> 
-            <TextField
-              label="Search Students" // Placeholder text
-              variant="outlined"
-              size="small"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{
-                width: { xs: '100%', sm: '50%', md: '30%' }, // Medium length, responsive
-                maxWidth: '400px', // Max width to keep it from getting too wide on large screens
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '4px',
-                  bgcolor: 'white', // Consistent background
-                  '&:hover fieldset': { borderColor: theme.palette.info.main },
-                  '&.Mui-focused fieldset': { borderColor: theme.palette.info.main },
-                },
-                mt: 2, // Margin top to separate from filters
-              }}
-            />
-          </Box>
+          <Container maxWidth="xl" sx={{ pt: 3, pb: 3 }}>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-              <CircularProgress />
-            </Box>
-          ) : (
+            {/* Filter and Search Section */}
             <Paper sx={{
-              mt: 3, p: 2, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
+              mb: 3, p: 3, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
             }}>
-              <Typography variant="h6" align="center" sx={{ mb: 2, color: theme.palette.text.primary }}>
-                Add Marks
+              <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>
+                Filter Student Data
               </Typography>
-              <Box sx={{ height: 400, width: '100%' }}>
-                <DataGrid
-                  rows={students} // Use the local 'students' state
-                  columns={columns} // Use the local 'columns' definition
-                  getRowId={(row) => row.id} // Essential for DataGrid to identify rows
-                  initialState={{
-                    pagination: { paginationModel: { page: 0, pageSize: 5 }, },
+              <Stack
+                direction={{ xs: 'column', md: 'row' }} // Stack vertically on small screens, horizontally on medium and up
+                spacing={{ xs: 2, md: 3 }}
+                justifyContent="flex-start" // Align items to the start
+                alignItems="flex-end" // Align items to the end for consistent button placement
+                flexWrap="wrap"
+                sx={{ mb: 2 }}
+              >
+                <FilterDropdown
+                  label="Student Grade"
+                  value={selectedGrade}
+                  options={gradeOptions}
+                  onChange={setSelectedGrade}
+                  minWidth={264}
+                  icon={<SchoolIcon fontSize="small" />} // Added icon
+                />
+                <FilterDropdown
+                  label="Class"
+                  value={selectedClass}
+                  options={classOptions}
+                  onChange={setSelectedClass}
+                  minWidth={270}
+                  icon={<ClassIcon fontSize="small" />} // Added icon
+                />
+                <FilterDropdown
+                  label="Subject"
+                  value={selectedSubject}
+                  options={subjectOptions}
+                  onChange={setSelectedSubject}
+                  minWidth={270}
+                  icon={<SubjectIcon fontSize="small" />} // Added icon
+                />
+                <FilterDropdown
+                  label="Exam"
+                  value={selectedExam}
+                  options={examOptions}
+                  onChange={setSelectedExam}
+                  minWidth={270}
+                  icon={<EventIcon fontSize="small" />} // Added icon
+                />
+                <FilterDropdown
+                  label="Month"
+                  value={selectedMonth}
+                  options={monthOptions}
+                  onChange={setSelectedMonth}
+                  minWidth={270}
+                  disabled={!isMonthFilterEnabled}
+                  icon={<CalendarMonthIcon fontSize="small" />} // Added icon
+                />
+              </Stack>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={{ xs: 2, sm: 3 }}
+                justifyContent="space-between" // Changed to space-between
+                alignItems="center"
+                sx={{ mt: 2 }}
+              >
+                <TextField
+                  label="Search"
+                  variant="outlined"
+                  size="small"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                        <SearchIcon fontSize="small" />
+                      </Box>
+                    ),
                   }}
-                  pageSizeOptions={[5, 10, 25]}
-                  disableRowSelectionOnClick
-                  processRowUpdate={(newRow, oldRow) => {
-                    if (newRow.marks !== oldRow.marks) {
-                      handleMarksChange(newRow.id, 'marks', newRow.marks); // Call local handler
-                    }
-                    return newRow;
-                  }}
-            onProcessRowUpdateError={(error) => console.error('Error updating row:', error)}
                   sx={{
-                    // THIS IS THE PART THAT CONTROLS THE HEADER BACKGROUND COLOR
-                    [`& .${gridClasses.columnHeaders}`]: {
-                      backgroundColor: theme.palette.info.dark,
+                    minWidth: 500, // Reduced minimum width
+                    flexGrow: 1,
+                    maxWidth: { xs: '100%', sm: 250 }, // Reduced maximum width for small and up screens
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                      bgcolor: 'white',
+                      '&:hover fieldset': { borderColor: theme.palette.info.main },
+                      '&.Mui-focused fieldset': { borderColor: theme.palette.info.main },
                     },
-                    // And these lines control the text color and font weight within the header
-                    [`& .${gridClasses.columnHeader}`]: {
-                      color: theme.palette.text.primary,
-                      fontWeight: 'bold',
-                    },
-                    // And these control the sorting/menu icon colors
-                    [`& .${gridClasses.sortIcon}`]: {
-                      color: theme.palette.text.secondary,
-                    },
-                    [`& .${gridClasses.menuIcon}`]: {
-                      color: theme.palette.text.secondary,
-                    },
-                    // Footer styling
-                    '.MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper, color: theme.palette.text.secondary, },
-                    // Row styling
-                    '.MuiDataGrid-row:nth-of-type(odd)': { backgroundColor: theme.palette.background.paper, },
-                    '.MuiDataGrid-row:nth-of-type(even)': { backgroundColor: theme.palette.background.paper, },
-                    // Cell border
-                    '.MuiDataGrid-cell': { borderColor: theme.palette.divider, },
-                    // Hover effect for rows
-                    '.MuiDataGrid-virtualScrollerContent': { '& .MuiDataGrid-row': { '&:hover': { backgroundColor: theme.palette.action.selected, }, }, },
-                    // Main DataGrid border and radius
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: theme.shape.borderRadius,
                   }}
                 />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                 <Button
-                  variant="contained"
-                  onClick={handleSubmitMarks} // Call local handler
+                  variant="outlined"
+                  onClick={handleClearFilters}
                   sx={{
-                    bgcolor: theme.palette.primary.main,
-                    '&:hover': { bgcolor: theme.palette.primary.dark, },
-                    color: theme.palette.primary.contrastText,
-                    px: 5, py: 1.2, borderRadius: theme.shape.borderRadius,
+                    px: 3, py: 1, borderRadius: theme.shape.borderRadius,
+                    borderColor: theme.palette.primary.main,
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      borderColor: theme.palette.primary.dark,
+                      color: theme.palette.primary.dark,
+                    },
+                    mt: { xs: 2, sm: 0 }
                   }}
                 >
-                  Submit
+                  Clear Filters
                 </Button>
-              </Box>
+              </Stack>
             </Paper>
-          )}
-        </Container>
+
+            {/* Data Table Section */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Paper sx={{
+                mt: 3, p: 2, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
+              }}>
+                <Typography variant="h6" align="center" sx={{ mb: 2, color: theme.palette.text.primary }}>
+                  Student Marks
+                </Typography>
+                <Box sx={{ height: 400, width: '100%' }}>
+                  <DataGrid
+                    rows={students}
+                    columns={columns}
+                    getRowId={(row) => row.id}
+                    initialState={{
+                      pagination: { paginationModel: { page: 0, pageSize: 5 }, },
+                    }}
+                    pageSizeOptions={[5, 10, 25]}
+                    disableRowSelectionOnClick
+                    sx={{
+                      '.MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper, color: theme.palette.text.secondary, },
+                      '.MuiDataGrid-row:nth-of-type(odd)': { backgroundColor: theme.palette.background.paper, },
+                      '.MuiDataGrid-row:nth-of-type(even)': { backgroundColor: theme.palette.background.paper, },
+                      '.MuiDataGrid-cell': { borderColor: theme.palette.divider, },
+                      '.MuiDataGrid-virtualScrollerContent': { '& .MuiDataGrid-row': { '&:hover': { backgroundColor: theme.palette.action.selected, }, }, },
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: theme.shape.borderRadius,
+                    }}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSubmitMarks}
+                    sx={{
+                      bgcolor: theme.palette.primary.main,
+                      '&:hover': { bgcolor: theme.palette.primary.dark, },
+                      color: theme.palette.primary.contrastText,
+                      px: 5, py: 1.2, borderRadius: theme.shape.borderRadius,
+                    }}
+                    disabled={loading}
+                  >
+                    Submit Marks
+                  </Button>
+                </Box>
+              </Paper>
+            )}
+          </Container>
+        </Box>
       </Box>
-    </Box>
+
+      {/* Snackbar for feedback */}
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
