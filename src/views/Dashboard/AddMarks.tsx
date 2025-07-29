@@ -25,7 +25,7 @@ import type {
 } from '@mui/x-data-grid';
 
 // Import existing components
-import FilterDropdown from '../../components/FilterDropdown';
+import FilterDropdown from '../../components/FilterDropdown'; // Assuming you updated this file
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 
@@ -233,6 +233,11 @@ const TeacherDashboard: React.FC = () => {
               borderRadius: '4px',
               '&:hover fieldset': { borderColor: theme.palette.info.main, },
               '&.Mui-focused fieldset': { borderColor: theme.palette.info.main, },
+              // Ensure text input background is correct in DataGrid
+              bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.paper : 'white',
+            },
+            '& .MuiInputBase-input': {
+              color: theme.palette.text.primary, // Ensure text color is correct
             },
           }}
         />
@@ -303,6 +308,7 @@ const TeacherDashboard: React.FC = () => {
                 flexWrap="wrap"
                 sx={{ mb: 2 }}
               >
+                {/* FilterDropdown components will now handle their own internal styling */}
                 <FilterDropdown
                   label="Student Grade"
                   value={selectedGrade}
@@ -371,10 +377,19 @@ const TeacherDashboard: React.FC = () => {
                     maxWidth: { xs: '100%', sm: 250 }, // Reduced maximum width for small and up screens
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '4px',
-                      bgcolor: 'white',
+                      bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.paper : 'white',
                       '&:hover fieldset': { borderColor: theme.palette.info.main },
                       '&.Mui-focused fieldset': { borderColor: theme.palette.info.main },
                     },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.text.primary, // Ensure text color is correct
+                    },
+                     '& .MuiInputLabel-root': { // Label color for the search field
+                       color: theme.palette.text.secondary,
+                     },
+                     '& .MuiSvgIcon-root': { // Icon color for the search field
+                       color: theme.palette.action.active,
+                     },
                   }}
                 />
                 <Button
@@ -445,7 +460,7 @@ const TeacherDashboard: React.FC = () => {
                   </Button>
                 </Box>
               </Paper>
-            )} 
+            )}
           </Container>
         </Box>
       </Box>
