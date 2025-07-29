@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -8,13 +8,13 @@ import {
   Menu,
   MenuItem,
   Button,
-  Divider
+  Divider,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
   Fullscreen as FullscreenIcon,
-  AccountCircle as AccountCircleIcon
+  AccountCircle as AccountCircleIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useCustomTheme } from "../context/ThemeContext";
@@ -29,9 +29,31 @@ interface NavbarProps {
 const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
   const { mode, toggleTheme } = useCustomTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] =
+    useState<null | HTMLElement>(null);
   const [notificationCount] = useState(3);
+  const [currentUsername, setCurrentUsername] = useState("Loading..."); // Initialize with a loading state
   const navigate = useNavigate();
+
+  // Fetch username on component mount
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        // Replace with your actual backend API endpoint
+        const response = await fetch('/api/users/current'); // e.g., an endpoint that returns the logged-in user's data
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setCurrentUsername(data.username); // Assuming the response has a 'username' field
+      } catch (error) {
+        console.error("Error fetching username:", error);
+        setCurrentUsername("H.K.N.M.P.D.Perera"); // Fallback if fetching fails
+      }
+    };
+
+    fetchUsername();
+  }, []); // Empty dependency array means this runs once on mount
 
   // Account menu handlers
   const handleAccountMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -93,7 +115,7 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
         component="div"
         sx={{
           flexGrow: 1,
-          fontWeight: 600
+          fontWeight: 600,
         }}
       >
         {title}
@@ -102,11 +124,11 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
       {/* Icons */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
         {/* Dark mode toggle */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
           <AnimatedSwitch
-            checked={mode === 'dark'}
+            checked={mode === "dark"}
             onChange={toggleTheme}
-            inputProps={{ 'aria-label': 'dark mode toggle' }}
+            inputProps={{ "aria-label": "dark mode toggle" }}
           />
         </Box>
 
@@ -121,22 +143,24 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
           open={Boolean(notificationAnchorEl)}
           onClose={handleNotificationMenuClose}
           anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
+            vertical: "bottom",
+            horizontal: "right",
           }}
           transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
+            vertical: "top",
+            horizontal: "right",
           }}
           sx={{
-            '& .MuiPaper-root': {
+            "& .MuiPaper-root": {
               width: 300,
-              maxHeight: 400
-            }
+              maxHeight: 400,
+            },
           }}
         >
           <MenuItem disabled>
-            <Typography variant="body2">You have {notificationCount} new notifications</Typography>
+            <Typography variant="body2">
+              You have {notificationCount} new notifications
+            </Typography>
           </MenuItem>
           <Divider />
           <MenuItem>
@@ -157,21 +181,26 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
           <FullscreenIcon />
         </IconButton>
 
-        {/* Account dropdown menu */}
-        <IconButton onClick={handleAccountMenuOpen}>
-          <AccountCircleIcon />
-        </IconButton>
+        {/* User's Name and Account dropdown menu */}
+        <Box sx={{ display: "flex", alignItems: "center", cursor: "pointer" }} onClick={handleAccountMenuOpen}>
+          <Typography variant="body1" sx={{ mr: 1, display: { xs: 'none', sm: 'block' } }}>
+            {currentUsername}
+          </Typography>
+          <IconButton color="inherit" sx={{ p: 0 }}>
+            <AccountCircleIcon />
+          </IconButton>
+        </Box>
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleAccountMenuClose}
           anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
+            vertical: "bottom",
+            horizontal: "right",
           }}
           transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
+            vertical: "top",
+            horizontal: "right",
           }}
         >
           <MenuItem onClick={handleProfileClick}>User Profile</MenuItem>
