@@ -10,18 +10,22 @@ const API = axios.create({
 
 // User Schema with all 15 fields
 export const userSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
+  name: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
   address: z.string().min(1, "Address is required"),
   birthday: z.string().min(1, "Birthday is required"),
-  phone: z.string().min(1, "Phone is required"),
+  contact: z.string().min(1, "Phone is required"),
   medium: z.string().min(1, "Medium is required"),
   gender: z.string().min(1, "Gender is required"),
-  idNumber: z.string().min(1, "ID number is required"),
-  role: z.string().min(1, "Role is required"),
+  userId: z.string().min(1, "ID number is required"),
+  userType: z.string().min(1, "Role is required"),
   parent: z.string().optional(),
+  grade: z.string().optional(),
+  subject: z.string().optional(),
+    class: z.string().optional(),
   profession: z.string().optional(),
-  image: z.instanceof(File).optional(),
+    parentContact: z.string().optional(),
+  photo: z.instanceof(File).optional(),
   username: z.string()
     .min(3, "Username must be at least 3 characters")
     .max(20, "Username must be less than 20 characters"),
@@ -29,10 +33,10 @@ export const userSchema = z.object({
     .min(6, "Password must be at least 6 characters")
     .regex(/[A-Z]/, "Must contain at least one uppercase letter")
     .regex(/[0-9]/, "Must contain at least one number"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine(data => data.password === data.confirmPassword, {
+  password_confirmation: z.string().min(1, "Please confirm your password"),
+}).refine(data => data.password === data.password_confirmation, {
   message: "Passwords don't match",
-  path: ["confirmPassword"],
+  path: ["password_confirmation"],
 });
 
 export type User = z.infer<typeof userSchema>;
@@ -40,7 +44,7 @@ export type User = z.infer<typeof userSchema>;
 // Register User with all fields
 export async function registerUser(userData: FormData) {
   try {
-    const response = await API.post("/auth/register", userData);
+    const response = await API.post("/api/user-register", userData);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
