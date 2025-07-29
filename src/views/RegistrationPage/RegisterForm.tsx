@@ -22,18 +22,19 @@ import {
   Work,
   Home,
   Cake,
-  Group,
-  Business,
   CloudUpload,
-  FamilyRestroom,
-  AssignmentInd
+  AssignmentInd,
+  School,
+  Class,
+  Subject,
+  Numbers
 } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser } from "../../api/userApi";
 import type { User } from "../../api/userApi";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { styled } from '@mui/material/styles';
 
@@ -49,14 +50,20 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-const genders = ["Male", "Female", "Other", "Prefer not to say"];
-const roles = ["Admin", "User", "Manager", "Editor", "Viewer"];
-const mediums = ["Email", "Phone", "SMS", "WhatsApp", "All"];
+const roles = ["Teacher", "Student", "Parent"];
 const professions = ["Engineer", "Doctor", "Teacher", "Designer", "Other"];
+const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
+const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
+const classes = ["Class A", "Class B", "Class C", "Class D", "Class E"];
 
 interface FormData extends Omit<User, 'image'> {
   image: FileList | null;
-  confirmPassword: string;
+  password_confirmation: string;
+  grade?: string;
+  subject?: string;
+  class?: string;
+  profession?: string;
+  parentContact?: string;
 }
 
 interface RegisterFormProps {
@@ -71,6 +78,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -82,6 +90,11 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   } = useForm<FormData>();
 
   const password = watch("password");
+  const userType = watch("userType");
+
+  useEffect(() => {
+    setSelectedRole(userType);
+  }, [userType]);
 
   const { mutate: registerMutation, isPending } = useMutation({
     mutationFn: registerUser,
@@ -96,7 +109,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
 
   const onSubmit = (data: FormData) => {
     const formData = new FormData();
-    
+
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (key === 'image' && value instanceof FileList && value.length > 0) {
@@ -131,7 +144,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   };
 
   return (
-    <Box sx={{ width: "90%", maxWidth: 500, overflowY: "auto" }}>
+    <Box sx={{ width: "100%", maxWidth: 500, overflowY: "auto" }}>
       <CardContent sx={{ textAlign: "center", p: 1 }}>
         <motion.div
           initial={{ y: 20, opacity: 0 }}
@@ -142,7 +155,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       </CardContent>
 
       <form onSubmit={handleSubmit(onSubmit)} encType="multipart/form-data">
-        <Stack spacing={2}>
+        <Stack spacing={2.5} >
           {/* Full Name */}
           <motion.div
             initial={{ x: -20, opacity: 0 }}
@@ -153,20 +166,20 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               label="Full Name"
               fullWidth
               variant="outlined"
-              {...register("fullName", { required: "Full name is required" })}
-              error={!!errors.fullName}
-              helperText={errors.fullName?.message}
+              {...register("name", { required: "Full name is required" })}
+              error={!!errors.name}
+              helperText={errors.name?.message}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Person color={errors.fullName ? "error" : "action"} />
+                    <Person color={errors.name ? "error" : "action"} />
                   </InputAdornment>
                 ),
               }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "10px",
-                  height: "35px"
+                  height: "32px"
                 }
               }}
             />
@@ -202,7 +215,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "10px",
-                  height: "35px"
+                  height: "32px"
                 }
               }}
             />
@@ -231,7 +244,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "10px",
-                  height: "35px"
+                  height: "32px"
                 }
               }}
             />
@@ -263,7 +276,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               />
@@ -271,89 +284,23 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 label="Phone"
                 fullWidth
                 variant="outlined"
-                {...register("phone", { required: "Phone is required" })}
-                error={!!errors.phone}
-                helperText={errors.phone?.message}
+                {...register("contact", { required: "Phone is required" })}
+                error={!!errors.contact}
+                helperText={errors.contact?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Phone color={errors.phone ? "error" : "action"} />
+                      <Phone color={errors.contact ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               />
-            </Stack>
-          </motion.div>
-
-          {/* Medium and Gender */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.7, duration: 0.5 }}
-          >
-            <Stack direction="row" spacing={2}>
-              <TextField
-                select
-                label="Medium"
-                fullWidth
-                variant="outlined"
-                {...register("medium", { required: "Medium is required" })}
-                error={!!errors.medium}
-                helperText={errors.medium?.message}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Business color={errors.medium ? "error" : "action"} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "10px",
-                    height: "35px"
-                  }
-                }}
-              >
-                {mediums.map((medium) => (
-                  <MenuItem key={medium} value={medium}>
-                    {medium}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Gender"
-                fullWidth
-                variant="outlined"
-                {...register("gender", { required: "Gender is required" })}
-                error={!!errors.gender}
-                helperText={errors.gender?.message}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Group color={errors.gender ? "error" : "action"} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "10px",
-                    height: "35px"
-                  }
-                }}
-              >
-                {genders.map((gender) => (
-                  <MenuItem key={gender} value={gender}>
-                    {gender}
-                  </MenuItem>
-                ))}
-              </TextField>
             </Stack>
           </motion.div>
 
@@ -368,20 +315,20 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 label="ID Number"
                 fullWidth
                 variant="outlined"
-                {...register("idNumber", { required: "ID is required" })}
-                error={!!errors.idNumber}
-                helperText={errors.idNumber?.message}
+                {...register("userId", { required: "ID is required" })}
+                error={!!errors.userId}
+                helperText={errors.userId?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <AssignmentInd color={errors.idNumber ? "error" : "action"} />
+                      <AssignmentInd color={errors.userId ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               />
@@ -390,128 +337,247 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 label="Role"
                 fullWidth
                 variant="outlined"
-                {...register("role", { required: "Role is required" })}
-                error={!!errors.role}
-                helperText={errors.role?.message}
+                {...register("userType", {
+                  required: "Role is required",
+                  onChange: (e) => setSelectedRole(e.target.value)
+                })}
+                error={!!errors.userType}
+                helperText={errors.userType?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Work color={errors.role ? "error" : "action"} />
+                      <Work color={errors.userType ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               >
-                {roles.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {role}
+                {roles.map((userType) => (
+                  <MenuItem key={userType} value={userType}>
+                    {userType}
                   </MenuItem>
                 ))}
               </TextField>
             </Stack>
           </motion.div>
 
-          {/* Parent and Profession */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.9, duration: 0.5 }}
-          >
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Parent/Guardian"
-                fullWidth
-                variant="outlined"
-                {...register("parent")}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <FamilyRestroom color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "10px",
-                    height: "35px"
-                  }
-                }}
-              />
+          {/* Role-specific fields */}
+          {selectedRole === "Teacher" && (
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.9, duration: 0.5 }}
+            >
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  select
+                  label="Grade"
+                  fullWidth
+                  variant="outlined"
+                  {...register("grade", { required: selectedRole === "Teacher" ? "Grade is required" : false })}
+                  error={!!errors.grade}
+                  helperText={errors.grade?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <School color={errors.grade ? "error" : "action"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "32px"
+                    }
+                  }}
+                >
+                  {grades.map((grade) => (
+                    <MenuItem key={grade} value={grade}>
+                      {grade}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Subject"
+                  fullWidth
+                  variant="outlined"
+                  {...register("subject", { required: selectedRole === "Teacher" ? "Subject is required" : false })}
+                  error={!!errors.subject}
+                  helperText={errors.subject?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Subject color={errors.subject ? "error" : "action"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "32px"
+                    }
+                  }}
+                >
+                  {subjects.map((subject) => (
+                    <MenuItem key={subject} value={subject}>
+                      {subject}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <TextField
+                  select
+                  label="Class"
+                  fullWidth
+                  variant="outlined"
+                  {...register("class", { required: selectedRole === "Teacher" ? "Class is required" : false })}
+                  error={!!errors.class}
+                  helperText={errors.class?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Class color={errors.class ? "error" : "action"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "32px"
+                    }
+                  }}
+                >
+                  {classes.map((cls) => (
+                    <MenuItem key={cls} value={cls}>
+                      {cls}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+            </motion.div>
+          )}
+
+          {selectedRole === "Student" && (
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.9, duration: 0.5 }}
+            >
               <TextField
                 select
-                label="Profession"
+                label="Grade"
                 fullWidth
                 variant="outlined"
-                {...register("profession")}
+                {...register("grade", { required: selectedRole === "Student" ? "Grade is required" : false })}
+                error={!!errors.grade}
+                helperText={errors.grade?.message}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Work color="action" />
+                      <School color={errors.grade ? "error" : "action"} />
                     </InputAdornment>
                   ),
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px"
                   }
                 }}
               >
-                {professions.map((profession) => (
-                  <MenuItem key={profession} value={profession}>
-                    {profession}
+                {grades.map((grade) => (
+                  <MenuItem key={grade} value={grade}>
+                    {grade}
                   </MenuItem>
                 ))}
               </TextField>
-            </Stack>
-          </motion.div>
+            </motion.div>
+          )}
 
-          {/* Image Upload */}
+          {selectedRole === "Parent" && (
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.9, duration: 0.5 }}
+            >
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  select
+                  label="Profession"
+                  fullWidth
+                  variant="outlined"
+                  {...register("profession", { required: selectedRole === "Parent" ? "Profession is required" : false })}
+                  error={!!errors.profession}
+                  helperText={errors.profession?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Work color={errors.profession ? "error" : "action"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "32px"
+                    }
+                  }}
+                >
+                  {professions.map((profession) => (
+                    <MenuItem key={profession} value={profession}>
+                      {profession}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Parent Number"
+                  fullWidth
+                  variant="outlined"
+                  {...register("parentContact", {
+                    required: selectedRole === "Parent" ? "Number of children is required" : false,
+                    validate: (value) =>
+                      selectedRole !== "Parent" ||
+                      (value && parseInt(value) > 0) ||
+                      "Must have at least 1 child"
+                  })}
+                  error={!!errors.parentContact}
+                  helperText={errors.parentContact?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Numbers color={errors.parentContact ? "error" : "action"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "32px"
+                    }
+                  }}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+                    <MenuItem key={num} value={num}>
+                      {num}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+            </motion.div>
+          )}
+
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 1.0, duration: 0.5 }}
-          >
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Button
-                component="label"
-                variant="outlined"
-                startIcon={<CloudUpload />}
-                fullWidth
-                sx={{
-                  height: '35px',
-                  borderRadius: '10px',
-                  textTransform: 'none'
-                }}
-              >
-                Upload Profile Picture
-                <VisuallyHiddenInput 
-                  type="file" 
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                  name="image"
-                />
-              </Button>
-              {previewImage && (
-                <Avatar
-                  src={previewImage}
-                  sx={{ width: 100, height: 100, mt: 2 }}
-                />
-              )}
-            </Box>
-          </motion.div>
-
-          {/* Username and Password */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 1.1, duration: 0.5 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
           >
             <Stack direction="row" spacing={2}>
               <TextField
@@ -537,10 +603,53 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px",
+                    width: "225px"
                   }
                 }}
-              />
+              >
+              </TextField>
+
+              {/* Image Upload */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<CloudUpload />}
+                  fullWidth
+                  sx={{
+                    height: '35px',
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    width: '225px'
+                  }}
+                >
+                  Upload Profile Picture
+                  <VisuallyHiddenInput
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    name="image"
+                  />
+                </Button>
+                {previewImage && (
+                  <Avatar
+                    src={previewImage}
+                    sx={{ width: 100, height: 100, mt: 2 }}
+                  />
+                )}
+              </Box>
+            </Stack>
+          </motion.div>
+
+          {/* Password */}
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 1.1, duration: 0.5 }}
+          >
+            <Stack direction="row" spacing={2}>
               <TextField
                 label="Password"
                 type={showPassword ? "text" : "password"}
@@ -587,68 +696,71 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "10px",
-                    height: "35px"
+                    height: "32px",
+                    width: "225px"
                   }
                 }}
               />
+              {/* Confirm Password */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 1.2, duration: 0.5 }}
+              >
+                <TextField
+                  label="Confirm Password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  fullWidth
+                  variant="outlined"
+                  {...register("password_confirmation", {
+                    required: "Please confirm your password",
+                    validate: (value) =>
+                      value === password || "Passwords do not match",
+                  })}
+                  error={!!errors.password_confirmation}
+                  helperText={errors.password_confirmation?.message}
+                  onFocus={() => setConfirmPasswordFocused(true)}
+                  onBlur={() => setConfirmPasswordFocused(false)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock color={errors.password_confirmation ? "error" : confirmPasswordFocused ? "primary" : "action"} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle confirm password visibility"
+                          onClick={handleClickShowConfirmPassword}
+                          onMouseDown={handleMouseDownPassword}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? (
+                            <Zoom in={showConfirmPassword}>
+                              <VisibilityOff color={confirmPasswordFocused ? "primary" : "action"} />
+                            </Zoom>
+                          ) : (
+                            <Zoom in={!showConfirmPassword}>
+                              <Visibility color={confirmPasswordFocused ? "primary" : "action"} />
+                            </Zoom>
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "32px",
+                      width: "225px"
+                    }
+                  }}
+                />
+              </motion.div>
             </Stack>
           </motion.div>
 
-          {/* Confirm Password */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.5 }}
-          >
-            <TextField
-              label="Confirm Password"
-              type={showConfirmPassword ? "text" : "password"}
-              fullWidth
-              variant="outlined"
-              {...register("confirmPassword", {
-                required: "Please confirm your password",
-                validate: (value) =>
-                  value === password || "Passwords do not match",
-              })}
-              error={!!errors.confirmPassword}
-              helperText={errors.confirmPassword?.message}
-              onFocus={() => setConfirmPasswordFocused(true)}
-              onBlur={() => setConfirmPasswordFocused(false)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Lock color={errors.confirmPassword ? "error" : confirmPasswordFocused ? "primary" : "action"} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle confirm password visibility"
-                      onClick={handleClickShowConfirmPassword}
-                      onMouseDown={handleMouseDownPassword}
-                      edge="end"
-                    >
-                      {showConfirmPassword ? (
-                        <Zoom in={showConfirmPassword}>
-                          <VisibilityOff color={confirmPasswordFocused ? "primary" : "action"} />
-                        </Zoom>
-                      ) : (
-                        <Zoom in={!showConfirmPassword}>
-                          <Visibility color={confirmPasswordFocused ? "primary" : "action"} />
-                        </Zoom>
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "10px",
-                  height: "35px"
-                }
-              }}
-            />
-          </motion.div>
+
         </Stack>
 
         {/* Submit Button */}
@@ -668,7 +780,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               disabled={isPending}
               sx={{
                 borderRadius: "10px",
-                height: 40,
+                height: 35,
                 fontSize: "1rem",
                 fontWeight: "bold",
                 textTransform: "none",
@@ -717,7 +829,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
           </Box>
         </motion.div>
       </form>
-    </Box>
+    </Box >
   );
 };
 

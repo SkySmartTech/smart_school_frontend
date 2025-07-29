@@ -16,7 +16,6 @@ import {
   Layers,
   Settings,
   ExitToApp,
-  Help,
   ExpandLess,
   ExpandMore,
   NoteAdd as NoteAddIcon,
@@ -34,7 +33,7 @@ interface SidebarProps {
   setOpen: (open: boolean) => void;
 }
 
-const drawerWidth = 250;
+const drawerWidth = 300;
 const collapsedWidth = 56;
 
 const Sidebar = ({ open, setOpen }: SidebarProps) => {
@@ -88,16 +87,19 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "User Management",
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
-        { title: "User Account", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userProfile" },
         { title: "User Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userManagement" },
         { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
     },
-        {
-      type: "item",
+    {
+      type: "nested",
       title: "Reports",
-      icon: <Help fontSize="small" />,
-      href: "/help",
+      icon: <SupervisedUserCircleTwoTone fontSize="small" />,
+      children: [
+        { title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/summary" },
+        { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherReport" },
+        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
+      ],
     },
     {
       type: "item",
@@ -107,6 +109,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     },
     { type: "divider" },
     { type: "headline", text: "Components" },
+    {
+      type: "item",
+      title: "User Profile",
+      icon: <Settings fontSize="small" />,
+      href: "/userProfile",
+    },
     {
       type: "item",
       title: "Help",
@@ -246,7 +254,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                     </>
                   )}
                 </ListItemButton>
-                
+
                 <Collapse in={openSections[item.title!] && open} timeout="auto" unmountOnExit>
                   <List disablePadding sx={{ pl: 2 }}>
                     {item.children?.map((child, childIndex) => (
