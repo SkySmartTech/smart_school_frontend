@@ -445,7 +445,7 @@ const TeacherDashboard: React.FC = () => {
                   </Button>
                 </Box>
               </Paper>
-            )}
+            )} 
           </Container>
         </Box>
       </Box>
