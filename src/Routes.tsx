@@ -19,7 +19,7 @@ const AddMarks = React.lazy(() => import("./views/Dashboard/AddMarks"));
 const StudentDashboard = React.lazy(() => import("./views/Dashboard/StudentDashboard"));
 // const ProductionUpdatePage = React.lazy(() => import("./views/Dashboard/ProductionUpdatePage"));
 // const SystemManagementPage = React.lazy(() => import("./views/Dashboard/SystemMangementPage"));
-const UserProfile = React.lazy(() => import("./views/Dashboard/UserProfile"));
+const UserProfile = React.lazy(() => import("./views/UserProfile"));
 
 // const HelpPage = React.lazy(() => import("./views/Dashboard/HelpPage"));
 // const SettingPage = React.lazy(() => import("./views/Dashboard/SettingPage"));
