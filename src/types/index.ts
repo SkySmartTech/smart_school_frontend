@@ -6,4 +6,4 @@ export interface User {
     permissions: string[];
     avatar?: string;
     lastLogin?: string;
-  }
+  } 
