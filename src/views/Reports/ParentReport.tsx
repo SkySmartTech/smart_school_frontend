@@ -29,18 +29,16 @@ import { PieChart,
     Cell,
     LineChart,
     Line,
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     Tooltip as ReTooltip,
     Legend,
     ResponsiveContainer } from "recharts";
 import { useQuery,
-    type UseQueryOptions } from "@tanstack/react-query";
+    type UseQueryOptions } from "@tanstack/react-query"; // FIX: Removed 'exemplify-specifics'
 import { fetchParentReport,
     fetchChildDetails, type ParentReportData,
-    type ChildDetails, type IndividualSubjectAverageData, type StudentMarksData } from "../../api/parentApi.ts"; // Removed OverallSubjectLineGraphData as it's not directly used for types here
+    type ChildDetails, type StudentMarksData } from "../../api/parentApi.ts";
 
 const years = ["2020", "2021", "2022", "2023", "2024"];
 const exams = ["1st Term", "2nd Term", "3rd Term","Monthly"];
@@ -134,65 +132,7 @@ const ParentReport: React.FC = () => {
         )}
       </>
     );
-  };
-
-  // Define subjects to display individual average charts for (now excluding Sinhala and Maths)
-  const subjectsToChartAverage: (keyof IndividualSubjectAverageData)[] = [
-    "English", // This one is still included for the "Other Individual Subject Average Trends" section
-    "History", "Geography", "Buddhism",
-    "Science", "Art", "EnglishLit"
-  ];
-
-  const renderIndividualSubjectAverageCharts = () => {
-    if (isLoadingReport) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250, width: '100%' }}><CircularProgress /></Box>
-      );
-    }
-    if (!reportData || !reportData.individualSubjectAverages) {
-      return (
-        <Typography>No individual subject average data available.</Typography>
-      );
-    }
-
-    return (
-        <Stack direction="row" spacing={3} flexWrap="wrap" justifyContent="flex-start" sx={{ width: '100%' }}>
-            {subjectsToChartAverage.map((subjectName: keyof IndividualSubjectAverageData) => {
-                const data = reportData.individualSubjectAverages[subjectName];
-                return (
-                    <Paper
-                        key={subjectName}
-                        sx={{
-                            p: 3,
-                            flex: '1 1 calc(33.33% - 24px)', // Adjust calc for spacing: 3 charts, 2*spacing between them. (spacing=3 => 24px total)
-                            maxWidth: { xs: '100%', sm: 'calc(50% - 12px)', md: 'calc(33.33% - 24px)' }, // Responsive widths
-                            minWidth: '280px', // Prevents charts from becoming too small
-                            boxSizing: 'border-box',
-                            height: 'auto',
-                            mb: 3 // Margin bottom for spacing between rows
-                        }}
-                    >
-                        <Typography fontWeight={600} mb={2}>{subjectName}</Typography>
-                        <ResponsiveContainer width="100%" height={250}>
-                            {data && data.length > 0 ? (
-                                <LineChart data={data}>
-                                    <XAxis dataKey="x" />
-                                    <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
-                                    <ReTooltip />
-                                    <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
-                                </LineChart>
-                            ) : (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
-                                    <Typography variant="body2" color="text.secondary">No data for {subjectName}</Typography>
-                                </Box>
-                            )}
-                        </ResponsiveContainer>
-                    </Paper>
-                );
-            })}
-        </Stack>
-    );
-  };
+  }
 
 
   return (
@@ -254,10 +194,10 @@ const ParentReport: React.FC = () => {
             </Stack>
           </Paper>
 
-          {/* First Row: Overall Subject & Subject Wise Marks (Pie Chart) */}
+          {/* Row 1: Overall Subject & Subject Wise Marks (Pie Chart) */}
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
             {/* Overall Subject Line Chart */}
-            <Paper sx={{ p: 3, flex: 2 }}> {/* flex: 2 to make it wider */}
+            <Paper sx={{ p: 3, flex: 2 }}>
               <Typography fontWeight={600} mb={2}>Overall Subject</Typography>
               <ResponsiveContainer width="100%" height={250}>
                 {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
@@ -272,13 +212,13 @@ const ParentReport: React.FC = () => {
             </Paper>
 
             {/* Subject Wise Marks (Pie Chart) */}
-            <Paper sx={{ p: 3, flex: 1 }}> {/* flex: 1 to make it smaller */}
+            <Paper sx={{ p: 3, flex: 1 }}>
               <Typography fontWeight={600} mb={2}>Subject Wise Marks</Typography>
               <ResponsiveContainer width="100%" height={250}>
                 {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
                   <PieChart>
                     <Pie data={reportData?.subjectWiseMarksPie} dataKey="value" nameKey="name" outerRadius={80} label={(entry: any) => entry.name}>
-                      {(reportData?.subjectWiseMarksPie || []).map((_, idx: number) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
+                      {(reportData?.subjectWiseMarksPie || []).map((_: any, idx: number) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                     </Pie>
                     <ReTooltip />
                     <Legend />
@@ -288,11 +228,11 @@ const ParentReport: React.FC = () => {
             </Paper>
           </Stack>
 
-    
+          {/* Row 2: Sinhala and Maths Subject Average Charts */}
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
             {/* Sinhala Subject Average Chart */}
-            <Paper sx={{ p: 3, flex: 1 }}> 
-              <Typography fontWeight={600} mb={2}>Sinhala Subject Average Trend</Typography>
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Sinhala Subject</Typography>
               <ResponsiveContainer width="100%" height={250}>
                   {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
                       reportData?.individualSubjectAverages?.Sinhala && reportData.individualSubjectAverages.Sinhala.length > 0 ? (
@@ -312,8 +252,8 @@ const ParentReport: React.FC = () => {
             </Paper>
 
             {/* Maths Subject Average Chart */}
-            <Paper sx={{ p: 3, flex: 1 }}> {/* flex: 1 to share space */}
-              <Typography fontWeight={600} mb={2}>Maths Subject Average Trend</Typography>
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Maths Subject</Typography>
               <ResponsiveContainer width="100%" height={250}>
                   {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
                       reportData?.individualSubjectAverages?.Maths && reportData.individualSubjectAverages.Maths.length > 0 ? (
@@ -332,13 +272,13 @@ const ParentReport: React.FC = () => {
               </ResponsiveContainer>
             </Paper>
 
-             {/* English Subject Average Chart */}
-            <Paper sx={{ p: 3, flex: 1 }}> 
-              <Typography fontWeight={600} mb={2}>English Subject Average Trend</Typography>
+            {/* ICT Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>ICT Subject</Typography>
               <ResponsiveContainer width="100%" height={250}>
                   {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
-                      reportData?.individualSubjectAverages?.English && reportData.individualSubjectAverages.English.length > 0 ? (
-                          <LineChart data={reportData.individualSubjectAverages.English}>
+                      reportData?.individualSubjectAverages?.ICT && reportData.individualSubjectAverages.ICT.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.ICT}>
                               <XAxis dataKey="x" />
                               <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
                               <ReTooltip />
@@ -346,7 +286,7 @@ const ParentReport: React.FC = () => {
                           </LineChart>
                       ) : (
                           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
-                              <Typography variant="body2" color="text.secondary">No data for English</Typography>
+                              <Typography variant="body2" color="text.secondary">No data for Maths</Typography>
                           </Box>
                       )
                   )}
@@ -355,27 +295,137 @@ const ParentReport: React.FC = () => {
 
           </Stack>
 
-          {/* Individual Subject Average Charts (3 per row, for remaining subjects) */}
-          <Paper sx={{ p: 3 }}>
-            <Typography fontWeight={600} mb={2}>Other Individual Subject Average Trends</Typography>
-            {renderIndividualSubjectAverageCharts()}
-          </Paper>
+          {/* Row 3: History, Geography, and Buddhism Charts */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
+            {/* History Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>History Subject</Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                  {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                      reportData?.individualSubjectAverages?.History && reportData.individualSubjectAverages.History.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.History}>
+                              <XAxis dataKey="x" />
+                              <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
+                              <ReTooltip />
+                              <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                          </LineChart>
+                      ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                              <Typography variant="body2" color="text.secondary">No data for History</Typography>
+                          </Box>
+                      )
+                  )}
+              </ResponsiveContainer>
+            </Paper>
 
-          {/* Individual Subject Marks (Bar Chart for current exam) - Kept for reference, can be removed if not needed */}
-          <Paper sx={{ p: 3 }}>
-            <Typography fontWeight={600} mb={2}>Individual Subject Marks (Current Exam)</Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
-                <BarChart data={reportData?.studentMarksDetailedTable}>
-                  <XAxis dataKey="subject" />
-                  <YAxis domain={[0, 100]} />
-                  <ReTooltip />
-                  <Legend />
-                  <Bar dataKey="marks" fill="#1976d2" radius={[5, 5, 0, 0]} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </Paper>
+            {/* Geography Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Geography Subject</Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                  {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                      reportData?.individualSubjectAverages?.Geography && reportData.individualSubjectAverages.Geography.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.Geography}>
+                              <XAxis dataKey="x" />
+                              <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
+                              <ReTooltip />
+                              <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                          </LineChart>
+                      ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                              <Typography variant="body2" color="text.secondary">No data for Geography</Typography>
+                          </Box>
+                      )
+                  )}
+              </ResponsiveContainer>
+            </Paper>
+
+            {/* Buddhism Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Buddhism Subject</Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                  {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                      reportData?.individualSubjectAverages?.Buddhism && reportData.individualSubjectAverages.Buddhism.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.Buddhism}>
+                              <XAxis dataKey="x" />
+                              <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
+                              <ReTooltip />
+                              <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                          </LineChart>
+                      ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                              <Typography variant="body2" color="text.secondary">No data for Buddhism</Typography>
+                          </Box>
+                      )
+                  )}
+              </ResponsiveContainer>
+            </Paper>
+          </Stack>
+
+          {/* Row 4: Science, Commerce, and Drama Charts */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
+            {/* Science Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Science Subject</Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                  {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                      reportData?.individualSubjectAverages?.Science && reportData.individualSubjectAverages.Science.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.Science}>
+                              <XAxis dataKey="x" />
+                              <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
+                              <ReTooltip />
+                              <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                          </LineChart>
+                      ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                              <Typography variant="body2" color="text.secondary">No data for Science</Typography>
+                          </Box>
+                      )
+                  )}
+              </ResponsiveContainer>
+            </Paper>
+
+            {/* Commerce Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Commerce Subject</Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                  {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                      reportData?.individualSubjectAverages?.Commerce && reportData.individualSubjectAverages.Commerce.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.Commerce}>
+                              <XAxis dataKey="x" />
+                              <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
+                              <ReTooltip />
+                              <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                          </LineChart>
+                      ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                              <Typography variant="body2" color="text.secondary">No data for Commerce</Typography>
+                          </Box>
+                      )
+                  )}
+              </ResponsiveContainer>
+            </Paper>
+
+            {/* Drama Subject Average Chart */}
+            <Paper sx={{ p: 3, flex: 1 }}>
+              <Typography fontWeight={600} mb={2}>Drama Subject</Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                  {isLoadingReport ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
+                      reportData?.individualSubjectAverages?.Drama && reportData.individualSubjectAverages.Drama.length > 0 ? (
+                          <LineChart data={reportData.individualSubjectAverages.Drama}>
+                              <XAxis dataKey="x" />
+                              <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }}/>
+                              <ReTooltip />
+                              <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                          </LineChart>
+                      ) : (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                              <Typography variant="body2" color="text.secondary">No data for Drama</Typography>
+                          </Box>
+                      )
+                  )}
+              </ResponsiveContainer>
+            </Paper>
+          </Stack>
 
           {/* Detailed Marks Table for the specific student */}
           <Paper elevation={2} sx={{ p: 2, overflow: 'auto' }}>
@@ -406,6 +456,7 @@ const ParentReport: React.FC = () => {
         </Alert>
       </Snackbar>
     </Box>
+ 
   );
 };
 

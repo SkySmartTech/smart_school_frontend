@@ -32,8 +32,9 @@ export interface IndividualSubjectAverageData {
   Geography?: ParentLineChartData[];
   Buddhism?: ParentLineChartData[];
   Art?: ParentLineChartData[];
-  EnglishLit?: ParentLineChartData[];
-  // Add any other subjects your system has
+  ICT?: ParentLineChartData[];
+  Commerce?: ParentLineChartData[]; 
+  Drama?: ParentLineChartData[];
 }
 
 export interface ParentReportData {
