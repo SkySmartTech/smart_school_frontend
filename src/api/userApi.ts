@@ -12,7 +12,7 @@ export const userSchema = z.object({
   name: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
   address: z.string().min(1, "Address is required"),
-  birthday: z.string().min(1, "Birthday is required"),
+  birthDay: z.string().min(1, "Birthday is required"),
   contact: z.string().min(1, "Phone is required"),
   userType: z.string().min(1, "Role is required"),
   username: z.string()
@@ -21,14 +21,25 @@ export const userSchema = z.object({
   password: z.string()
     .min(6, "Password must be at least 6 characters"),
   password_confirmation: z.string().min(1, "Please confirm your password"),
-  image: z.instanceof(File).optional(),
+  photo: z.instanceof(File).optional(),
+  gender: z.string().optional(),
+  location: z.string().optional(),
+  userRole: z.string().optional(),
   // Teacher specific fields
   grade: z.string().optional(),
   subject: z.string().optional(),
   class: z.string().optional(),
   staffId: z.string().optional(),
+  teacherStaffId: z.string().optional(),
+  // Backend expects these field names for teachers
+  teacherGrades: z.array(z.string()).optional(),
+  teacherClass: z.array(z.string()).optional(),
+  subjects: z.array(z.string()).optional(),
+  staffNo: z.string().optional(),
+  medium: z.array(z.string()).optional(),
   // Student specific fields
-  student_admission_no: z.string().optional(),
+  studentGrade: z.string().optional(),
+  studentAdmissionNo: z.string().optional(),
   // Parent specific fields
   profession: z.string().optional(),
   parentContact: z.string().optional(),
@@ -48,6 +59,43 @@ export async function registerUser(userData: FormData) {
       throw new Error(error.response?.data?.message || "Registration failed");
     }
     throw new Error("Registration failed");
+  }
+}
+
+// Role-specific registration functions
+export async function registerStudent(studentData: FormData) {
+  try {
+    const response = await API.post("/api/user-student-register", studentData);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || "Student registration failed");
+    }
+    throw new Error("Student registration failed");
+  }
+}
+
+export async function registerTeacher(teacherData: FormData) {
+  try {
+    const response = await API.post("/api/user-teacher-register", teacherData);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || "Teacher registration failed");
+    }
+    throw new Error("Teacher registration failed");
+  }
+}
+
+export async function registerParent(parentData: FormData) {
+  try {
+    const response = await API.post("/api/user-parent-register", parentData);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || "Parent registration failed");
+    }
+    throw new Error("Parent registration failed");
   }
 }
 
