@@ -310,8 +310,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       </Stepper>
 
       {registeredUser && activeStep === 1 && (
-        <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1, color: 'white' }}>
-         <strong>User Type:</strong> {registeredUser.userType}
+        <Box sx={{ mb: 2, p: 2,  borderRadius: 1, color: 'black' }}>
+         <strong>Role:</strong> {registeredUser.userType}
         </Box>
       )}
 

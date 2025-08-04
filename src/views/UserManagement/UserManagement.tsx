@@ -33,7 +33,6 @@ import {
 } from "@mui/x-data-grid";
 import {
   PictureAsPdf as PdfIcon,
-  Print as PrintIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Refresh as RefreshIcon,
@@ -43,17 +42,14 @@ import {
 import Sidebar from "../../components/Sidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCustomTheme } from "../../context/ThemeContext";
-import {
-  type User,
-  departments,
-  availabilityOptions
-} from "../..//types/userManagementTypes";
+import { type User, statusOptions, genderOptions, gradeOptions, mediumOptions, classOptions, subjectOptions } from "../../types/userManagementTypes";
 import {
   fetchUsers,
   createUser,
   updateUser,
   deactivateUser,
-  searchUsers
+  searchUsers,
+  bulkDeactivateUsers
 } from "../../api/userManagementApi";
 import Navbar from "../../components/Navbar";
 import { jsPDF } from "jspdf";
@@ -64,19 +60,15 @@ type UserCategory = 'TEACHER' | 'STUDENT' | 'PARENT';
 
 const UserManagement: React.FC = () => {
   const [form, setForm] = useState<Omit<User, 'id'> & { id?: number }>({
-    epf: "",
-    employeeName: "",
+    name: "",
     username: "",
-    department: "",
-    contact: "",
     email: "",
-    userType: "TEACHER",
-    availability: false,
+    userType: "STUDENT",
+    status: true,
     password: ""
   });
   const [editId, setEditId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hovered] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -84,36 +76,26 @@ const UserManagement: React.FC = () => {
   });
   const [rowSelectionModel, setRowSelectionModel] = useState<GridRowId[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchMode] = useState<"client" | "api">("client");
-  const [searchedData, setSearchedData] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<UserCategory>('TEACHER');
+  const [activeTab, setActiveTab] = useState<UserCategory>('STUDENT');
   const theme = useTheme();
   const dataGridRef = useRef<any>(null);
   useCustomTheme();
 
   const queryClient = useQueryClient();
 
-  // Fetch all users and filter based on tab
   const { data: allUsers = [], isLoading: isDataLoading, refetch } = useQuery<User[]>({
     queryKey: ["users"],
     queryFn: fetchUsers, 
   });
 
-  // Filter users based on active tab
-  const users = allUsers.filter(user => 
-    activeTab === 'TEACHER' ? user.userType === 'TEACHER' :
-    activeTab === 'STUDENT' ? user.userType === 'STUDENT' :
-    user.userType === 'PARENT'
-  );
+  const users = allUsers.filter(user => user.userType === activeTab);
 
-  // Search users API call
   const { data: apiSearchResults = [], isLoading: isSearching, refetch: searchRefetch } = useQuery({
     queryKey: ["searchUsers", searchTerm, activeTab],
     queryFn: () => searchUsers(searchTerm, activeTab),
     enabled: false,
   });
 
-  // Mutations
   const createUserMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
@@ -139,15 +121,15 @@ const UserManagement: React.FC = () => {
       showSnackbar("User updated successfully!", "success");
       handleClear();
     },
-    // onError: (error: any) {
-    //   const errorMessage = error.response?.data?.message || "Failed to update user";
-    //   const errors = error.response?.data?.errors;
-    //   if (errors) {
-    //     showSnackbar(Object.values(errors).flat().join(", "), "error");
-    //   } else {
-    //     showSnackbar(errorMessage, "error");
-    //   }
-    // }
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || "Failed to update user";
+      const errors = error.response?.data?.errors;
+      if (errors) {
+        showSnackbar(Object.values(errors).flat().join(", "), "error");
+      } else {
+        showSnackbar(errorMessage, "error");
+      }
+    }
   });
 
   const deactivateUserMutation = useMutation({
@@ -161,48 +143,17 @@ const UserManagement: React.FC = () => {
     }
   });
 
-  // Keep refs for latest values
-  const usersRef = useRef(users);
-  const searchModeRef = useRef(searchMode);
-
-  useEffect(() => {
-    usersRef.current = users;
-  }, [users]);
-  useEffect(() => {
-    searchModeRef.current = searchMode;
-  }, [searchMode]);
-
-  // Debounced search function
-  const debouncedSearch = useRef(
-    debounce((term: string) => {
-      if (term.trim() === "") {
-        setSearchedData([]);
-        return;
-      }
-
-      if (searchModeRef.current === "api") {
-        searchRefetch();
-      } else {
-        const filtered = usersRef.current.filter(user =>
-          Object.values(user).some(
-            value =>
-              value &&
-              value.toString().toLowerCase().includes(term.toLowerCase())
-          )
-        );
-        setSearchedData(filtered);
-      }
-    }, 500)
-  ).current;
-
-  useEffect(() => {
-    if (searchTerm) {
-      debouncedSearch(searchTerm);
-    } else {
-      setSearchedData([]);
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: bulkDeactivateUsers,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      showSnackbar(`${rowSelectionModel.length} users deactivated successfully!`, "success");
+      setRowSelectionModel([]);
+    },
+    onError: () => {
+      showSnackbar("Error deactivating some users", "error");
     }
-    return () => debouncedSearch.cancel();
-  }, [searchTerm, debouncedSearch]);
+  });
 
   const showSnackbar = (message: string, severity: "success" | "error") => {
     setSnackbar({ open: true, message, severity });
@@ -215,7 +166,7 @@ const UserManagement: React.FC = () => {
 
   const handleSelectChange = (e: React.ChangeEvent<{ value: unknown }>, field: keyof User) => {
     const value = e.target.value;
-    if (field === 'availability') {
+    if (field === 'status') {
       setForm(prev => ({
         ...prev,
         [field]: value === 'true' || value === true
@@ -229,15 +180,14 @@ const UserManagement: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!form.epf || !form.employeeName || !form.username || (editId === null && !form.password)) {
+    if (!form.name || !form.username || !form.email || (editId === null && !form.password)) {
       showSnackbar("Please fill all required fields!", "error");
       return;
     }
 
     const userData = {
       ...form,
-      userType: activeTab, // Set user type based on active tab
-      availability: form.availability
+      userType: activeTab
     };
 
     if (editId !== null) {
@@ -249,28 +199,24 @@ const UserManagement: React.FC = () => {
 
   const handleClear = () => {
     setForm({
-      epf: "",
-      employeeName: "",
+      name: "",
       username: "",
-      department: "",
-      contact: "",
       email: "",
-      userType: activeTab, // Set default to active tab
-      availability: false,
+      userType: activeTab,
+      status: true,
       password: ""
     });
     setEditId(null);
   };
 
   const handleEdit = (id: number) => {
-    const userToEdit = (searchTerm ? (searchMode === "api" ? apiSearchResults : searchedData) : users).find(user => user.id === id);
+    const userToEdit = (searchTerm ? apiSearchResults : users).find(user => user.id === id);
     if (userToEdit) {
       setForm({
         ...userToEdit,
         password: ""
       });
       setEditId(id);
-      document.getElementById('user-form-section')?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -287,48 +233,44 @@ const UserManagement: React.FC = () => {
     }
 
     if (window.confirm(`Are you sure you want to deactivate ${rowSelectionModel.length} selected users?`)) {
-      Promise.all(rowSelectionModel.map(id => deactivateUserMutation.mutateAsync(id as number)))
-        .then(() => {
-          showSnackbar(`${rowSelectionModel.length} users deactivated successfully!`, "success");
-          setRowSelectionModel([]);
-        })
-        .catch(() => {
-          showSnackbar("Error deactivating some users", "error");
-        });
-    }
-  };
-
-  const handlePrint = () => {
-    if (dataGridRef.current) {
-      dataGridRef.current.print();
+      bulkDeactivateMutation.mutate(rowSelectionModel as number[]);
     }
   };
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
-    const dataToExport = searchTerm ? 
-      (searchMode === "api" ? apiSearchResults : searchedData) : 
-      users;
+    const dataToExport = searchTerm ? apiSearchResults : users;
     
     const tableData = dataToExport.map(user => [
-      user.epf,
-      user.employeeName,
+      user.name,
       user.username,
-      user.department,
-      user.contact,
       user.email,
-      user.userType,
-      user.availability ? 'Available' : 'Unavailable'
+      user.address || '-',
+      user.birthday || '-',
+      user.phoneNo || '-',
+      user.gender || '-',
+      activeTab === 'STUDENT' ? user.grade || '-' : 
+        activeTab === 'TEACHER' ? user.class || '-' : user.profession || '-',
+      activeTab === 'STUDENT' ? user.medium || '-' : 
+        activeTab === 'TEACHER' ? user.subject || '-' : user.parentNo || '-',
+      user.status ? 'Active' : 'Inactive'
     ]);
+
+    const headers = [
+      'Name', 'Username', 'Email', 'Address', 'Birthday', 'Phone No', 'Gender',
+      activeTab === 'STUDENT' ? 'Grade' : activeTab === 'TEACHER' ? 'Class' : 'Profession',
+      activeTab === 'STUDENT' ? 'Medium' : activeTab === 'TEACHER' ? 'Subject' : 'Parent No',
+      'Status'
+    ];
 
     doc.text(`${activeTab} Management Report`, 14, 16);
     autoTable(doc, {
-      head: [['EPF', 'Name', 'Username', 'Department', 'Contact', 'Email', 'User Type', 'Status']],
+      head: [headers],
       body: tableData,
       startY: 20,
       styles: {
         cellPadding: 3,
-        fontSize: 10,
+        fontSize: 8,
         valign: 'middle',
         halign: 'center',
       },
@@ -347,32 +289,49 @@ const UserManagement: React.FC = () => {
 
   const handleClearSearch = () => {
     setSearchTerm("");
-    setSearchedData([]);
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) => {
     setActiveTab(newValue);
     setSearchTerm("");
-    setSearchedData([]);
-    setRowSelectionModel([]);
     handleClear();
   };
 
+  const debouncedSearch = useRef(
+    debounce((term: string) => {
+      if (term.trim() === "") {
+        return;
+      }
+      searchRefetch();
+    }, 500)
+  ).current;
+
+  useEffect(() => {
+    if (searchTerm) {
+      debouncedSearch(searchTerm);
+    }
+    return () => debouncedSearch.cancel();
+  }, [searchTerm, debouncedSearch]);
+
   const isMutating = createUserMutation.isPending ||
     updateUserMutation.isPending ||
-    deactivateUserMutation.isPending;
+    deactivateUserMutation.isPending ||
+    bulkDeactivateMutation.isPending;
 
-  const columns: GridColDef<User>[] = [
-    { field: 'epf', headerName: 'EPF', width: 120, flex: 1 },
-    { field: 'employeeName', headerName: 'Employee Name', width: 180, flex: 1 },
-    { field: 'username', headerName: 'Username', width: 120, flex: 1 },
-    { field: 'department', headerName: 'Department', width: 120, flex: 1 },
-    { field: 'contact', headerName: 'Contact', width: 120, flex: 1 },
-    { field: 'email', headerName: 'Email', width: 200, flex: 1 },
-    { field: 'userType', headerName: 'User Type', width: 120, flex: 1 },
-    { 
-      field: 'availability', 
-      headerName: 'Status', 
+  const getColumns = (): GridColDef<User>[] => {
+    const commonColumns: GridColDef<User>[] = [
+      { field: 'name', headerName: 'Name', width: 150, flex: 1 },
+      { field: 'username', headerName: 'Username', width: 120, flex: 1 },
+      { field: 'email', headerName: 'Email', width: 180, flex: 1 },
+      { field: 'address', headerName: 'Address', width: 150, flex: 1 },
+      { field: 'birthday', headerName: 'Birthday', width: 100, flex: 1 },
+      { field: 'phoneNo', headerName: 'Phone No', width: 120, flex: 1 },
+      { field: 'gender', headerName: 'Gender', width: 100, flex: 1 },
+    ];
+
+    const statusColumn: GridColDef<User> = {
+      field: 'status',
+      headerName: 'Status',
       width: 120,
       flex: 1,
       type: 'boolean',
@@ -393,11 +352,12 @@ const UserManagement: React.FC = () => {
               bgcolor: params.value ? theme.palette.success.main : theme.palette.error.main
             }}
           />
-          {params.value ? 'Available' : 'Unavailable'}
+          {params.value ? 'Active' : 'Inactive'}
         </Box>
       )
-    },
-    {
+    };
+
+    const actionColumn: GridColDef<User> = {
       field: 'actions',
       headerName: 'Actions',
       type: 'actions',
@@ -416,8 +376,40 @@ const UserManagement: React.FC = () => {
           showInMenu
         />,
       ],
-    },
-  ];
+    };
+
+    switch (activeTab) {
+      case 'STUDENT':
+        return [
+          ...commonColumns,
+          { field: 'grade', headerName: 'Grade', width: 100, flex: 1 },
+          { field: 'medium', headerName: 'Medium', width: 100, flex: 1 },
+          statusColumn,
+          actionColumn
+        ];
+      case 'TEACHER':
+        return [
+          ...commonColumns,
+          { field: 'class', headerName: 'Class', width: 100, flex: 1 },
+          { field: 'subject', headerName: 'Subject', width: 120, flex: 1 },
+          { field: 'medium', headerName: 'Medium', width: 100, flex: 1 },
+          statusColumn,
+          actionColumn
+        ];
+      case 'PARENT':
+        return [
+          ...commonColumns,
+          { field: 'profession', headerName: 'Profession', width: 120, flex: 1 },
+          { field: 'parentNo', headerName: 'Parent No', width: 120, flex: 1 },
+          statusColumn,
+          actionColumn
+        ];
+      default:
+        return [...commonColumns, statusColumn, actionColumn];
+    }
+  };
+
+  const columns = getColumns();
 
   function CustomToolbar() {
     return (
@@ -431,11 +423,6 @@ const UserManagement: React.FC = () => {
           <Tooltip title="Export PDF">
             <IconButton onClick={handleExportPDF}>
               <PdfIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Print">
-            <IconButton onClick={handlePrint}>
-              <PrintIcon />
             </IconButton>
           </Tooltip>
           {rowSelectionModel.length > 0 && (
@@ -460,15 +447,224 @@ const UserManagement: React.FC = () => {
     );
   }
 
-  // Determine which data to display
-  const displayData = searchTerm ? 
-    (searchMode === "api" ? apiSearchResults : searchedData) : 
-    users;
+  const displayData = searchTerm ? apiSearchResults : users;
+
+  const renderFormFields = () => {
+    const commonFields = (
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <TextField
+          label="Name*"
+          name="name"
+          value={form.name}
+          onChange={handleChange}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
+          label="Username*"
+          name="username"
+          value={form.username}
+          onChange={handleChange}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
+          label="Email*"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
+          label="Address"
+          name="address"
+          value={form.address || ''}
+          onChange={handleChange}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
+          label="Birthday"
+          type="date"
+          name="birthday"
+          value={form.birthday || ''}
+          onChange={handleChange}
+          InputLabelProps={{ shrink: true }}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
+          label="Phone No"
+          name="phoneNo"
+          value={form.phoneNo || ''}
+          onChange={handleChange}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
+          select
+          label="Gender"
+          name="gender"
+          value={form.gender || ''}
+          onChange={(e) => handleSelectChange(e, "gender")}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        >
+          {genderOptions.map((gender) => (
+            <MenuItem key={gender} value={gender}>
+              {gender}
+            </MenuItem>
+          ))}
+        </TextField>
+        {editId === null && (
+          <TextField
+            label="Password*"
+            name="password"
+            type="password"
+            value={form.password || ''}
+            onChange={handleChange}
+            sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+            size="small"
+          />
+        )}
+        <TextField
+          select
+          label="Status"
+          name="status"
+          value={form.status.toString()}
+          onChange={(e) => handleSelectChange(e, "status")}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        >
+          {statusOptions.map((option) => (
+            <MenuItem key={option.label} value={option.value.toString()}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+    );
+
+    switch (activeTab) {
+      case 'STUDENT':
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {commonFields}
+            <TextField
+              select
+              label="Grade"
+              name="grade"
+              value={form.grade || ''}
+              onChange={(e) => handleSelectChange(e, "grade")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {gradeOptions.map((grade) => (
+                <MenuItem key={grade} value={grade}>
+                  {grade}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Medium"
+              name="medium"
+              value={form.medium || ''}
+              onChange={(e) => handleSelectChange(e, "medium")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {mediumOptions.map((medium) => (
+                <MenuItem key={medium} value={medium}>
+                  {medium}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+        );
+      case 'TEACHER':
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {commonFields}
+            <TextField
+              select
+              label="Class"
+              name="class"
+              value={form.class || ''}
+              onChange={(e) => handleSelectChange(e, "class")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {classOptions.map((cls) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Subject"
+              name="subject"
+              value={form.subject || ''}
+              onChange={(e) => handleSelectChange(e, "subject")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {subjectOptions.map((subject) => (
+                <MenuItem key={subject} value={subject}>
+                  {subject}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Medium"
+              name="medium"
+              value={form.medium || ''}
+              onChange={(e) => handleSelectChange(e, "medium")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {mediumOptions.map((medium) => (
+                <MenuItem key={medium} value={medium}>
+                  {medium}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+        );
+      case 'PARENT':
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {commonFields}
+            <TextField
+              label="Profession"
+              name="profession"
+              value={form.profession || ''}
+              onChange={handleChange}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+            <TextField
+              label="Parent No"
+              name="parentNo"
+              value={form.parentNo || ''}
+              onChange={handleChange}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+          </Box>
+        );
+      default:
+        return commonFields;
+    }
+  };
 
   return (
     <Box sx={{ display: "flex", width: "100vw", height: "100vh", minHeight: "100vh" }}>
       <CssBaseline />
-      <Sidebar open={sidebarOpen || hovered} setOpen={setSidebarOpen} />
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         <AppBar
@@ -489,106 +685,14 @@ const UserManagement: React.FC = () => {
         </AppBar>
 
         <Stack spacing={3} sx={{ p: 3, overflow: 'auto' }}>
-          <Paper id="user-form-section" sx={{ p: 3, borderRadius: 2 }}>
+          <Paper sx={{ p: 3, borderRadius: 2 }}>
             <Typography variant="h6" sx={{ mb: 3, color: theme.palette.primary.main }}>
               {editId !== null ? "Edit User" : "Create New User"}
             </Typography>
 
             <Stack spacing={2}>
               <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-                <TextField
-                  label="EPF*"
-                  name="epf"
-                  value={form.epf}
-                  onChange={handleChange}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                />
-                <TextField
-                  label="Employee Name*"
-                  name="employeeName"
-                  value={form.employeeName}
-                  onChange={handleChange}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                />
-                <TextField
-                  label="Username*"
-                  name="username"
-                  value={form.username}
-                  onChange={handleChange}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                />
-                {editId === null && (
-                  <TextField
-                    label="Password*"
-                    name="password"
-                    type="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                    size="small"
-                  />
-                )}
-                <TextField
-                  select
-                  label="Department"
-                  name="department"
-                  value={form.department}
-                  onChange={(e) => handleSelectChange(e, "department")}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                >
-                  {departments.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label="Contact"
-                  name="contact"
-                  value={form.contact}
-                  onChange={handleChange}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                />
-                <TextField
-                  label="Email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                />
-                <TextField
-                  select
-                  label="User Type"
-                  name="userType"
-                  value={form.userType || activeTab}
-                  onChange={(e) => handleSelectChange(e, "userType")}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                  disabled={true} // Disabled since we're setting it based on tab
-                >
-                  <MenuItem value={activeTab}>{activeTab}</MenuItem>
-                </TextField>
-                <TextField
-                  select
-                  label="Availability"
-                  name="availability"
-                  value={form.availability.toString()}
-                  onChange={(e) => handleSelectChange(e, "availability")}
-                  sx={{ flex: '1 1 calc(9.09% - 16px)' }}
-                  size="small"
-                >
-                  {availabilityOptions.map((option) => (
-                    <MenuItem key={option.label} value={option.value.toString()}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                {renderFormFields()}
               </Stack>
 
               <Stack direction="row" spacing={2} justifyContent="flex-end">
@@ -621,8 +725,8 @@ const UserManagement: React.FC = () => {
               mb: 2 
             }}>
               <Tabs value={activeTab} onChange={handleTabChange}>
-                <Tab label="Teachers" value="TEACHER" />
                 <Tab label="Students" value="STUDENT" />
+                <Tab label="Teachers" value="TEACHER" />
                 <Tab label="Parents" value="PARENT" />
               </Tabs>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -660,13 +764,8 @@ const UserManagement: React.FC = () => {
             <DataGrid
               rows={displayData}
               columns={columns}
-              loading={Boolean(isDataLoading || isMutating || (searchTerm && searchMode === "api" && isSearching))}
+              loading={Boolean(isDataLoading || isMutating || (searchTerm && isSearching))}
               slots={{ toolbar: CustomToolbar }}
-              slotProps={{
-                toolbar: {
-                  showQuickFilter: true,
-                },
-              }}
               checkboxSelection
               disableRowSelectionOnClick
               rowSelectionModel={rowSelectionModel}

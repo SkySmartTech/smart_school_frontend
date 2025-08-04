@@ -3,35 +3,15 @@ import type { User, UserListResponse, UserResponse } from "../types/userManageme
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Helper function for auth headers
 const getAuthHeaders = () => ({
   headers: {
     Authorization: `Bearer ${localStorage.getItem('authToken')}`
   }
 });
 
-// Fetch all users (both active and inactive)
 export const fetchUsers = async (): Promise<User[]> => {
   const response = await axios.get<UserListResponse>(
-    `${API_BASE_URL}/api/all-users`,
-    getAuthHeaders()
-  );
-  return response.data.data;
-};
-
-// Fetch only active users
-export const fetchActiveUsers = async (): Promise<User[]> => {
-  const response = await axios.get<UserListResponse>(
-    `${API_BASE_URL}/api/active-users`,
-    getAuthHeaders()
-  );
-  return response.data.data;
-};
-
-// Fetch only inactive users
-export const fetchInactiveUsers = async (): Promise<User[]> => {
-  const response = await axios.get<UserListResponse>(
-    `${API_BASE_URL}/api/inactive-users`,
+    `${API_BASE_URL}/api/users`,
     getAuthHeaders()
   );
   return response.data.data;
@@ -39,7 +19,7 @@ export const fetchInactiveUsers = async (): Promise<User[]> => {
 
 export const createUser = async (userData: User): Promise<User> => {
   const response = await axios.post<UserResponse>(
-    `${API_BASE_URL}/api/user-create`,
+    `${API_BASE_URL}/api/users`,
     userData,
     getAuthHeaders()
   );
@@ -47,8 +27,8 @@ export const createUser = async (userData: User): Promise<User> => {
 };
 
 export const updateUser = async (id: number, userData: User): Promise<User> => {
-  const response = await axios.post<UserResponse>(
-    `${API_BASE_URL}/api/user/${id}/update`,
+  const response = await axios.put<UserResponse>(
+    `${API_BASE_URL}/api/users/${id}`,
     userData,
     getAuthHeaders()
   );
@@ -56,43 +36,31 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
 };
 
 export const deactivateUser = async (id: number): Promise<void> => {
-  await axios.post(
-    `${API_BASE_URL}/api/user/${id}/deactivate`,
+  await axios.patch(
+    `${API_BASE_URL}/api/users/${id}/deactivate`,
     {},
     getAuthHeaders()
   );
 };
 
-export const activateUser = async (id: number): Promise<void> => {
-  await axios.post(
-    `${API_BASE_URL}/api/user/${id}/activate`,
-    {},
-    getAuthHeaders()
-  );
-};
-
-export const searchUsers = async (searchTerm: string, _activeTab?: string): Promise<User[]> => {
-  const response = await axios.post<UserListResponse>(
-    `${API_BASE_URL}/api/user/search`,
-    { keyword: searchTerm },
-    getAuthHeaders()
+export const searchUsers = async (searchTerm: string, userType?: string): Promise<User[]> => {
+  const response = await axios.get<UserListResponse>(
+    `${API_BASE_URL}/api/users/search`,
+    {
+      ...getAuthHeaders(),
+      params: {
+        keyword: searchTerm,
+        userType
+      }
+    }
   );
   return response.data.data;
 };
 
-// Additional API functions for bulk operations
 export const bulkDeactivateUsers = async (ids: number[]): Promise<void> => {
   await axios.post(
     `${API_BASE_URL}/api/users/bulk-deactivate`,
-    { user_ids: ids },
-    getAuthHeaders()
-  );
-};
-
-export const bulkActivateUsers = async (ids: number[]): Promise<void> => {
-  await axios.post(
-    `${API_BASE_URL}/api/users/bulk-activate`,
-    { user_ids: ids },
+    { ids },
     getAuthHeaders()
   );
 };

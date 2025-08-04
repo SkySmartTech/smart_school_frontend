@@ -35,7 +35,6 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
   activeTab,
   onTabChange
 }) => {
-  // Define columns for each user type
   const getColumns = () => {
     const commonColumns = [
       "Name",
@@ -53,19 +52,18 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
       case "STUDENT":
         return [...commonColumns.slice(0, 7), "Grade", "Medium", ...commonColumns.slice(7)];
       case "TEACHER":
-        return [...commonColumns.slice(0, 7), "Grade", "Class", "Subject", "Medium", ...commonColumns.slice(7)];
+        return [...commonColumns.slice(0, 7), "Class", "Subject", "Medium", ...commonColumns.slice(7)];
       case "PARENT":
-        return commonColumns;
+        return [...commonColumns.slice(0, 7), "Profession", "Parent No", ...commonColumns.slice(7)];
       default:
         return commonColumns;
     }
   };
 
-  // Render appropriate cell content based on column
   const renderCellContent = (user: User, column: string) => {
     switch (column.toLowerCase()) {
       case "name":
-        return user.employeeName || "-";
+        return user.name || "-";
       case "user name":
         return user.username || "-";
       case "email":
@@ -75,7 +73,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
       case "birthday":
         return user.birthday || "-";
       case "phone no":
-        return user.contact || "-";
+        return user.phoneNo || "-";
       case "gender":
         return user.gender || "-";
       case "grade":
@@ -86,6 +84,10 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
         return user.subject || "-";
       case "medium":
         return user.medium || "-";
+      case "profession":
+        return user.profession || "-";
+      case "parent no":
+        return user.parentNo || "-";
       case "status":
         const statusOption = statusOptions.find(opt => opt.value === user.status);
         return (
@@ -127,9 +129,9 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
           onChange={onTabChange}
           variant="fullWidth"
         >
-          <Tab label="STUDENT" value="STUDENT" />
-          <Tab label="TEACHER" value="TEACHER" />
-          <Tab label="PARENT" value="PARENT" />
+          <Tab label="Students" value="STUDENT" />
+          <Tab label="Teachers" value="TEACHER" />
+          <Tab label="Parents" value="PARENT" />
         </Tabs>
       </Box>
       
