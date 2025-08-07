@@ -1,62 +1,53 @@
 import axios from "axios";
 
+// A more generic interface for line chart data
+export interface LineChartData {
+  x: string; 
+  y: number; 
+}
+
 export interface ParentSubjectPieData {
   name: string;
   value: number;
 }
 
-export interface ParentLineChartData {
-  x: string; // e.g., "2021", "2022 Term 1"
-  y: number; // The average mark for that period
+// This interface is for the detailed marks table row
+// It includes data for both the student and the highest-scoring student in the class
+export interface DetailedMarksTableRow {
+  subject: string;
+  studentMarks: number;
+  studentGrade: string;
+  highestMarks: number;
+  highestMarkGrade: string;
 }
 
+// Data structure for the previous simple marks table
 export interface StudentMarksData {
   subject: string;
   marks: number;
   grade: string;
 }
 
-// Data structure for overall subject performance (like the top left chart in the screenshot)
-export interface OverallSubjectLineGraphData {
-  x: string; // e.g., "Term 1", "Term 2", "Term 3" or "2021", "2022"
-  y: number; // Overall average mark for the student for that period
-}
-
 // Data structure for individual subject average line graphs over time
+// Using an index signature to make it dynamic
 export interface IndividualSubjectAverageData {
-  English?: ParentLineChartData[]; // Array of {x: period, y: averageMark}
-  Sinhala?: ParentLineChartData[];
-  Maths?: ParentLineChartData[];
-  Science?: ParentLineChartData[];
-  History?: ParentLineChartData[];
-  Geography?: ParentLineChartData[];
-  Buddhism?: ParentLineChartData[];
-  Art?: ParentLineChartData[];
-  ICT?: ParentLineChartData[];
-  Commerce?: ParentLineChartData[]; 
-  Drama?: ParentLineChartData[];
+  [subjectName: string]: LineChartData[] | undefined;
 }
 
 export interface ParentReportData {
   studentName: string;
   studentGrade: string;
   studentClass: string;
-  subjectWiseMarksPie: ParentSubjectPieData[]; // For the current exam's subject distribution (Subject wise marks)
-  overallSubjectLineGraph: OverallSubjectLineGraphData[]; // For the overall performance over time (Overall Subject)
-  individualSubjectAverages: IndividualSubjectAverageData; // New: For each subject's average trend over time
-  studentMarksDetailedTable: StudentMarksData[]; // Renamed for clarity: marks for individual subjects for the selected exam
+  subjectWiseMarksPie: ParentSubjectPieData[]; 
+  overallSubjectLineGraph: LineChartData[];
+  individualSubjectAverages: IndividualSubjectAverageData; 
+  // Updated to use the new, more detailed interface for the table
+  studentMarksDetailedTable: DetailedMarksTableRow[]; 
 }
 
 export const fetchParentReport = async (
-  studentId: string,
-  year: string, // This 'year' will primarily filter the detailed table and pie chart for a specific exam
-  exam: string
-): Promise<ParentReportData> => {
-  // IMPORTANT: The backend API must be updated to provide ALL these data points.
-  // - overallSubjectLineGraph: historical overall averages for the student
-  // - individualSubjectAverages: historical averages for each subject for the student
-  // - subjectWiseMarksPie: subject marks for the selected 'year' and 'exam'
-  // - studentMarksDetailedTable: detailed marks for the selected 'year' and 'exam'
+studentId: string, year: string, exam: string, month: string): Promise<ParentReportData> => {
+
   const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/parent-report/${studentId}`, {
     params: { year, exam },
     headers: {

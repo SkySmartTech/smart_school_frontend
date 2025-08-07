@@ -81,7 +81,7 @@ function AppRoutes() {
         <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/summary" element={<Summary/>} />
         <Route path="/teacherReport" element={<ClassTeacherReport/>} />
-        <Route path="/userAccessManagement" element={<ParentReport/>} />
+        <Route path="/parentReport" element={<ParentReport/>} />
         {/* <Route path="/help" element={<HelpPage />} />
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />
@@ -101,8 +101,7 @@ function AppRoutes() {
 
       {/* Redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/" element={<Navigate to="/addmarks" replace />} />
-      <Route path="/" element={<Navigate to="/parentreport" replace />} />
+
     </Routes>
   );
 }
