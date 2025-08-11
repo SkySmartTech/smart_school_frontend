@@ -2,8 +2,8 @@ import axios from "axios";
 
 // A more generic interface for line chart data
 export interface LineChartData {
-  x: string; 
-  y: number; 
+  x: string;
+  y: number;
 }
 
 export interface ParentSubjectPieData {
@@ -38,18 +38,18 @@ export interface ParentReportData {
   studentName: string;
   studentGrade: string;
   studentClass: string;
-  subjectWiseMarksPie: ParentSubjectPieData[]; 
+  subjectWiseMarksPie: ParentSubjectPieData[];
   overallSubjectLineGraph: LineChartData[];
-  individualSubjectAverages: IndividualSubjectAverageData; 
+  individualSubjectAverages: IndividualSubjectAverageData;
   // Updated to use the new, more detailed interface for the table
-  studentMarksDetailedTable: DetailedMarksTableRow[]; 
+  studentMarksDetailedTable: DetailedMarksTableRow[];
 }
 
 export const fetchParentReport = async (
-studentId: string, year: string, exam: string, month: string): Promise<ParentReportData> => {
-
+  studentId: string, year: string, exam: string, month: string): Promise<ParentReportData> => {
+  // The fix is here: 'month' is now included in the params object.
   const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/parent-report/${studentId}`, {
-    params: { year, exam },
+    params: { year, exam, month }, // <-- The 'month' parameter is now used
     headers: {
       Authorization: `Bearer ${localStorage.getItem('authToken')}`,
       Accept: 'application/json',
