@@ -1,0 +1,473 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  CssBaseline,
+  AppBar,
+  Stack,
+  Typography,
+  Paper,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  useTheme,
+  InputAdornment,
+  TextField,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Button,
+} from "@mui/material";
+import { DateRange, School, CalendarMonth, Refresh } from "@mui/icons-material";
+import Sidebar from "../../components/Sidebar";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import {
+  fetchManagementStaffReport,
+  checkAuthStatus,
+  type ClassMarks,
+  type ManagementStaffReportData,
+  type SubjectMark,
+} from "../../api/managementStaffApi";
+
+const years = ["2023", "2024", "2025"];
+const grades = ["10", "11", "12"];
+const exams = ["First", "Second Term", "Third Term", "All Terms"];
+const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
+
+const transformClassDataForBarChart = (classData: ClassMarks | undefined) => {
+  if (!classData) return [];
+  return Object.entries(classData).flatMap(([className, subjects]) =>
+    subjects.map((subject) => ({
+      name: `${className} - ${subject.subject}`,
+      marks: parseFloat(subject.average_mark) || 0,
+    }))
+  );
+};
+
+const ManagementStaff: React.FC = () => {
+  const theme = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [year, setYear] = useState<string>(years[1]); // Default to 2024
+  const [grade, setGrade] = useState<string>(grades[0]);
+  const [exam, setExam] = useState<string>(exams[0]);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info" | "warning";
+  }>({ open: false, message: "", severity: "info" });
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    if (!checkAuthStatus()) {
+      setSnackbar({
+        open: true,
+        message: "Please login to view this report",
+        severity: "warning",
+      });
+    }
+  }, []);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<ManagementStaffReportData, Error>({
+    queryKey: ["managementReport", year, grade, exam],
+    queryFn: () => fetchManagementStaffReport(year, grade, exam),
+    retry: (failureCount, error) => {
+      // Don't retry on auth errors
+      if (error.message.includes('login') || error.message.includes('Session expired')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+   
+  });
+
+  useEffect(() => {
+    if (isError && error) {
+      const isAuthError = error.message.includes('login') || error.message.includes('Session expired');
+      setSnackbar({
+        open: true,
+        message: error.message || "Error loading management report data",
+        severity: isAuthError ? "warning" : "error",
+      });
+    }
+  }, [isError, error]);
+
+
+  
+  const handleCloseSnackbar = () =>
+    setSnackbar((prev) => ({ ...prev, open: false }));
+
+  const handleRefresh = () => {
+    if (checkAuthStatus()) {
+      refetch();
+      setSnackbar({
+        open: true,
+        message: "Refreshing data...",
+        severity: "info",
+      });
+    } else {
+      setSnackbar({
+        open: true,
+        message: "Please login to refresh data",
+        severity: "warning",
+      });
+    }
+  };
+
+  return (
+    <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
+      <CssBaseline />
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+      <Box sx={{ flexGrow: 1 }}>
+        <AppBar
+          position="static"
+          sx={{
+            boxShadow: "none",
+            bgcolor: theme.palette.background.paper,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            color: theme.palette.text.primary,
+          }}
+        >
+          <Navbar
+            title="Management Staff Report"
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
+        </AppBar>
+        <Stack spacing={3} sx={{ px: 4, py: 3 }}>
+          {/* Top Filters */}
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              spacing={3}
+              flexWrap="wrap"
+              sx={{ width: "100%" }}
+            >
+              {/* Year */}
+              <TextField
+                select
+                label="Year"
+                variant="outlined"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                disabled={isLoading}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <DateRange color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 150,
+                  flex: 1,
+                  maxWidth: 250,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "10px",
+                    height: "45px",
+                  },
+                }}
+              >
+                {years.map((y) => (
+                  <MenuItem key={y} value={y}>
+                    {y}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* Grade */}
+              <TextField
+                select
+                label="Student Grade"
+                variant="outlined"
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                disabled={isLoading}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <School color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 150,
+                  flex: 1,
+                  maxWidth: 250,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "10px",
+                    height: "45px",
+                  },
+                }}
+              >
+                {grades.map((g) => (
+                  <MenuItem key={g} value={g}>
+                    Grade {g}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* Exam */}
+              <TextField
+                select
+                label="Exam"
+                variant="outlined"
+                value={exam}
+                onChange={(e) => setExam(e.target.value)}
+                disabled={isLoading}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonth color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 150,
+                  flex: 1,
+                  maxWidth: 250,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "10px",
+                    height: "45px",
+                  },
+                }}
+              >
+                {exams.map((t) => (
+                  <MenuItem key={t} value={t}>
+                    {t}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* Refresh Button */}
+              <Button
+                variant="outlined"
+                onClick={handleRefresh}
+                disabled={isLoading}
+                startIcon={<Refresh />}
+                sx={{
+                  borderRadius: "10px",
+                  height: "45px",
+                  minWidth: 120,
+                }}
+              >
+                Refresh
+              </Button>
+            </Stack>
+          </Paper>
+
+          {/* Error State */}
+          {isError && (
+            <Paper elevation={1} sx={{ p: 3, bgcolor: "error.light", color: "error.contrastText" }}>
+              <Typography variant="body1" align="center">
+                {error?.message || "Failed to load data"}
+              </Typography>
+            </Paper>
+          )}
+
+          {/* Charts Section */}
+          <Stack direction={{ xs: "column", md: "row" }} spacing={3} flexWrap="wrap">
+            <Paper elevation={2} sx={{ p: 3, minWidth: 300, flex: 1 }}>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Subject Distribution
+              </Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                {isLoading ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: 250,
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <PieChart>
+                    <Pie
+                      data={data?.subject_marks || []}
+                      dataKey="percentage"
+                      nameKey="subject"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={(props) => {
+                        const { subject, percentage } = props.payload;
+                        return `${subject}: ${percentage.toFixed(0)}%`;
+                      }}
+                      labelLine={false}
+                    >
+                      {(data?.subject_marks || []).map((_entry: SubjectMark, index: number) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      formatter={(value: number, _name: string, props: any) => [
+                        `${value}%`,
+                        props.payload.subject
+                      ]}
+                    />
+                    <Legend />
+                  </PieChart>
+                )}
+              </ResponsiveContainer>
+            </Paper>
+
+            <Paper elevation={2} sx={{ p: 3, minWidth: 400, flex: 2 }}>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Class Performance
+              </Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                {isLoading ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: 250,
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <BarChart
+                    data={transformClassDataForBarChart(data?.class_subject_marks)}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis domain={[0, 100]} />
+                    <RechartsTooltip
+                      formatter={(value: number) => [
+                        `${value}%`,
+                        "Average Marks",
+                      ]}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="marks"
+                      name="Average Marks"
+                      fill="#42A5F5"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            </Paper>
+          </Stack>
+
+          {/* Table Section */}
+          <Paper elevation={2} sx={{ p: 2, overflow: "auto" }}>
+            <Typography variant="h6" fontWeight={600} mb={2}>
+              Detailed Marks Breakdown
+            </Typography>
+            <TableContainer>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold" }}>Class</TableCell>
+                    <TableCell align="right">English</TableCell>
+                    <TableCell align="right">Arts</TableCell>
+                    <TableCell align="right">Maths</TableCell>
+                    <TableCell align="right">Science</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="right">Average</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <CircularProgress size={24} />
+                      </TableCell>
+                    </TableRow>
+                  ) : data?.tableData && data.tableData.length > 0 ? (
+                    data.tableData.map((row, idx) => (
+                      <TableRow key={idx} hover>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          {row.class}
+                        </TableCell>
+                        <TableCell align="right">{row.english}</TableCell>
+                        <TableCell align="right">{row.arts}</TableCell>
+                        <TableCell align="right">{row.maths}</TableCell>
+                        <TableCell align="right">{row.science}</TableCell>
+                        <TableCell align="right">
+                          {(
+                            (row.english || 0) +
+                            (row.arts || 0) +
+                            (row.maths || 0) +
+                            (row.science || 0)
+                          ).toFixed(1)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {(
+                            ((row.english || 0) +
+                              (row.arts || 0) +
+                              (row.maths || 0) +
+                              (row.science || 0)) /
+                            4
+                          ).toFixed(1)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          No data available for the selected criteria
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Stack>
+        <Footer />
+      </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default ManagementStaff;

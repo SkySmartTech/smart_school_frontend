@@ -3,9 +3,11 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import MainLayout from "./components/Layout/MainLayout";
 import PageLoader from "./components/PageLoader";
 import { useCurrentUser } from "./hooks/useCurrentUser";
-import Summary from "./views/Reports/Summary";
 import ClassTeacherReport from "./views/Reports/ClassTeacherReport";
 import HelpPage from "./views/HelpPage";
+import TeacherDashboard from "./views/Dashboard/TeacherDashboard";
+import CommonDashboard from "./views/Dashboard/CommonDashboard";
+import ManagementStaff from "./views/Reports/ManagementStaffReport";
 
 // import { useCurrentUser } from "./hooks/useCurrentUser";
 // import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
@@ -76,11 +78,13 @@ function AppRoutes() {
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/addmarks" element={<AddMarks />} />
         <Route path="/studentdashboard" element={<StudentDashboard />} />
+        <Route path="/teacherdashboard" element={<TeacherDashboard />} />
+        <Route path="/commondashboard" element={<CommonDashboard />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} />
         {/* <Route path="/dayPlan" element={<DayPlanUpload />} />
         <Route path="/production" element={<ProductionUpdatePage />} />*/}
         <Route path="/userProfile" element={<UserProfile />} />
-        <Route path="/summary" element={<Summary />} />
+        <Route path="/managementStaff" element={<ManagementStaff />} />
         <Route path="/teacherReport" element={<ClassTeacherReport />} />
         <Route path="/userManagement" element={<UserManagement />} />
         <Route path="/help" element={<HelpPage />} />

@@ -11,11 +11,11 @@ const getAuthHeaders = () => ({
 
 export const fetchUsers = async (): Promise<User[]> => {
   const response = await axios.get<UserListResponse>(
-    `${API_BASE_URL}/api/users`,
+    `${API_BASE_URL}/api/all-teachers`,
     getAuthHeaders()
   );
   return response.data.data;
-};
+}; 
 
 export const createUser = async (userData: User): Promise<User> => {
   const response = await axios.post<UserResponse>(
