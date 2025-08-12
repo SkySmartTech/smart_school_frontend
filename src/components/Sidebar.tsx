@@ -69,9 +69,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "Dashboard",
       icon: <Layers fontSize="small" />,
       children: [
-        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
+        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/studentdashboard" },
         { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherdashboard" },
-        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
+        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/commondashboard" },
       ],
     },
     {
@@ -98,7 +98,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       children: [
         { title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/summary" },
         { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherReport" },
-        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
+        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/parentReport" },
       ],
     },
     {
