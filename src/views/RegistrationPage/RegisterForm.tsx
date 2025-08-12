@@ -33,7 +33,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { registerUser } from "../../api/userApi";
+import { registerUser, registerStudent, registerTeacher, registerParent } from "../../api/userApi";
 import type { User } from "../../api/userApi";
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -58,10 +58,11 @@ const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6"
 const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
 
-interface FormData extends Omit<User, 'image'> {
-  image: FileList | null;
+interface FormData extends Omit<User, 'photo'> {
+  photo: FileList | null;
   password_confirmation: string;
   grade?: string;
+  studentGrade?: string;
   subject?: string;
   class?: string;
   location?: string;
@@ -69,7 +70,13 @@ interface FormData extends Omit<User, 'image'> {
   parentContact?: string;
   gender?: string;
   staffId?: string;
-  student_admission_no?: string;
+  teacherStaffId?: string;
+  studentAdmissionNo?: string;
+  teacherGrades: string[];
+  teacherClass: string[];
+  subjects: string[];
+  staffNo?: string;
+  medium: string[];
 }
 
 interface RegisterFormProps {
@@ -88,6 +95,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [registeredUser, setRegisteredUser] = useState<{ userId: number; userType: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -96,8 +104,15 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     watch,
     formState: { errors },
     setValue,
-    trigger,
-  } = useForm<FormData>();
+    trigger, 
+  } = useForm<FormData>({
+    defaultValues: {
+      teacherGrades: [],
+      teacherClass: [],
+      subjects: [],
+      medium: []
+    }
+  });
 
   const password = watch("password");
   const userType = watch("userType");
@@ -105,6 +120,52 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   useEffect(() => {
     setSelectedRole(userType);
   }, [userType]);
+
+  // Step 1: Register basic user data
+  const { mutate: registerBasicUser, isPending: isRegisteringBasic } = useMutation({
+    mutationFn: registerUser,
+    onSuccess: (data) => {
+      setRegisteredUser({ userId: data.userId, userType: data.userType });
+      setActiveStep(1);
+    },
+    onError: (error: any) => {
+      onError(error.message || "Basic registration failed");
+    },
+  });
+
+  // Step 2: Register role-specific data
+  const { mutate: registerStudentData, isPending: isRegisteringStudent } = useMutation({
+    mutationFn: registerStudent,
+    onSuccess: () => {
+      onSuccess();
+      navigate("/login");
+    },
+    onError: (error: any) => {
+      onError(error.message || "Student registration failed");
+    },
+  });
+
+  const { mutate: registerTeacherData, isPending: isRegisteringTeacher } = useMutation({
+    mutationFn: registerTeacher,
+    onSuccess: () => {
+      onSuccess();
+      navigate("/login");
+    },
+    onError: (error: any) => {
+      onError(error.message || "Teacher registration failed");
+    },
+  });
+
+  const { mutate: registerParentData, isPending: isRegisteringParent } = useMutation({
+    mutationFn: registerParent,
+    onSuccess: () => {
+      onSuccess();
+      navigate("/login");
+    },
+    onError: (error: any) => {
+      onError(error.message || "Parent registration failed");
+    },
+  });
 
   const handleNext = async () => {
     let isValid = false;
@@ -114,63 +175,112 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         "name",
         "address",
         "email",
-        "birthday",
+        "birthDay",
         "contact",
         "userType",
         "username",
         "password",
         "password_confirmation",
-        "image"
+        "photo"
       ]);
     } else if (activeStep === 1) {
       if (selectedRole === "Teacher") {
-        isValid = await trigger(["grade", "subject", "class", "staffId"]);
+        isValid = await trigger(["teacherGrades", "subjects", "teacherClass", "staffNo", "medium"]);
       } else if (selectedRole === "Student") {
-        isValid = await trigger(["grade", "student_admission_no"]);
+        isValid = await trigger(["studentGrade", "studentAdmissionNo"]);
       } else if (selectedRole === "Parent") {
         isValid = await trigger(["profession", "parentContact"]);
       }
     }
 
     if (!isValid) return;
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+
+    if (activeStep === 0) {
+      const formData = new FormData();
+      const formValues = watch();
+      
+      // Handle non-array fields
+      Object.entries(formValues)
+        .filter(([key]) => !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key))
+        .forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            if (key === 'photo' && value instanceof FileList && value.length > 0) {
+              formData.append(key, value[0]);
+            } else if (typeof value === 'string' || value instanceof Blob) {
+              formData.append(key, value);
+            }
+          }
+        });
+
+      // Handle array fields
+      const arrayFields = ['teacherGrades', 'teacherClass', 'subjects', 'medium'];
+      arrayFields.forEach(field => {
+        const fieldValue = formValues[field as keyof FormData];
+        if (fieldValue && Array.isArray(fieldValue)) {
+          fieldValue.forEach(item => {
+            formData.append(`${field}[]`, item);
+          });
+        }
+      });
+
+      // Add userRole field
+      formData.append('userRole', 'user');
+      
+      registerBasicUser(formData);
+    } else {
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    }
   };
 
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  const { mutate: registerMutation, isPending } = useMutation({
-    mutationFn: registerUser,
-    onSuccess: () => {
-      onSuccess();
-      navigate("/login");
-    },
-    onError: (error: any) => {
-      onError(error.response?.data?.message || "Registration failed");
-    },
-  });
-
   const onSubmit = (data: FormData) => {
-    const formData = new FormData();
+    if (!registeredUser) return;
 
+    const formData = new FormData();
+    
+    // Add userId and userType from the first registration
+    formData.append('userId', registeredUser.userId.toString());
+    formData.append('userType', registeredUser.userType);
+
+    // Handle non-array fields
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (key === 'image' && value instanceof FileList && value.length > 0) {
+      if (value !== undefined && value !== null && !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key)) {
+        if (key === 'photo' && value instanceof FileList && value.length > 0) {
           formData.append(key, value[0]);
-        } else if (key !== 'password_confirmation') {
-          formData.append(key, value as string | Blob);
+        } else if (typeof value === 'string' || value instanceof Blob) {
+          formData.append(key, value);
         }
       }
     });
 
-    registerMutation(formData as any);
+    // Handle array fields
+    const arrayFields = ['teacherGrades', 'teacherClass', 'subjects', 'medium'];
+    arrayFields.forEach(field => {
+      const fieldValue = data[field as keyof FormData];
+      if (fieldValue && Array.isArray(fieldValue)) {
+        fieldValue.forEach(item => {
+          formData.append(`${field}[]`, item);
+        });
+      }
+    });
+
+    // Submit to appropriate endpoint based on userType
+    if (registeredUser.userType === "Student") {
+      registerStudentData(formData);
+    } else if (registeredUser.userType === "Teacher") {
+      registerTeacherData(formData);
+    } else if (registeredUser.userType === "Parent") {
+      registerParentData(formData);
+    }
   };
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
-      setValue("image", event.target.files);
+      setValue("photo", event.target.files);
       setPreviewImage(URL.createObjectURL(file));
     }
   };
@@ -187,6 +297,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     event.preventDefault();
   };
 
+  const isPending = isRegisteringBasic || isRegisteringStudent || isRegisteringTeacher || isRegisteringParent;
+
   return (
     <Box sx={{ width: "100%", maxWidth: 500, overflowY: "auto" }}>
       <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
@@ -196,6 +308,12 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
           </Step>
         ))}
       </Stepper>
+
+      {registeredUser && activeStep === 1 && (
+        <Box sx={{ mb: 2, p: 2,  borderRadius: 1, color: 'black' }}>
+         <strong>Role:</strong> {registeredUser.userType}
+        </Box>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} encType="multipart/form-data">
         {activeStep === 0 && (
@@ -330,13 +448,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   fullWidth
                   variant="outlined"
                   InputLabelProps={{ shrink: true }}
-                  {...register("birthday", { required: "Birthday is required" })}
-                  error={!!errors.birthday}
-                  helperText={errors.birthday?.message}
+                  {...register("birthDay", { required: "Birthday is required" })}
+                  error={!!errors.birthDay}
+                  helperText={errors.birthDay?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Cake color={errors.birthday ? "error" : "action"} />
+                        <Cake color={errors.birthDay ? "error" : "action"} />
                       </InputAdornment>
                     ),
                   }}
@@ -371,7 +489,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               </Stack>
             </motion.div>
 
-            {/* Role */}
+            {/* Role and Gender */}
             <motion.div
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -415,8 +533,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   fullWidth
                   variant="outlined"
                   {...register("gender", {
-                    required: "Role is required",
-                    onChange: (e) => setSelectedRole(e.target.value)
+                    required: "Gender is required"
                   })}
                   error={!!errors.gender}
                   helperText={errors.gender?.message}
@@ -434,9 +551,9 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     }
                   }}
                 >
-                  {gender.map((role) => (
-                    <MenuItem key={role} value={role}>
-                      {role}
+                  {gender.map((genderOption) => (
+                    <MenuItem key={genderOption} value={genderOption}>
+                      {genderOption}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -497,7 +614,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       accept="image/*"
                       ref={fileInputRef}
                       onChange={handleImageChange}
-                      name="image"
+                      name="photo"
                       required
                     />
                   </Button>
@@ -570,6 +687,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     validate: (value) =>
                       value === password || "Passwords do not match",
                   })}
+                  name="password_confirmation"
                   error={!!errors.password_confirmation}
                   helperText={errors.password_confirmation?.message}
                   onFocus={() => setConfirmPasswordFocused(true)}
@@ -612,23 +730,31 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 <Stack direction="row" spacing={2}>
                   <TextField
                     select
-                    label="Grade"
+                    label="Grades"
                     fullWidth
                     variant="outlined"
-                    {...register("grade", { required: "Grade is required" })}
-                    error={!!errors.grade}
-                    helperText={errors.grade?.message}
+                    SelectProps={{
+                      multiple: true,
+                      value: watch("teacherGrades") || [],
+                      onChange: (e) => {
+                        const value = e.target.value as string[];
+                        setValue("teacherGrades", value);
+                      }
+                    }}
+                    {...register("teacherGrades", { required: "Grades are required" })}
+                    error={!!errors.teacherGrades}
+                    helperText={errors.teacherGrades?.message}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <School color={errors.grade ? "error" : "action"} />
+                          <School color={errors.teacherGrades ? "error" : "action"} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: "10px",
-                        height: "40px"
+                        minHeight: "40px"
                       }
                     }}
                   >
@@ -640,23 +766,31 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   </TextField>
                   <TextField
                     select
-                    label="Subject"
+                    label="Subjects"
                     fullWidth
                     variant="outlined"
-                    {...register("subject", { required: "Subject is required" })}
-                    error={!!errors.subject}
-                    helperText={errors.subject?.message}
+                    SelectProps={{
+                      multiple: true,
+                      value: watch("subjects") || [],
+                      onChange: (e) => {
+                        const value = e.target.value as string[];
+                        setValue("subjects", value);
+                      }
+                    }}
+                    {...register("subjects", { required: "Subjects are required" })}
+                    error={!!errors.subjects}
+                    helperText={errors.subjects?.message}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Subject color={errors.subject ? "error" : "action"} />
+                          <Subject color={errors.subjects ? "error" : "action"} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: "10px",
-                        height: "40px"
+                        minHeight: "40px"
                       }
                     }}
                   >
@@ -670,23 +804,31 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                 <Stack direction="row" spacing={2}>
                   <TextField
                     select
-                    label="Class"
+                    label="Classes"
                     fullWidth
                     variant="outlined"
-                    {...register("class", { required: "Class is required" })}
-                    error={!!errors.class}
-                    helperText={errors.class?.message}
+                    SelectProps={{
+                      multiple: true,
+                      value: watch("teacherClass") || [],
+                      onChange: (e) => {
+                        const value = e.target.value as string[];
+                        setValue("teacherClass", value);
+                      }
+                    }}
+                    {...register("teacherClass", { required: "Classes are required" })}
+                    error={!!errors.teacherClass}
+                    helperText={errors.teacherClass?.message}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Class color={errors.class ? "error" : "action"} />
+                          <Class color={errors.teacherClass ? "error" : "action"} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: "10px",
-                        height: "40px"
+                        minHeight: "40px"
                       }
                     }}
                   >
@@ -700,13 +842,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     label="Staff Number"
                     fullWidth
                     variant="outlined"
-                    {...register("staffId", { required: "Staff number is required" })}
-                    error={!!errors.staffId}
-                    helperText={errors.staffId?.message}
+                    {...register("staffNo", { required: "Staff number is required" })}
+                    error={!!errors.staffNo}
+                    helperText={errors.staffNo?.message}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <AssignmentInd color={errors.staffId ? "error" : "action"} />
+                          <AssignmentInd color={errors.staffNo ? "error" : "action"} />
                         </InputAdornment>
                       ),
                     }}
@@ -718,6 +860,42 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     }}
                   />
                 </Stack>
+                <TextField
+                  select
+                  label="Medium"
+                  fullWidth
+                  variant="outlined"
+                  SelectProps={{
+                    multiple: true,
+                    value: watch("medium") || [],
+                    onChange: (e) => {
+                      const value = e.target.value as string[];
+                      setValue("medium", value);
+                    }
+                  }}
+                  {...register("medium", { required: "Medium is required" })}
+                  error={!!errors.medium}
+                  helperText={errors.medium?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <School color={errors.medium ? "error" : "action"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      minHeight: "40px"
+                    }
+                  }}
+                >
+                  {["Sinhala", "English", "Tamil"].map((medium) => (
+                    <MenuItem key={medium} value={medium}>
+                      {medium}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </>
             )}
 
@@ -728,9 +906,9 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   label="Grade"
                   fullWidth
                   variant="outlined"
-                  {...register("grade", { required: "Grade is required" })}
-                  error={!!errors.grade}
-                  helperText={errors.grade?.message}
+                  {...register("studentGrade", { required: "Grade is required" })}
+                  error={!!errors.studentGrade}
+                  helperText={errors.studentGrade?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -755,13 +933,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   label="Admission Number"
                   fullWidth
                   variant="outlined"
-                  {...register("student_admission_no", { required: "Admission number is required" })}
-                  error={!!errors.student_admission_no}
-                  helperText={errors.student_admission_no?.message}
+                  {...register("studentAdmissionNo", { required: "Admission number is required" })}
+                  error={!!errors.studentAdmissionNo}
+                  helperText={errors.studentAdmissionNo?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <AssignmentInd color={errors.student_admission_no ? "error" : "action"} />
+                        <AssignmentInd color={errors.studentAdmissionNo ? "error" : "action"} />
                       </InputAdornment>
                     ),
                   }}
@@ -806,13 +984,11 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   ))}
                 </TextField>
                 <TextField
-                  select
                   label="Contact Number"
                   fullWidth
                   variant="outlined"
                   {...register("parentContact", {
                     required: "Contact Number is required"
-
                   })}
                   error={!!errors.parentContact}
                   helperText={errors.parentContact?.message}
@@ -829,13 +1005,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       height: "40px"
                     }
                   }}
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                    <MenuItem key={num} value={num.toString()}>
-                      {num}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                />
               </Stack>
             )}
           </Stack>
@@ -861,8 +1031,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               {isPending ? <CircularProgress size={24} /> : 'Sign Up'}
             </Button>
           ) : (
-            <Button onClick={handleNext} variant="contained">
-              Next
+            <Button onClick={handleNext} variant="contained" disabled={isPending}>
+              {isPending ? <CircularProgress size={24} /> : 'Next'}
             </Button>
           )}
         </Box>
