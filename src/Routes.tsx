@@ -8,6 +8,7 @@ import HelpPage from "./views/HelpPage";
 import TeacherDashboard from "./views/Dashboard/TeacherDashboard";
 import CommonDashboard from "./views/Dashboard/CommonDashboard";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
+import StudentDashboard from "./views/Dashboard/StudentDashboard";
 
 // import { useCurrentUser } from "./hooks/useCurrentUser";
 // import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
@@ -105,7 +106,7 @@ function AppRoutes() {
         <Route path="/production" element={<ProductionUpdatePage />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} /> */}
         <Route path="/userProfile" element={<UserProfile />} />
-        <Route path="/summary" element={<Summary/>} />
+        <Route path="/managementStaff" element={<ManagementStaff/>} />
         <Route path="/teacherReport" element={<ClassTeacherReport/>} />
         <Route path="/parentReport" element={<ParentReport/>} />
         {/* <Route path="/help" element={<HelpPage />} />
