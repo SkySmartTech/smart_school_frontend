@@ -16,7 +16,7 @@ const RegistrationPage = React.lazy(() => import("./views/RegistrationPage/Regis
 
 // Dashboard pages
 const AddMarks = React.lazy(() => import("./views/Dashboard/AddMarks"));
-const StudentDashboard = React.lazy(() => import("./views/Dashboard/StudentDashboard"));
+//const StudentDashboard = React.lazy(() => import("./views/Dashboard/StudentDashboard"));
 // const ProductionUpdatePage = React.lazy(() => import("./views/Dashboard/ProductionUpdatePage"));
 // const SystemManagementPage = React.lazy(() => import("./views/Dashboard/SystemMangementPage"));
 const UserProfile = React.lazy(() => import("./views/UserProfile"));
@@ -28,7 +28,7 @@ const UserProfile = React.lazy(() => import("./views/UserProfile"));
 // const DayPlanSummary = React.lazy(() => import("./views/Dashboard/DayPlanSummary/DayPlanSummary"));
 
 // // Administration pages
-// const UserManagement = React.lazy(() => import("./views/Dashboard/UserManagement/UserManagement"));
+const ParentReport = React.lazy(() => import("../src/views/Reports/ParentReport"));
 
 function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useCurrentUser();
@@ -74,19 +74,20 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/addmarks" element={<AddMarks />} />
-        <Route path="/studentdashboard" element={<StudentDashboard />} />
         {/* <Route path="/dayPlan" element={<DayPlanUpload />} />
+        <Route path="/studentdashboard" element={<StudentDashboard />} />
         <Route path="/production" element={<ProductionUpdatePage />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} /> */}
         <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/summary" element={<Summary/>} />
-          <Route path="/teacherReport" element={<ClassTeacherReport/>} />
+        <Route path="/teacherReport" element={<ClassTeacherReport/>} />
+        <Route path="/parentReport" element={<ParentReport/>} />
         {/* <Route path="/help" element={<HelpPage />} />
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />
         <Route path="/daySummary" element={<DayPlanSummary />} />
         <Route path="/userManagement" element={<UserManagement />} />
-        <Route path="/userAccessManagement" element={<UserAccessManagement/>} /> */}
+         */}
         
 
       </Route>
@@ -100,8 +101,7 @@ function AppRoutes() {
 
       {/* Redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/" element={<Navigate to="/addmarks" replace />} />
-      <Route path="/" element={<Navigate to="/studentdashboard" replace />} />
+
     </Routes>
   );
 }

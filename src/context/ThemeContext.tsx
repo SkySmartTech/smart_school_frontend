@@ -5,7 +5,7 @@ import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/st
 type ThemeMode = 'light' | 'dark';
 
 interface ThemeContextType {
-  mode: ThemeMode;
+  mode: ThemeMode; 
   toggleTheme: () => void;
 }
 
