@@ -98,7 +98,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       children: [
         { title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/managementStaff" },
         { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherReport" },
-        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
+        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/parentReport" },
       ],
     },
     {
