@@ -69,7 +69,7 @@ const transformClassDataForStackedBarChart = (classData: ClassMarks | undefined)
 const ManagementStaff: React.FC = () => {
   const theme = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [year, setYear] = useState<string>(years[1]); // Default to 2024
+  const [year, setYear] = useState<string>(years[1]); 
   const [grade, setGrade] = useState<string>(grades[0]);
   const [exam, setExam] = useState<string>(exams[0]);
   const [snackbar, setSnackbar] = useState<{
