@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Container,
   Stack,
   CircularProgress,
   CssBaseline,
@@ -12,7 +11,9 @@ import {
   TextField,
   Snackbar,
   Alert,
-  Box
+  Box,
+  InputAdornment,
+  MenuItem
 } from '@mui/material';
 
 // Import DataGrid components
@@ -25,12 +26,18 @@ import type {
 } from '@mui/x-data-grid';
 
 // Import existing components
-import FilterDropdown from '../../components/FilterDropdown'; // Assuming you updated this file
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 
 // Import the API functions and the interface
-import { fetchStudentMarks, submitStudentMarks, type StudentMark } from '../../api/addmarksApi';
+// The two new functions are now imported from the API file.
+import {
+  fetchStudentMarks,
+  submitStudentMarks,
+  fetchGradesFromApi,
+  fetchClassesFromApi,
+  type StudentMark
+} from '../../api/addmarksApi';
 
 // Import icons for FilterDropdowns
 import SchoolIcon from '@mui/icons-material/School'; // For Grade
@@ -40,22 +47,8 @@ import EventIcon from '@mui/icons-material/Event'; // For Exam/Term
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // For Month
 import SearchIcon from '@mui/icons-material/Search'; // For Search field
 
-const gradeOptions = [
-  { label: 'Grade 1', value: '1' }, { label: 'Grade 2', value: '2' },
-  { label: 'Grade 3', value: '3' }, { label: 'Grade 4', value: '4' },
-  { label: 'Grade 5', value: '5' }, { label: 'Grade 6', value: '6' },
-  { label: 'Grade 7', value: '7' }, { label: 'Grade 8', value: '8' },
-  { label: 'Grade 9', value: '9' }, { label: 'Grade 10', value: '10' },
-  { label: 'Grade 11', value: '11' }, { label: 'Grade 12', value: '12' },
-  { label: 'Grade 13', value: '13' },
-];
-
-const classOptions = [
-  { label: 'Araliya', value: 'Araliya' }, { label: 'Olu', value: 'Olu' },
-  { label: 'Nelum', value: 'Nelum' }, { label: 'Rosa', value: 'Rosa' },
-  { label: 'Manel', value: 'Manel' }, { label: 'Sooriya', value: 'Sooriya' },
-  { label: 'Kumudu', value: 'Kumudu' }
-];
+// *** NOTE: The original hardcoded gradeOptions and classOptions arrays have been removed
+// from here and are now handled dynamically by state. ***
 
 const subjectOptions = [
   { label: 'Mathematics', value: 'math' }, { label: 'Science', value: 'science' },
@@ -81,14 +74,15 @@ const monthOptions = [
   { label: 'November', value: 'November' }, { label: 'December', value: 'December' },
 ];
 
-const drawerWidth = 250;
-const collapsedWidth = 56;
-
 const TeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hovered] = useState(false); // hovered state is not used in the provided snippet
+  const [hovered] = useState(false);
   const theme = useTheme();
+
+  // New state variables for dynamic options
+  const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
+  const [classOptions, setClassOptions] = useState<{ label: string; value: string }[]>([]);
 
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -106,6 +100,7 @@ const TeacherDashboard: React.FC = () => {
 
   const isMonthFilterEnabled = selectedExam === 'monthly';
 
+  // Function to fetch marks data
   const fetchData = useCallback(async () => {
     setLoading(true);
     setStudents([]);
@@ -133,9 +128,28 @@ const TeacherDashboard: React.FC = () => {
     }
   }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, searchQuery, isMonthFilterEnabled]);
 
+  // Function to fetch dropdown options
+  const fetchOptions = useCallback(async () => {
+    try {
+      // These are the new function calls that now exist in the API file.
+      const grades = await fetchGradesFromApi();
+      const classes = await fetchClassesFromApi();
+
+      setGradeOptions(grades);
+      setClassOptions(classes);
+    } catch (error) {
+      console.error("Failed to fetch dropdown options:", error);
+      setSnackbarMessage('Failed to load grades or classes.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Use useEffect to fetch both marks and options on component mount or filter change
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchOptions(); // Fetch the dynamic options
+  }, [fetchData, fetchOptions]);
 
   const handleMarksChange = (id: GridRowId, field: keyof StudentMark, value: any) => {
     setStudents((prevStudents) =>
@@ -233,11 +247,6 @@ const TeacherDashboard: React.FC = () => {
               borderRadius: '4px',
               '&:hover fieldset': { borderColor: theme.palette.info.main, },
               '&.Mui-focused fieldset': { borderColor: theme.palette.info.main, },
-              // Ensure text input background is correct in DataGrid
-              bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.paper : 'white',
-            },
-            '& .MuiInputBase-input': {
-              color: theme.palette.text.primary, // Ensure text color is correct
             },
           }}
         />
@@ -254,215 +263,299 @@ const TeacherDashboard: React.FC = () => {
   ];
 
   return (
-    <>
+    <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
       <CssBaseline />
       <Sidebar open={sidebarOpen || hovered} setOpen={setSidebarOpen} />
+      <Box sx={{ flexGrow: 1, overflowX: 'hidden' }}>
+        <AppBar position="static" sx={{
+          boxShadow: "none",
+          bgcolor: theme.palette.background.paper,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          color: theme.palette.text.primary,
+        }}>
+          <Navbar title="Add Marks" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        </AppBar>
 
-      <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
-        {/* Main content area, dynamically adjusting margin-left based on sidebar state */}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            minHeight: '100vh',
-            bgcolor: theme.palette.background.default,
-            transition: theme.transitions.create('margin', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
-            ml: sidebarOpen ? `${drawerWidth}px` : `${collapsedWidth}px`, // Dynamic margin-left
-          }}
-        >
-          <AppBar
-            position="static"
-            sx={{
-              bgcolor: theme.palette.background.paper, // Changed background color
-              boxShadow: 'none',
-              borderBottom: `1px solid ${theme.palette.divider}`,
-              zIndex: theme.zIndex.drawer + 1,
-              color: theme.palette.text.primary,
-              // Removed width and ml from AppBar as the Navbar handles it.
-            }}
-          >
-            <Navbar
-              title="Add Marks"
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-            />
-          </AppBar>
+        <Stack spacing={3} sx={{ px: 2, py: 3, maxWidth: '100%' }}>
 
-          <Container maxWidth="xl" sx={{ pt: 3, pb: 3 }}>
+          {/* Filter and Search Section */}
+          <Paper elevation={2} sx={{ p: 2, borderRadius: '10px' }}>
+            <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>
+              Filter Student Data
+            </Typography>
 
-            {/* Filter and Search Section */}
-            <Paper sx={{
-              mb: 3, p: 3, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
+            {/* Top Row: All Filter TextFields with Icons */}
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={{ xs: 1, md: 2 }}
+              flexWrap="wrap"
+              sx={{ mb: 2 }}
+            >
+              {/* This TextField now uses the dynamic gradeOptions state */}
+              <TextField
+                select
+                label="Student Grade"
+                variant="outlined"
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                sx={{
+                  flex: '1 1 50px',
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.background.paper,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SchoolIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              >
+                {gradeOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* This TextField now uses the dynamic classOptions state */}
+              <TextField
+                select
+                label="Class"
+                variant="outlined"
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                sx={{
+                  flex: '1 1 50px',
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.background.paper,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <ClassIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              >
+                {classOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Subject"
+                variant="outlined"
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                sx={{
+                  flex: '1 1 50px',
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.background.paper,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SubjectIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              >
+                {subjectOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Exam"
+                variant="outlined"
+                value={selectedExam}
+                onChange={(e) => setSelectedExam(e.target.value)}
+                sx={{
+                  flex: '1 1 50px',
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.background.paper,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EventIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              >
+                {examOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Month"
+                variant="outlined"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                disabled={!isMonthFilterEnabled}
+                sx={{
+                  flex: '1 1 50px',
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: theme.palette.background.paper,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonthIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              >
+                {monthOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+
+            {/* Second Row: Search and Clear Button */}
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={{ xs: 1, md: 2 }}
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <TextField
+                label="Search"
+                variant="outlined"
+                size="small"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{
+                  flexGrow: 1,
+                  width: { xs: '100%', md: 'auto' },
+                  maxWidth: { xs: '100%', md: '500px' },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '10px',
+                    height: '45px',
+                    bgcolor: theme.palette.background.paper,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start" sx={{ mr: 1 }}>
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleClearFilters}
+                sx={{
+                  px: 3, py: 1,
+                  borderRadius: '10px',
+                  borderColor: theme.palette.primary.main,
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    borderColor: theme.palette.primary.dark,
+                    color: theme.palette.primary.dark,
+                  },
+                  width: { xs: '100%', md: 'auto' }
+                }}
+              >
+                Clear Filters
+              </Button>
+            </Stack>
+          </Paper>
+
+          {/* Data Table Section */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Paper elevation={2} sx={{
+              mt: 3, p: 2, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
+              overflowX: 'auto'
             }}>
-              <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>
-                Filter Student Data
+              <Typography variant="h6" align="center" sx={{ mb: 2, color: theme.palette.text.primary }}>
+                Student Marks
               </Typography>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }} // Stack vertically on small screens, horizontally on medium and up
-                spacing={{ xs: 2, md: 3 }}
-                justifyContent="flex-start" // Align items to the start
-                alignItems="flex-end" // Align items to the end for consistent button placement
-                flexWrap="wrap"
-                sx={{ mb: 2 }}
-              >
-                {/* FilterDropdown components will now handle their own internal styling */}
-                <FilterDropdown
-                  label="Student Grade"
-                  value={selectedGrade}
-                  options={gradeOptions}
-                  onChange={setSelectedGrade}
-                  minWidth={264}
-                  icon={<SchoolIcon fontSize="small" />} // Added icon
-                />
-                <FilterDropdown
-                  label="Class"
-                  value={selectedClass}
-                  options={classOptions}
-                  onChange={setSelectedClass}
-                  minWidth={270}
-                  icon={<ClassIcon fontSize="small" />} // Added icon
-                />
-                <FilterDropdown
-                  label="Subject"
-                  value={selectedSubject}
-                  options={subjectOptions}
-                  onChange={setSelectedSubject}
-                  minWidth={270}
-                  icon={<SubjectIcon fontSize="small" />} // Added icon
-                />
-                <FilterDropdown
-                  label="Exam"
-                  value={selectedExam}
-                  options={examOptions}
-                  onChange={setSelectedExam}
-                  minWidth={270}
-                  icon={<EventIcon fontSize="small" />} // Added icon
-                />
-                <FilterDropdown
-                  label="Month"
-                  value={selectedMonth}
-                  options={monthOptions}
-                  onChange={setSelectedMonth}
-                  minWidth={270}
-                  disabled={!isMonthFilterEnabled}
-                  icon={<CalendarMonthIcon fontSize="small" />} // Added icon
-                />
-              </Stack>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={{ xs: 2, sm: 3 }}
-                justifyContent="space-between" // Changed to space-between
-                alignItems="center"
-                sx={{ mt: 2 }}
-              >
-                <TextField
-                  label="Search"
-                  variant="outlined"
-                  size="small"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                        <SearchIcon fontSize="small" />
-                      </Box>
-                    ),
+              <Box sx={{ height: 400, width: '100%' }}>
+                <DataGrid
+                  rows={students}
+                  columns={columns}
+                  getRowId={(row) => row.id}
+                  initialState={{
+                    pagination: { paginationModel: { page: 0, pageSize: 5 }, },
                   }}
+                  pageSizeOptions={[5, 10, 25]}
+                  disableRowSelectionOnClick
                   sx={{
-                    minWidth: 500, // Reduced minimum width
-                    flexGrow: 1,
-                    maxWidth: { xs: '100%', sm: 250 }, // Reduced maximum width for small and up screens
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '4px',
-                      bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.paper : 'white',
-                      '&:hover fieldset': { borderColor: theme.palette.info.main },
-                      '&.Mui-focused fieldset': { borderColor: theme.palette.info.main },
-                    },
-                    '& .MuiInputBase-input': {
-                      color: theme.palette.text.primary, // Ensure text color is correct
-                    },
-                     '& .MuiInputLabel-root': { // Label color for the search field
-                       color: theme.palette.text.secondary,
-                     },
-                     '& .MuiSvgIcon-root': { // Icon color for the search field
-                       color: theme.palette.action.active,
-                     },
+                    '.MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper, color: theme.palette.text.secondary, },
+                    '.MuiDataGrid-row:nth-of-type(odd)': { backgroundColor: theme.palette.background.paper, },
+                    '.MuiDataGrid-row:nth-of-type(even)': { backgroundColor: theme.palette.background.paper, },
+                    '.MuiDataGrid-cell': { borderColor: theme.palette.divider, },
+                    '.MuiDataGrid-virtualScrollerContent': { '& .MuiDataGrid-row': { '&:hover': { backgroundColor: theme.palette.action.selected, }, }, },
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: theme.shape.borderRadius,
                   }}
                 />
-                <Button
-                  variant="outlined"
-                  onClick={handleClearFilters}
-                  sx={{
-                    px: 3, py: 1, borderRadius: theme.shape.borderRadius,
-                    borderColor: theme.palette.primary.main,
-                    color: theme.palette.primary.main,
-                    '&:hover': {
-                      borderColor: theme.palette.primary.dark,
-                      color: theme.palette.primary.dark,
-                    },
-                    mt: { xs: 2, sm: 0 }
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </Stack>
-            </Paper>
-
-            {/* Data Table Section */}
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                <CircularProgress />
               </Box>
-            ) : (
-              <Paper sx={{
-                mt: 3, p: 2, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
-              }}>
-                <Typography variant="h6" align="center" sx={{ mb: 2, color: theme.palette.text.primary }}>
-                  Student Marks
-                </Typography>
-                <Box sx={{ height: 400, width: '100%' }}>
-                  <DataGrid
-                    rows={students}
-                    columns={columns}
-                    getRowId={(row) => row.id}
-                    initialState={{
-                      pagination: { paginationModel: { page: 0, pageSize: 5 }, },
-                    }}
-                    pageSizeOptions={[5, 10, 25]}
-                    disableRowSelectionOnClick
-                    sx={{
-                      '.MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper, color: theme.palette.text.secondary, },
-                      '.MuiDataGrid-row:nth-of-type(odd)': { backgroundColor: theme.palette.background.paper, },
-                      '.MuiDataGrid-row:nth-of-type(even)': { backgroundColor: theme.palette.background.paper, },
-                      '.MuiDataGrid-cell': { borderColor: theme.palette.divider, },
-                      '.MuiDataGrid-virtualScrollerContent': { '& .MuiDataGrid-row': { '&:hover': { backgroundColor: theme.palette.action.selected, }, }, },
-                      border: `1px solid ${theme.palette.divider}`,
-                      borderRadius: theme.shape.borderRadius,
-                    }}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                <Box sx={{ maxWidth: 300, width: '100%' }}>
                   <Button
                     variant="contained"
                     onClick={handleSubmitMarks}
                     sx={{
                       bgcolor: theme.palette.primary.main,
-                      '&:hover': { bgcolor: theme.palette.primary.dark, },
+                      '&:hover': { bgcolor: theme.palette.primary.dark },
                       color: theme.palette.primary.contrastText,
-                      px: 5, py: 1.2, borderRadius: theme.shape.borderRadius,
+                      px: 5,
+                      py: 1.2,
+                      borderRadius: theme.shape.borderRadius,
+                      width: '100%',
                     }}
                     disabled={loading}
                   >
                     Submit Marks
                   </Button>
                 </Box>
-              </Paper>
-            )}
-          </Container>
-        </Box>
+              </Box>
+            </Paper>
+          )}
+        </Stack>
       </Box>
 
       {/* Snackbar for feedback */}
@@ -471,7 +564,7 @@ const TeacherDashboard: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </>
+    </Box>
   );
 };
 
