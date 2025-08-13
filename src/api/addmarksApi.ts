@@ -8,7 +8,7 @@ import axios from 'axios';
 // For example: if your actual backend root is 'https://s1.perahara.lk/smart_school_backend/public'
 // Then the API_BASE_URL should be that.
 // We then append '/marks' in the fetchStudentMarks function.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
 
 // Helper function to get the authorization header
 const getAuthHeader = () => {
@@ -58,7 +58,7 @@ export const fetchStudentMarks = async (filters: FetchMarksFilters): Promise<Stu
     try {
         // Corrected URL: Ensure no double slashes // after API_BASE_URL
         // If API_BASE_URL already ends with /public, then just '/marks' is enough.
-        const response = await axios.get(`${API_BASE_URL}/marks`, {
+        const response = await axios.get(`${API_BASE_URL}/api/add-marks`, {
             ...getAuthHeader(),
             params: {
                 grade: filters.grade || '',
