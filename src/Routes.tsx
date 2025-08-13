@@ -8,6 +8,9 @@ import HelpPage from "./views/HelpPage";
 import TeacherDashboard from "./views/Dashboard/TeacherDashboard";
 import CommonDashboard from "./views/Dashboard/CommonDashboard";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
+// import StudentDashboard from "./views/Dashboard/StudentDashboard";
+
+
 
 // import { useCurrentUser } from "./hooks/useCurrentUser";
 // import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
@@ -82,7 +85,7 @@ function AppRoutes() {
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/addmarks" element={<AddMarks />} />
 
-        <Route path="/studentdashboard" element={<StudentDashboard />} />
+        {/* <Route path="/studentdashboard" element={<StudentDashboard />} /> */}
         <Route path="/teacherdashboard" element={<TeacherDashboard />} />
         <Route path="/commondashboard" element={<CommonDashboard />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} />
