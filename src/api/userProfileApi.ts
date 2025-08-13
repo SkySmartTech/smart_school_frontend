@@ -27,7 +27,7 @@ const getAuthHeader = () => {
 // Create reusable Axios instance
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 10000, 
+  timeout: 10000, // 10 second timeout
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",

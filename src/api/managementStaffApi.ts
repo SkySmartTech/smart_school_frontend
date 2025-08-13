@@ -25,8 +25,12 @@ export interface ManagementStaffReportData {
     class: string;
     english: number;
     arts: number;
-    maths: number;
+    mathematics: number;
+    history: number;
     science: number;
+    ict?: number; 
+    sinhala?: number;
+    tamil?: number; 
   }[];
 }
 

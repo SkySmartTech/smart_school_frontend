@@ -49,22 +49,27 @@ import {
 const years = ["2023", "2024", "2025"];
 const grades = ["10", "11", "12"];
 const exams = ["First", "Second Term", "Third Term", "All Terms"];
+const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 
-const transformClassDataForBarChart = (classData: ClassMarks | undefined) => {
+const transformClassDataForStackedBarChart = (classData: ClassMarks | undefined) => {
   if (!classData) return [];
-  return Object.entries(classData).flatMap(([className, subjects]) =>
-    subjects.map((subject) => ({
-      name: `${className} - ${subject.subject}`,
-      marks: parseFloat(subject.average_mark) || 0,
-    }))
-  );
+
+  return Object.entries(classData).map(([className, subjects]) => {
+    const classEntry: Record<string, string | number> = { name: className };
+
+    subjects.forEach((subject) => {
+      classEntry[subject.subject] = parseFloat(subject.average_mark) || 0;
+    });
+
+    return classEntry;
+  });
 };
 
 const ManagementStaff: React.FC = () => {
   const theme = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [year, setYear] = useState<string>(years[1]); // Default to 2024
+  const [year, setYear] = useState<string>(years[1]); 
   const [grade, setGrade] = useState<string>(grades[0]);
   const [exam, setExam] = useState<string>(exams[0]);
   const [snackbar, setSnackbar] = useState<{
@@ -100,7 +105,7 @@ const ManagementStaff: React.FC = () => {
       }
       return failureCount < 2;
     },
-   
+
   });
 
   useEffect(() => {
@@ -115,7 +120,7 @@ const ManagementStaff: React.FC = () => {
   }, [isError, error]);
 
 
-  
+
   const handleCloseSnackbar = () =>
     setSnackbar((prev) => ({ ...prev, open: false }));
 
@@ -295,14 +300,14 @@ const ManagementStaff: React.FC = () => {
               <Typography variant="h6" fontWeight={600} mb={2}>
                 Subject Distribution
               </Typography>
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={250}>
                 {isLoading ? (
                   <Box
                     sx={{
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      height: 350,
+                      height: 250,
                     }}
                   >
                     <CircularProgress />
@@ -345,35 +350,76 @@ const ManagementStaff: React.FC = () => {
               <Typography variant="h6" fontWeight={600} mb={2}>
                 Class Performance
               </Typography>
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={250}>
                 {isLoading ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: 250,
-                    }}
-                  >
+                  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 250 }}>
                     <CircularProgress />
                   </Box>
                 ) : (
-                  <BarChart
-                    data={transformClassDataForBarChart(data?.class_subject_marks)}
-                  >
+                  <BarChart data={transformClassDataForStackedBarChart(data?.class_subject_marks)}>
                     <XAxis dataKey="name" />
                     <YAxis domain={[0, 100]} />
                     <RechartsTooltip
-                      formatter={(value: number) => [
+                      formatter={(value: number, name: string) => [
                         `${value}%`,
-                        "Average Marks",
+                        name,
                       ]}
                     />
                     <Legend />
                     <Bar
-                      dataKey="marks"
-                      name="Average Marks"
-                      fill="#42A5F5"
+                      dataKey="Mathematics"
+                      name="Mathematics"
+                      stackId="1"
+                      fill={BAR_COLORS[0]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="Science"
+                      name="Science"
+                      stackId="1"
+                      fill={BAR_COLORS[1]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="English"
+                      name="English"
+                      stackId="1"
+                      fill={BAR_COLORS[2]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="Arts"
+                      name="Arts"
+                      stackId="1"
+                      fill={BAR_COLORS[3]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="Sinhala"
+                      name="Sinhala"
+                      stackId="1"
+                      fill={BAR_COLORS[4]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="Tamil"
+                      name="Tamil"
+                      stackId="1"
+                      fill={BAR_COLORS[5]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="History"
+                      name="History"
+                      stackId="1"
+                      fill={BAR_COLORS[6]}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="ICT"
+                      name="ICT"
+                      stackId="1"
+                      fill={BAR_COLORS[0]}
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
@@ -394,8 +440,12 @@ const ManagementStaff: React.FC = () => {
                     <TableCell sx={{ fontWeight: "bold" }}>Class</TableCell>
                     <TableCell align="right">English</TableCell>
                     <TableCell align="right">Arts</TableCell>
-                    <TableCell align="right">Maths</TableCell>
+                    <TableCell align="right">Mathematics</TableCell>
                     <TableCell align="right">Science</TableCell>
+                    <TableCell align="right">History</TableCell>
+                    <TableCell align="right">sinhala</TableCell>
+                    <TableCell align="right">Tamil</TableCell>
+                    <TableCell align="right">ICT</TableCell>
                     <TableCell align="right">Total</TableCell>
                     <TableCell align="right">Average</TableCell>
                   </TableRow>
@@ -415,22 +465,35 @@ const ManagementStaff: React.FC = () => {
                         </TableCell>
                         <TableCell align="right">{row.english}</TableCell>
                         <TableCell align="right">{row.arts}</TableCell>
-                        <TableCell align="right">{row.maths}</TableCell>
+                        <TableCell align="right">{row.mathematics}</TableCell>
                         <TableCell align="right">{row.science}</TableCell>
+                        <TableCell align="right">{row.history}</TableCell>
+                        <TableCell align="right">{row.sinhala}</TableCell>
+                        <TableCell align="right">{row.tamil}</TableCell>
+                        <TableCell align="right">{row.ict}</TableCell>
                         <TableCell align="right">
                           {(
                             (row.english || 0) +
                             (row.arts || 0) +
-                            (row.maths || 0) +
-                            (row.science || 0)
+                            (row.mathematics || 0) +
+                            (row.history || 0) +
+                            (row.science || 0) +
+                            (row.ict || 0) +
+                            (row.sinhala || 0) +
+                            (row.tamil || 0) 
+                           
                           ).toFixed(1)}
                         </TableCell>
                         <TableCell align="right">
                           {(
                             ((row.english || 0) +
                               (row.arts || 0) +
-                              (row.maths || 0) +
-                              (row.science || 0)) /
+                              (row.mathematics || 0) +
+                              (row.history || 0) +
+                              (row.science || 0))+
+                              (row.ict || 0) +
+                            (row.sinhala || 0) +
+                            (row.tamil || 0)  /
                             4
                           ).toFixed(1)}
                         </TableCell>
