@@ -13,7 +13,7 @@ import {
   Alert,
   Box,
   InputAdornment,
-  MenuItem // Import MenuItem for dropdown functionality within TextField
+  MenuItem
 } from '@mui/material';
 
 // Import DataGrid components
@@ -33,6 +33,11 @@ import Navbar from '../../components/Navbar';
 import { fetchStudentMarks, submitStudentMarks, type StudentMark } from '../../api/addmarksApi';
 
 // Import icons for FilterDropdowns
+import SchoolIcon from '@mui/icons-material/School'; // For Grade
+import ClassIcon from '@mui/icons-material/Class'; // For Class
+import SubjectIcon from '@mui/icons-material/Subject'; // For Subject
+import EventIcon from '@mui/icons-material/Event'; // For Exam/Term
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // For Month
 import SearchIcon from '@mui/icons-material/Search'; // For Search field
 
 const gradeOptions = [
@@ -262,7 +267,7 @@ const TeacherDashboard: React.FC = () => {
               Filter Student Data
             </Typography>
 
-            {/* Top Row: All Filter TextFields */}
+            {/* Top Row: All Filter TextFields with Icons */}
             <Stack
               direction={{ xs: 'column', md: 'row' }}
               spacing={{ xs: 1, md: 2 }}
@@ -283,6 +288,13 @@ const TeacherDashboard: React.FC = () => {
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
                     '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
                   }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SchoolIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
                 }}
               >
                 {gradeOptions.map((option) => (
@@ -307,6 +319,13 @@ const TeacherDashboard: React.FC = () => {
                     '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
                   }
                 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <ClassIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
               >
                 {classOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
@@ -329,6 +348,13 @@ const TeacherDashboard: React.FC = () => {
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
                     '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
                   }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SubjectIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
                 }}
               >
                 {subjectOptions.map((option) => (
@@ -353,6 +379,13 @@ const TeacherDashboard: React.FC = () => {
                     '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
                   }
                 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EventIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
               >
                 {examOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
@@ -376,6 +409,13 @@ const TeacherDashboard: React.FC = () => {
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
                     '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
                   }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonthIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
                 }}
               >
                 {monthOptions.map((option) => (
