@@ -107,11 +107,12 @@ function AppRoutes() {
         <Route path="/studentdashboard" element={<StudentDashboard />} />
         <Route path="/production" element={<ProductionUpdatePage />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} />
+        <Route path="/summary" element={<ManagementStaff/>} /> 
         */}
         <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/teacherReport" element={<ClassTeacherReport/>} />
         <Route path="/parentReport" element={<ParentReport/>} />
-        <Route path="/summary" element={<ManagementStaff/>} /> 
+        
         {/* <Route path="/help" element={<HelpPage />} />
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />
