@@ -106,8 +106,6 @@ function AppRoutes() {
         {/* <Route path="/dayPlan" element={<DayPlanUpload />} />
         <Route path="/studentdashboard" element={<StudentDashboard />} />
         <Route path="/production" element={<ProductionUpdatePage />} />
-        <Route path="/systemManagement" element={<SystemManagementPage />} />
-        <Route path="/summary" element={<ManagementStaff/>} /> 
         */}
         <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/teacherReport" element={<ClassTeacherReport/>} />
