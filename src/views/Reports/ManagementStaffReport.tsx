@@ -47,8 +47,8 @@ import {
 } from "../../api/managementStaffApi";
 
 const years = ["2023", "2024", "2025"];
-const grades = ["10", "11", "12"];
-const exams = ["First", "Second Term", "Third Term", "All Terms"];
+const grades = ["10","11", "12"];
+const exams = ["First", "Second", "Third", "All"];
 const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 
@@ -231,7 +231,7 @@ const ManagementStaff: React.FC = () => {
               >
                 {grades.map((g) => (
                   <MenuItem key={g} value={g}>
-                    Grade {g}
+                   {g}
                   </MenuItem>
                 ))}
               </TextField>
