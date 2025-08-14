@@ -85,7 +85,6 @@ function AppRoutes() {
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/addmarks" element={<AddMarks />} />
 
-        {/* <Route path="/studentdashboard" element={<StudentDashboard />} /> */}
         <Route path="/teacherdashboard" element={<TeacherDashboard />} />
         <Route path="/commondashboard" element={<CommonDashboard />} />
         <Route path="/systemManagement" element={<SystemManagementPage />} />
@@ -103,21 +102,18 @@ function AppRoutes() {
         <Route path="/userAccessManagement" element={<UserAccessManagement/>} /> */}
 
 
-        {/* <Route path="/dayPlan" element={<DayPlanUpload />} />
+        {/* 
         <Route path="/studentdashboard" element={<StudentDashboard />} />
         <Route path="/production" element={<ProductionUpdatePage />} />
-        <Route path="/systemManagement" element={<SystemManagementPage />} />
-        <Route path="/summary" element={<ManagementStaff/>} /> 
         */}
         <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/teacherReport" element={<ClassTeacherReport/>} />
         <Route path="/parentReport" element={<ParentReport/>} />
         
-        {/* <Route path="/help" element={<HelpPage />} />
+        {/* 
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />
         <Route path="/daySummary" element={<DayPlanSummary />} />
-        <Route path="/userManagement" element={<UserManagement />} />
          */}
         
 
