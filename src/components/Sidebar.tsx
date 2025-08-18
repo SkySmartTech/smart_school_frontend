@@ -119,7 +119,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       type: "item",
       title: "Help",
       icon: <SupervisedUserCircle fontSize="small" />,
-      href: "/userProfile",
+      href: "/help",
     },
     {
       type: "item",
