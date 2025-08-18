@@ -1,42 +1,88 @@
-// ClassTeacherReport.tsx
 import React, { useState, useEffect } from "react";
 import {
   Box, CssBaseline, AppBar, Stack, Typography, Paper, MenuItem, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, useTheme, InputAdornment, TextField, CircularProgress, Snackbar, Alert
+  TableContainer, TableHead, TableRow, useTheme, InputAdornment, TextField, CircularProgress,
+  Snackbar, Alert
 } from "@mui/material";
 import { DateRange, School, CalendarMonth, Group } from "@mui/icons-material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  Tooltip as ReTooltip, Legend, ResponsiveContainer, CartesianGrid
+} from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { fetchClassTeacherReport, type ClassTeacherReportData } from "../../api/classteacherApi.ts";
-import type { SummaryData } from "../../api/summaryApi.ts";
+import { fetchClassTeacherReport } from "../../api/classteacherApi";
+import { format } from "date-fns";
+import Footer from "../../components/Footer";
 
-const years = ["2020", "2021", "2022", "2023", "2024"];
-const grades = ["1", "2", "3", "4"];
+const grades = ["1", "2", "3", "4", "11"];
 const classes = ["Olu", "Araliya", "Nelum"];
-const exams = ["1st Term", "2nd Term", "3rd Term"];
-const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
+const exams = ["1st Term", "2nd Term", "3rd Term", "First"];
+const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
+const BAR_COLORS = ["#E3B6E5", "#C5A6D9", "#A795CD", "#8A85C1", "#6D74B5", "#5163A9", "#34529C"];
+
+interface StudentSubjectMark {
+  subject: string;
+  marks: number;
+}
+
+interface StudentMark {
+  studentName: string;
+  subjects: StudentSubjectMark[];
+  total_marks: number;
+  average_marks: number;
+  rank: number;
+}
+
+interface SubjectMark {
+  subject: string;
+  average_marks: number;
+  percentage: number;
+}
+
+interface YearlySubjectAverage {
+  year: number;
+  subjects: SubjectMark[];
+}
+
+interface ClassTeacherReportData {
+  subject_marks: SubjectMark[];
+  student_marks: StudentMark[];
+  yearly_subject_averages: YearlySubjectAverage[];
+}
 
 const ClassTeacherReport: React.FC = () => {
   const theme = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [year, setYear] = useState("2023");
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date(2023, 0, 1));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date(2024, 11, 31));
   const [grade, setGrade] = useState("1");
   const [className, setClassName] = useState("Olu");
   const [exam, setExam] = useState("2nd Term");
+
   type SnackbarState = {
     open: boolean;
     message: string;
     severity: "success" | "info" | "warning" | "error";
   };
-  const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '', severity: 'info' });
+  const [snackbar, setSnackbar] = useState<SnackbarState>({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   const { data, isLoading, isError, error } = useQuery<ClassTeacherReportData, Error>({
-    queryKey: ["class-teacher-report", year, grade, className, exam],
-    queryFn: () => fetchClassTeacherReport(year, grade, className, exam),
-    retry: 1
+    queryKey: ["class-teacher-report", startDate, endDate, grade, className, exam],
+    queryFn: () => {
+      const formattedStartDate = startDate ? format(startDate, "yyyy-MM-dd") : "";
+      const formattedEndDate = endDate ? format(endDate, "yyyy-MM-dd") : "";
+      return fetchClassTeacherReport(formattedStartDate, formattedEndDate, grade, className, exam);
+    },
+    retry: 1,
   });
 
   useEffect(() => {
@@ -45,206 +91,424 @@ const ClassTeacherReport: React.FC = () => {
     }
   }, [isError, error]);
 
+  const handleCloseSnackbar = () => setSnackbar((prev) => ({ ...prev, open: false }));
 
-  // Calculate averages for the table
-  const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
-  const calculateAverages = (tableData: any[] = []) => {
-    if (!tableData.length) return { sinhala: '0', english: '0', maths: '0', overall: '0' };
-    const totals = { sinhala: 0, english: 0, maths: 0 };
-    tableData.forEach(row => {
-      totals.sinhala += row.sinhala;
-      totals.english += row.english;
-      totals.maths += row.maths;
-    });
-    const averages = {
-      sinhala: (totals.sinhala / tableData.length).toFixed(1),
-      english: (totals.english / tableData.length).toFixed(1),
-      maths: (totals.maths / tableData.length).toFixed(1),
-      overall: ((totals.sinhala + totals.english + totals.maths) / (tableData.length * 3)).toFixed(1)
-    };
-    return averages;
+  const handleStartDateChange = (newValue: Date | null) => {
+    setStartDate(newValue || undefined);
+    // keep end date valid
+    if (newValue && endDate && endDate < newValue) {
+      setEndDate(newValue);
+    }
   };
-  const averages = calculateAverages((data as SummaryData | undefined)?.tableData);
+
+  const handleEndDateChange = (newValue: Date | null) => {
+    setEndDate(newValue || undefined);
+  };
+
+
+  // Prepare data for yearly subject averages chart
+  const getYearlySubjectAveragesData = () => {
+    if (!data?.yearly_subject_averages) return [];
+    
+    // First, get all unique subjects across all years
+    const allSubjects = new Set<string>();
+    data.yearly_subject_averages.forEach(yearData => {
+      yearData.subjects.forEach(subject => {
+        allSubjects.add(subject.subject);
+      });
+    });
+
+    // Then transform the data into the format Recharts expects
+    return data.yearly_subject_averages.map(yearData => {
+      const yearEntry: any = { year: yearData.year.toString() };
+      
+      // Initialize all subjects to 0
+      allSubjects.forEach(subject => {
+        yearEntry[subject] = 0;
+      });
+
+      // Fill in the actual values
+      yearData.subjects.forEach(subject => {
+        yearEntry[subject.subject] = subject.percentage;
+      });
+
+      return yearEntry;
+    });
+  };
 
   return (
     <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
       <CssBaseline />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       <Box sx={{ flexGrow: 1 }}>
-        <AppBar position="static" sx={{
-          boxShadow: "none", bgcolor: theme.palette.background.paper,
-          borderBottom: `1px solid ${theme.palette.divider}`,
-          color: theme.palette.text.primary
-        }}>
-          <Navbar title="Class Teacher Report" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <AppBar
+          position="static"
+          sx={{
+            boxShadow: "none",
+            bgcolor: theme.palette.background.paper,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            color: theme.palette.text.primary,
+          }}
+        >
+          <Navbar
+            title="Class Teacher Report"
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
         </AppBar>
 
-        <Stack spacing={3} sx={{ px: 4, py: 3 }}>
-          {/* Filters */}
-          <Paper elevation={1} sx={{ p: 2 }}>
-            <Stack direction="row" spacing={3} flexWrap="wrap" justifyContent="space-between">
-              {/* Year */}
-              <TextField select label="Year" value={year} onChange={e => setYear(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"><DateRange /></InputAdornment>) }} sx={{ minWidth: 150 }}>
-                {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-              </TextField>
-              {/* Grade */}
-              <TextField select label="Student Grade" value={grade} onChange={e => setGrade(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"><School /></InputAdornment>) }} sx={{ minWidth: 150 }}>
-                {grades.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
-              </TextField>
-              {/* Class */}
-              <TextField select label="Class" value={className} onChange={e => setClassName(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"><Group /></InputAdornment>) }} sx={{ minWidth: 150 }}>
-                {classes.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-              </TextField>
-              {/* Exam */}
-              <TextField select label="Exam" value={exam} onChange={e => setExam(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonth /></InputAdornment>) }} sx={{ minWidth: 150 }}>
-                {exams.map(e => <MenuItem key={e} value={e}>{e}</MenuItem>)}
-              </TextField>
-            </Stack>
-          </Paper>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Stack spacing={3} sx={{ px: 4, py: 3 }}>
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Stack direction="row" spacing={3} flexWrap="wrap" justifyContent="space-between">
+                {/* Start Date */}
+                <DatePicker
+                  label="Start Date"
+                  value={startDate || null}
+                  onChange={handleStartDateChange}
+                  enableAccessibleFieldDOMStructure={false}
+                  slots={{ textField: TextField }}
+                  slotProps={{
+                    textField: {
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DateRange />
+                          </InputAdornment>
+                        ),
+                      },
+                      sx: {
+                        minWidth: 150,
+                        flex: 1,
+                        maxWidth: 250,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "10px",
+                          height: "45px",
+                        },
+                      },
+                    },
+                  }}
+                />
 
-          {/* Charts */}
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
-            <Paper sx={{ p: 3, flex: 1 }}>
-              <Typography fontWeight={600} mb={2}>Subject Wise Marks</Typography>
-              <ResponsiveContainer width="100%" height={250}>
-                 {isLoading ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
-                  <PieChart>
-                    <Pie data={data?.subjectPie} dataKey="value" outerRadius={80} labelLine={false}>
-                      {(data?.subjectPie || []).map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
-                    </Pie>
-                    <ReTooltip />
+                {/* End Date */}
+                <DatePicker
+                  label="End Date"
+                  value={endDate || null}
+                  onChange={handleEndDateChange}
+                  minDate={startDate || undefined}
+                  enableAccessibleFieldDOMStructure={false}
+                  slots={{ textField: TextField }}
+                  slotProps={{
+                    textField: {
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DateRange />
+                          </InputAdornment>
+                        ),
+                      },
+                      sx: {
+                        minWidth: 150,
+                        flex: 1,
+                        maxWidth: 250,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "10px",
+                          height: "45px",
+                        },
+                      },
+                    },
+                  }}
+                />
+
+                {/* Grade */}
+                <TextField
+                  select
+                  label="Student Grade"
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <School />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    minWidth: 150,
+                    flex: 1,
+                    maxWidth: 250,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "45px",
+                    },
+                  }}
+                >
+                  {grades.map((g) => (
+                    <MenuItem key={g} value={g}>
+                      {g}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                {/* Class */}
+                <TextField
+                  select
+                  label="Class"
+                  value={className}
+                  onChange={(e) => setClassName(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Group />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    minWidth: 150,
+                    flex: 1,
+                    maxWidth: 250,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "45px",
+                    },
+                  }}
+                >
+                  {classes.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                {/* Exam */}
+                <TextField
+                  select
+                  label="Exam"
+                  value={exam}
+                  onChange={(e) => setExam(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarMonth />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    minWidth: 150,
+                    flex: 1,
+                    maxWidth: 250,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "45px",
+                    },
+                  }}
+                >
+                  {exams.map((ex) => (
+                    <MenuItem key={ex} value={ex}>
+                      {ex}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+            </Paper>
+
+            <Stack direction={{ xs: "column", md: "row" }} spacing={3} flexWrap="wrap">
+              <Paper sx={{ p: 3, flex: 1 }}>
+                <Typography fontWeight={600} mb={2}>
+                  Subject Wise Marks
+                </Typography>
+                <ResponsiveContainer width="100%" height={350}>
+                  {isLoading ? (
+                    <Box
+                      sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 250 }}
+                    >
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <PieChart>
+                      <Pie
+                        data={(data?.subject_marks || []).map((sm) => ({
+                          name: sm.subject,
+                          value: sm.average_marks,
+                        }))}
+                        dataKey="value"
+                        outerRadius={80}
+                        label={({ name, percent }) =>
+                          `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`
+                        }
+                      >
+                        {(data?.subject_marks || []).map((_, idx) => (
+                          <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <ReTooltip
+                        formatter={(value: number) => [`${value}`, "Average Marks"]}
+                        labelFormatter={(label) => label}
+                      />
+                      <Legend />
+                    </PieChart>
+                  )}
+                </ResponsiveContainer>
+              </Paper>
+
+              <Paper sx={{ p: 3, flex: 2 }}>
+                <Typography fontWeight={600} mb={2}>
+                  Yearly Subject Averages
+                </Typography>
+                <ResponsiveContainer width="100%" height={350}>
+                  {isLoading ? (
+                    <Box
+                      sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 350 }}
+                    >
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <BarChart 
+                      data={getYearlySubjectAveragesData()} 
+                      margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="year"
+                        label={{ value: 'Year', position: 'insideBottomRight', offset: -10 }}
+                      />
+                      <YAxis 
+                        label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
+                        domain={[0, 100]}
+                      />
+                      <ReTooltip 
+                        formatter={(value: number) => [`${value}%`, "Percentage"]}
+                        labelFormatter={(label) => `Year: ${label}`}
+                      />
+                      <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ paddingTop: 20 }} />
+                      {Array.from(new Set(data?.yearly_subject_averages.flatMap(y => y.subjects.map(s => s.subject)) || [])).map((subject, index) => (
+                        <Bar
+                          key={subject}
+                          dataKey={subject}
+                          stackId="a"
+                          fill={BAR_COLORS[index % BAR_COLORS.length]}
+                          name={subject}
+                        />
+                      ))}
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </Paper>
+            </Stack>
+
+            <Paper sx={{ p: 3, flex: 2 }}>
+              <Typography fontWeight={600} mb={2}>
+                Student Averages
+              </Typography>
+              <ResponsiveContainer width="100%" height={350}>
+                {isLoading ? (
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 350 }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <BarChart data={data?.student_marks || []} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
+                    <XAxis
+                      dataKey="studentName"
+                      tick={
+                        {
+                          angle: -45,
+                          textAnchor: "end",
+                          fontSize: 12,
+                        } as any
+                      }
+                      height={70}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      label={{ value: "Average Marks", angle: -90, position: "insideLeft", offset: 10 }}
+                    />
+                    <ReTooltip
+                      formatter={(value: number) => [`${value}%`, "Average"]}
+                      labelFormatter={(label) => `Student: ${label}`}
+                    />
                     <Legend />
-                  </PieChart>
+                    <Bar dataKey="average_marks" name="Average Marks" fill="#4285F4" radius={[4, 4, 0, 0]}>
+                      {(data?.student_marks || []).map((_student, index) => (
+                        <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 )}
               </ResponsiveContainer>
             </Paper>
-            <Paper sx={{ p: 3, flex: 2 }}>
-              <Typography fontWeight={600} mb={2}>Overall Subject</Typography>
-              <ResponsiveContainer width="100%" height={250}>
-                  {isLoading ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
-                  <LineChart data={data?.lineGraph}>
-                    <XAxis dataKey="x" />
-                    <YAxis domain={[0, 100]} />
-                    <ReTooltip />
-                    <Line type="monotone" dataKey="y" stroke="#42A5F5" />
-                  </LineChart>
-                )}
-              </ResponsiveContainer>
+
+            <Paper elevation={2} sx={{ p: 2, overflow: "auto" }}>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Detailed Marks Breakdown
+              </Typography>
+              <TableContainer>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: "bold" }}>Student Name</TableCell>
+                      {(data?.subject_marks || []).map((subject) => (
+                        <TableCell key={subject.subject} align="right" sx={{ fontWeight: "bold" }}>
+                          {subject.subject}
+                        </TableCell>
+                      ))}
+                      <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                        Total
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                        Average
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                        Rank
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          <CircularProgress size={24} />
+                        </TableCell>
+                      </TableRow>
+                    ) : (data?.student_marks || []).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          <Typography variant="body2" color="text.secondary">
+                            {isError ? "Failed to load data." : "No records found for the selected filters."}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      (data?.student_marks || []).map((student) => (
+                        <TableRow key={student.studentName} hover>
+                          <TableCell sx={{ fontWeight: "bold" }}>{student.studentName}</TableCell>
+                          {(data?.subject_marks || []).map((subject) => {
+                            const subjectMark = student.subjects.find((s) => s.subject === subject.subject);
+                            return (
+                              <TableCell key={`${student.studentName}-${subject.subject}`} align="right">
+                                {subjectMark ? subjectMark.marks : "-"}
+                              </TableCell>
+                            );
+                          })}
+                          <TableCell align="right">{student.total_marks}</TableCell>
+                          <TableCell align="right">{student.average_marks.toFixed(1)}</TableCell>
+                          <TableCell align="right">{student.rank}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Paper>
           </Stack>
+        </LocalizationProvider>
 
-          {/* Student Marks */}
-          <Paper sx={{ p: 3 }}>
-            <Typography fontWeight={600} mb={2}>Student Marks</Typography>
-            <ResponsiveContainer width="100%" height={300}>
-                 {isLoading ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}><CircularProgress /></Box> : (
-                <BarChart data={data?.studentMarks}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ReTooltip />
-                  <Legend />
-                  <Bar dataKey="marks" fill="#1976d2" radius={[5, 5, 0, 0]} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </Paper>
-
-         {/* Table Section */}
-                          <Paper elevation={2} sx={{ p: 2, overflow: 'auto' }}>
-                              <Typography variant="h6" fontWeight={600} mb={2}>Detailed Marks Breakdown</Typography>
-                              <TableContainer>
-                                  <Table size="small" stickyHeader>
-                                      <TableHead>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Class</TableCell>
-                                              <TableCell align="right">Sinhala</TableCell>
-                                              <TableCell align="right">English</TableCell>
-                                              <TableCell align="right">Maths</TableCell>
-                                              <TableCell align="right">Total</TableCell>
-                                              <TableCell align="right">Average</TableCell>
-                                          </TableRow>
-                                      </TableHead>
-                                      <TableBody>
-                                          {isLoading ? (
-                                              <TableRow>
-                                                  <TableCell colSpan={2} align="center"><CircularProgress size={24} /></TableCell>
-                                              </TableRow>
-                                          ) : ((data as SummaryData | undefined)?.tableData || []).map((row: any, idx: number) => (
-                                              <TableRow key={idx} hover>
-                                                  <TableCell sx={{ fontWeight: 'bold' }}>{row.class}</TableCell>
-                                                  <TableCell align="right">{row.sinhala}</TableCell>
-                                                  <TableCell align="right">{row.english}</TableCell>
-                                                  <TableCell align="right">{row.maths}</TableCell>
-                                                  <TableCell align="right">{row.sinhala + row.english + row.maths}</TableCell>
-                                                  <TableCell align="right">{((row.sinhala + row.english + row.maths) / 3).toFixed(1)}</TableCell>
-                                              </TableRow>
-                                          ))}
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Araliya</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Olu</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Nelum</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Rosa</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Manel</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Sooriya</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                          <TableRow>
-                                              <TableCell sx={{ fontWeight: 'bold' }}>Kumudu</TableCell>
-                                              <TableCell align="right">{averages.sinhala}</TableCell>
-                                              <TableCell align="right">{averages.english}</TableCell>
-                                              <TableCell align="right">{averages.maths}</TableCell>
-                                              <TableCell align="right">{(parseFloat(averages.sinhala) + parseFloat(averages.english) + parseFloat(averages.maths)).toFixed(1)}</TableCell>
-                                              <TableCell align="right">{averages.overall}</TableCell>
-                                          </TableRow>
-                                      </TableBody>
-                                  </Table>
-                              </TableContainer>
-                          </Paper>
-        </Stack>
         <Footer />
       </Box>
 
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
