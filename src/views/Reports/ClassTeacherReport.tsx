@@ -11,7 +11,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, Legend, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { fetchClassTeacherReport } from "../../api/classteacherApi";
 import { format } from 'date-fns';
@@ -80,29 +80,32 @@ const ClassTeacherReport: React.FC = () => {
 
   const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
 
-  const getStackedBarData = () => {
-    if (!data?.student_marks) return [];
-
-    return data.student_marks.map(student => {
-      const subjectMarks: Record<string, number | string> = {
-        name: student.studentName
-      };
-
-      student.subjects.forEach(subject => {
-        subjectMarks[subject.subject] = subject.marks;
-      });
-
-      return subjectMarks;
-    });
-  };
-
-  // Handle date changes with proper type conversion
   const handleStartDateChange = (newValue: Date | null) => {
     setStartDate(newValue || undefined);
   };
 
   const handleEndDateChange = (newValue: Date | null) => {
     setEndDate(newValue || undefined);
+  };
+
+  const getStackedBarData = () => {
+    if (!data?.student_marks || !data?.subject_marks) return [];
+
+    return data.student_marks.map(student => {
+      const studentData: Record<string, number | string> = {
+        name: student.studentName
+      };
+
+      data.subject_marks.forEach(subject => {
+        const subjectMark = student.subjects.find(s => s.subject === subject.subject);
+        studentData[subject.subject] = subjectMark ? subjectMark.marks : 0;
+      });
+
+      studentData['total'] = student.total_marks;
+      studentData['average'] = student.average_marks;
+
+      return studentData;
+    });
   };
 
   return (
@@ -274,23 +277,33 @@ const ClassTeacherReport: React.FC = () => {
                   )}
                 </ResponsiveContainer>
               </Paper>
-
               <Paper sx={{ p: 3, flex: 2 }}>
-                <Typography fontWeight={600} mb={2}>Student Marks</Typography>
-                <ResponsiveContainer width="100%" height={350}>
-                  {isLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
-                      <CircularProgress />
-                    </Box>
+              <Typography fontWeight={600} mb={2}>Overall Subjects</Typography>
+              <ResponsiveContainer width="100%" height={350}>
+                {isLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 350 }}>
+                    <CircularProgress />
+                  </Box>
                   ) : (
                     <BarChart
                       data={getStackedBarData()}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
                     >
-                      <XAxis dataKey="name" />
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        angle={-25}
+                        textAnchor="end"
+                        height={70}
+                        tick={{ fontSize: 12 }}
+                      />
                       <YAxis domain={[0, 100]} />
                       <ReTooltip />
-                      <Legend />
+                      <Legend
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        wrapperStyle={{ paddingTop: 20 }}
+                      />
                       {data?.subject_marks.map((subject, index) => (
                         <Bar
                           key={subject.subject}
@@ -304,7 +317,65 @@ const ClassTeacherReport: React.FC = () => {
                   )}
                 </ResponsiveContainer>
               </Paper>
+
             </Stack>
+
+            <Paper sx={{ p: 3, flex: 2 }}>
+              <Typography fontWeight={600} mb={2}>Student Averages</Typography>
+              <ResponsiveContainer width="100%" height={350}>
+                {isLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 350 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                  <BarChart
+                    data={data?.student_marks}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                  >
+                    <XAxis
+                      dataKey="studentName"
+                      tick={
+                        {
+                          angle: -45,
+                          textAnchor: 'end',
+                          fontSize: 12
+                        } as any
+                      }
+                      height={70}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      label={{
+                        value: 'Average Marks',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10
+                      }}
+                    />
+                    <ReTooltip
+                      formatter={(value: number) => [`${value}%`, "Average"]}
+                      labelFormatter={(label) => `Student: ${label}`}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="average_marks"
+                      name="Average Marks"
+                      fill="#4285F4"
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {data?.student_marks.map((_student, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={BAR_COLORS[index % BAR_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            </Paper>
+
+
 
             <Paper elevation={2} sx={{ p: 2, overflow: 'auto' }}>
               <Typography variant="h6" fontWeight={600} mb={2}>Detailed Marks Breakdown</Typography>
