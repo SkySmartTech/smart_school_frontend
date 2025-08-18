@@ -28,16 +28,16 @@ export interface ManagementStaffReportData {
     mathematics: number;
     history: number;
     science: number;
-    ict?: number; 
+    ict?: number;
     sinhala?: number;
-    tamil?: number; 
+    tamil?: number;
   }[];
 }
 
 // Enhanced auth header function with better error handling
 const getAuthHeader = () => {
   const token = localStorage.getItem('authToken') || localStorage.getItem('token') || localStorage.getItem('access_token');
-  
+
   if (!token) {
     console.error('No authentication token found in localStorage');
     // Check if user needs to login again
@@ -45,7 +45,7 @@ const getAuthHeader = () => {
   }
 
   console.log('Token found:', token ? 'Yes' : 'No'); // Debug log
-  
+
   return {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -77,15 +77,17 @@ export const fetchManagementStaffReport = async (
       Object.entries(params).filter(([_, value]) => value !== undefined)
     );
 
-    console.log('API Request params:', filteredParams); 
-    console.log('API URL:', `${API_BASE_URL}/api/management-staff-report`); 
+    console.log('API Request params:', filteredParams);
+    console.log('API URL:', `// Use template literals to insert the actual values
+${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`);
 
     const response = await axios.get(
-      `${API_BASE_URL}/api/management-staff-report`,
+      // Use template literals to insert the actual values
+      `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`,
       {
         ...getAuthHeader(),
         params: filteredParams,
-        timeout: 10000, 
+        timeout: 10000,
       }
     );
 
@@ -101,23 +103,23 @@ export const fetchManagementStaffReport = async (
     return transformedData;
   } catch (error) {
     console.error('API Error:', error); // Debug log
-    
+
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {
         // Clear invalid token
         localStorage.removeItem('authToken');
         localStorage.removeItem('token');
         localStorage.removeItem('access_token');
-        
+
         throw new Error('Session expired. Please login again.');
       } else if (error.response?.status === 403) {
         throw new Error('Access denied. You do not have permission to view this data.');
       } else if (error.response?.status === 404) {
         throw new Error('Report endpoint not found. Please contact support.');
-    
+
       } else {
         throw new Error(
-          error.response?.data?.message || 
+          error.response?.data?.message ||
           error.response?.data?.error ||
           `Request failed with status ${error.response?.status}`
         );
@@ -125,7 +127,7 @@ export const fetchManagementStaffReport = async (
     } else if (error instanceof Error) {
       throw error;
     }
-    
+
     throw new Error("Network error or unknown error occurred");
   }
 };
@@ -154,9 +156,9 @@ const transformToTableData = (classSubjectMarks: ClassMarks | undefined) => {
 
 // Optional: Add a function to check if user is authenticated
 export const checkAuthStatus = (): boolean => {
-  const token = localStorage.getItem('authToken') || 
-                localStorage.getItem('token') || 
-                localStorage.getItem('access_token');
+  const token = localStorage.getItem('authToken') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('access_token');
   return !!token;
 };
 
