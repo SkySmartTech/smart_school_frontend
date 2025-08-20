@@ -21,9 +21,15 @@ interface SubjectMark {
   percentage: number;
 }
 
+interface YearlySubjectAverage {
+  year: number;
+  subjects: SubjectMark[];
+}
+
 export interface ClassTeacherReportData {
   subject_marks: SubjectMark[];
   student_marks: StudentMark[];
+  yearly_subject_averages: YearlySubjectAverage[];
 }
 
 const getAuthHeader = () => {
@@ -67,12 +73,12 @@ export const fetchClassTeacherReport = async (
     };
 
     return {
-      subject_marks: response.data.subject_marks.map((sm: any) => ({
+      subject_marks: response.data.subject_marks?.map((sm: any) => ({
         subject: sm.subject,
         average_marks: transformMarks(sm.average_marks),
         percentage: transformMarks(sm.percentage)
-      })),
-      student_marks: response.data.student_marks.map((student: any) => ({
+      })) || [],
+      student_marks: response.data.student_marks?.map((student: any) => ({
         studentName: student.studentName,
         subjects: student.subjects.map((subject: any) => ({
           subject: subject.subject,
@@ -81,7 +87,15 @@ export const fetchClassTeacherReport = async (
         total_marks: transformMarks(student.total_marks),
         average_marks: transformMarks(student.average_marks),
         rank: student.rank
-      }))
+      })) || [],
+      yearly_subject_averages: response.data.yearly_subject_averages?.map((yearData: any) => ({
+        year: yearData.year,
+        subjects: yearData.subjects.map((subject: any) => ({
+          subject: subject.subject,
+          average_marks: transformMarks(subject.average_marks),
+          percentage: transformMarks(subject.percentage)
+        }))
+      })) || []
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {

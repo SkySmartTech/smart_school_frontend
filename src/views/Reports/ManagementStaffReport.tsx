@@ -47,7 +47,7 @@ import {
 } from "../../api/managementStaffApi";
 
 const years = ["2023", "2024", "2025"];
-const grades = ["10","11", "12"];
+const grades = ["10", "11", "12"];
 const exams = ["First", "Second", "Third", "All"];
 const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
@@ -105,7 +105,6 @@ const ManagementStaff: React.FC = () => {
       }
       return failureCount < 2;
     },
-
   });
 
   useEffect(() => {
@@ -118,8 +117,6 @@ const ManagementStaff: React.FC = () => {
       });
     }
   }, [isError, error]);
-
-
 
   const handleCloseSnackbar = () =>
     setSnackbar((prev) => ({ ...prev, open: false }));
@@ -300,7 +297,7 @@ const ManagementStaff: React.FC = () => {
               <Typography variant="h6" fontWeight={600} mb={2}>
                 Subject Distribution
               </Typography>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={350}>
                 {isLoading ? (
                   <Box
                     sx={{
@@ -350,7 +347,7 @@ const ManagementStaff: React.FC = () => {
               <Typography variant="h6" fontWeight={600} mb={2}>
                 Class Performance
               </Typography>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={350}>
                 {isLoading ? (
                   <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 250 }}>
                     <CircularProgress />
@@ -453,7 +450,7 @@ const ManagementStaff: React.FC = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={11} align="center">
                         <CircularProgress size={24} />
                       </TableCell>
                     </TableRow>
@@ -481,7 +478,6 @@ const ManagementStaff: React.FC = () => {
                             (row.ict || 0) +
                             (row.sinhala || 0) +
                             (row.tamil || 0) 
-                           
                           ).toFixed(1)}
                         </TableCell>
                         <TableCell align="right">
@@ -490,18 +486,17 @@ const ManagementStaff: React.FC = () => {
                               (row.arts || 0) +
                               (row.mathematics || 0) +
                               (row.history || 0) +
-                              (row.science || 0))+
+                              (row.science || 0) +
                               (row.ict || 0) +
-                            (row.sinhala || 0) +
-                            (row.tamil || 0)  /
-                            4
+                              (row.sinhala || 0) +
+                              (row.tamil || 0)) / 8
                           ).toFixed(1)}
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={11} align="center">
                         <Typography variant="body2" color="text.secondary">
                           No data available for the selected criteria
                         </Typography>

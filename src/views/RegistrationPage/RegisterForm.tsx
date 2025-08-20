@@ -7,7 +7,7 @@ import {
   CircularProgress,
   IconButton,
   InputAdornment,
-  // Avatar,
+  Avatar,
   Stepper,
   Step,
   StepLabel
@@ -23,7 +23,7 @@ import {
   Work,
   Home,
   Cake,
-  // CloudUpload,
+  CloudUpload,
   AssignmentInd,
   School,
   Class,
@@ -35,21 +35,21 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser, registerStudent, registerTeacher, registerParent } from "../../api/userApi";
 import type { User } from "../../api/userApi";
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-// import { styled } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 
-// const VisuallyHiddenInput = styled('input')({
-//   clip: 'rect(0 0 0 0)',
-//   clipPath: 'inset(50%)',
-//   height: 1,
-//   overflow: 'hidden',
-//   position: 'absolute',
-//   bottom: 0,
-//   left: 0,
-//   whiteSpace: 'nowrap',
-//   width: 1,
-// });
+const VisuallyHiddenInput = styled('input')({
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
 
 const gender = ["Male", "Female"];
 const roles = ["Teacher", "Student", "Parent"];
@@ -93,10 +93,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
-  // const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [registeredUser, setRegisteredUser] = useState<{ userId: number; userType: string } | null>(null);
-  // const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -277,13 +277,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     }
   };
 
-  // const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (event.target.files && event.target.files.length > 0) {
-  //     const file = event.target.files[0];
-  //     setValue("photo", event.target.files);
-  //     setPreviewImage(URL.createObjectURL(file));
-  //   }
-  // };
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
+      setValue("photo", event.target.files);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+  };
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -595,7 +595,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   }}
                 />
                 {/* Image Upload */}
-                {/* <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Button
                     component="label"
                     variant="outlined"
@@ -624,7 +624,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       sx={{ width: 100, height: 100, mt: 2 }}
                     />
                   )}
-                </Box> */}
+                </Box>
               </Stack>
             </motion.div>
 
