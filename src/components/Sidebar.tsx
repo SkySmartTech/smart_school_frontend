@@ -69,9 +69,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "Dashboard",
       icon: <Layers fontSize="small" />,
       children: [
-        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/studentdashboard" },
-        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherdashboard" },
-        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/commondashboard" },
+        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
+        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
+        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
       ],
     },
     {
