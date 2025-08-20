@@ -16,6 +16,7 @@ export interface StudentMark {
   subject: string;
   term: string;
   marks: string;
+  student_grade_value?: string;
   month?: string;
 }
 
@@ -33,21 +34,23 @@ export interface DropdownOption {
   value: string;
 }
 
+export interface AdmissionData {
+  id: number;
+  student_admission: string;
+  student_name: string;
+}
+
 // ==========================
 // Auth Helpers
 // ==========================
 
-// Enhanced auth header function with better error handling
 const getAuthHeader = () => {
   const token = localStorage.getItem('authToken') || localStorage.getItem('token') || localStorage.getItem('access_token');
 
   if (!token) {
     console.error('No authentication token found in localStorage');
-    // Check if user needs to login again
     throw new Error('Authentication token not found. Please login again.');
   }
-
-  console.log('Token found:', token ? 'Yes' : 'No'); // Debug log
 
   return {
     headers: {
@@ -63,7 +66,14 @@ const getAuthHeader = () => {
 // ==========================
 
 const handleApiError = (error: any, operation: string) => {
-  console.error(`Error in ${operation}:`, error);
+  // Safely log the error without causing conversion issues
+  if (error instanceof Error) {
+    console.error(`Error in ${operation}:`, error.message);
+  } else if (typeof error === 'object' && error !== null) {
+    console.error(`Error in ${operation}:`, JSON.stringify(error));
+  } else {
+    console.error(`Error in ${operation}:`, String(error));
+  }
 
   if (error.response) {
     const { status, data } = error.response;
@@ -113,7 +123,34 @@ export async function fetchStudentMarks(filters: FetchMarksFilters): Promise<Stu
 
 export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]): Promise<void> {
   try {
-    await axios.post(`${API_BASE_URL}/api/marks/update`, marksToSubmit, getAuthHeader());
+    // Transform the data to match the expected format
+    const formattedMarks = marksToSubmit.map(mark => ({
+      studentAdmissionNo: mark.student_admission?.trim(),
+      studentName: mark.student_name?.trim() || '', // Required field
+      studentGrade: mark.student_grade?.trim() || '',
+      studentClass: mark.student_class?.trim() || '',
+      term: mark.term?.trim() || '', // Now using full term names
+      month: mark.month?.trim() || 'Not Applicable',
+      subject: mark.subject?.toLowerCase().trim() || '',
+      medium: "English",
+      marks: parseInt(mark.marks || "0"),
+      marksGrade: mark.student_grade_value?.trim() || 'N/A'
+    }));
+
+    // Validate required fields before submission
+    const isValid = formattedMarks.every(mark => 
+      mark.studentName && 
+      mark.month && 
+      mark.marksGrade
+    );
+
+    if (!isValid) {
+      throw new Error("Missing required fields in marks submission");
+    }
+
+    await axios.post(`${API_BASE_URL}/api/add-marks`, {
+      marks: formattedMarks
+    }, getAuthHeader());
   } catch (error) {
     handleApiError(error, "submitStudentMarks");
   }
@@ -122,11 +159,20 @@ export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]):
 export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
   try {
     const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
+    
     return Array.isArray(res.data)
-      ? res.data.map((item: any) => ({
-          label: item.grade ? `Grade ${item.grade}` : item.name || "Unknown Grade",
-          value: item.grade || item.id || "",
-        }))
+      ? res.data.map((item: any) => {
+          // Extract the grade value - it could be in different fields
+          const gradeValue = item.grade || item.id || item.value || item.name || "";
+          
+          // Create the label with "Grade" prefix
+          const gradeLabel = gradeValue ? ` ${gradeValue}` : "Unknown Grade";
+          
+          return {
+            label: gradeLabel,
+            value: gradeValue.toString(), // Ensure value is a string
+          };
+        })
       : [];
   } catch (error) {
     handleApiError(error, "fetchGradesFromApi");
@@ -150,6 +196,47 @@ export async function fetchClassesFromApi(grade?: string): Promise<DropdownOptio
   } catch (error) {
     handleApiError(error, "fetchClassesFromApi");
     return [];
+  }
+}
+
+// New function to fetch admission data
+export async function fetchAdmissionData(grade: string, classValue: string, keyword?: string): Promise<AdmissionData[]> {
+  try {
+    const params: any = {};
+    if (keyword) {
+      params.keyword = keyword;
+    }
+    
+    const res = await axios.get(
+      `${API_BASE_URL}/api/search-admission-data/${encodeURIComponent(grade)}/${encodeURIComponent(classValue)}`, 
+      {
+        ...getAuthHeader(),
+        params
+      }
+    );
+    
+    // Transform the API response to match our expected format
+    return Array.isArray(res.data) 
+      ? res.data.map((item: any, index: number) => ({
+          id: index + 1,
+          student_admission: item.studentAdmissionNo || item.admissionNo || '',
+          student_name: item.name || item.studentName || '',
+        }))
+      : [];
+  } catch (error) {
+    handleApiError(error, "fetchAdmissionData");
+    return [];
+  }
+}
+
+// New function to calculate grade
+export async function calculateGrade(marks: string): Promise<string> {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/calculate-grade/${marks}`, getAuthHeader());
+    return res.data.grade || "N/A";
+  } catch (error) {
+    handleApiError(error, "calculateGrade");
+    return "Error";
   }
 }
 

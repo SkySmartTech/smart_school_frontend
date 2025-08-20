@@ -8,6 +8,7 @@ import HelpPage from "./views/HelpPage";
 import TeacherDashboard from "./views/Dashboard/TeacherDashboard";
 import CommonDashboard from "./views/Dashboard/CommonDashboard";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
+import Sample from "./views/Sample";
 // import StudentDashboard from "./views/Dashboard/StudentDashboard";
 
 
@@ -95,6 +96,7 @@ function AppRoutes() {
         <Route path="/teacherReport" element={<ClassTeacherReport />} />
         <Route path="/userManagement" element={<UserManagement />} />
         <Route path="/help" element={<HelpPage />} />
+         <Route path="/sample" element={<Sample />} />
         {/* 
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />
