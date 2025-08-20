@@ -319,15 +319,15 @@ const TeacherDashboard: React.FC = () => {
     }, [selectedGrade, selectedClass, searchQuery]);
 
     const columns: GridColDef<StudentMark>[] = [
-        { field: 'student_admission', headerName: 'Admission No', width: 130, editable: false },
-        { field: 'student_name', headerName: 'Student Name', width: 200, editable: false },
-         { field: 'student_class', headerName: 'Class', width: 100, editable: false },
+        { field: 'student_admission', headerName: 'Admission No', width: 200, editable: false },
+        { field: 'student_name', headerName: 'Student Name', width: 400, editable: false },
+         { field: 'student_class', headerName: 'Class', width: 150, editable: false },
         { field: 'subject', headerName: 'Subject', width: 150, editable: false },
-        { field: 'term', headerName: 'Term', width: 100, editable: false },
+        { field: 'term', headerName: 'Term', width: 130, editable: false },
         {
             field: 'marks',
             headerName: 'Marks',
-            width: 100,
+            width: 140,
             editable: true,
             renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
                 <TextField
@@ -352,7 +352,7 @@ const TeacherDashboard: React.FC = () => {
                 />
             ),
         },
-        { field: 'student_grade_value', headerName: 'Marks Grade', width: 100, editable: false },
+        { field: 'student_grade_value', headerName: 'Marks Grade', editable: false },
        
     ];
 
