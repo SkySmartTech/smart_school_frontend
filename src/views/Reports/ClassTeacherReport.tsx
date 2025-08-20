@@ -5,22 +5,25 @@ import {
   Snackbar, Alert
 } from "@mui/material";
 import { DateRange, School, CalendarMonth, Group } from "@mui/icons-material";
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  Tooltip as ReTooltip, Legend, ResponsiveContainer, CartesianGrid
+} from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { fetchClassTeacherReport } from "../../api/classteacherApi";
-import { format } from 'date-fns';
+import { format } from "date-fns";
+import Footer from "../../components/Footer";
 
 const grades = ["1", "2", "3", "4", "11"];
 const classes = ["Olu", "Araliya", "Nelum"];
 const exams = ["1st Term", "2nd Term", "3rd Term", "First"];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
-const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
+const BAR_COLORS = ["#E3B6E5", "#C5A6D9", "#A795CD", "#8A85C1", "#6D74B5", "#5163A9", "#34529C"];
 
 interface StudentSubjectMark {
   subject: string;
@@ -41,9 +44,15 @@ interface SubjectMark {
   percentage: number;
 }
 
+interface YearlySubjectAverage {
+  year: number;
+  subjects: SubjectMark[];
+}
+
 interface ClassTeacherReportData {
   subject_marks: SubjectMark[];
   student_marks: StudentMark[];
+  yearly_subject_averages: YearlySubjectAverage[];
 }
 
 const ClassTeacherReport: React.FC = () => {
@@ -60,16 +69,20 @@ const ClassTeacherReport: React.FC = () => {
     message: string;
     severity: "success" | "info" | "warning" | "error";
   };
-  const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '', severity: 'info' });
+  const [snackbar, setSnackbar] = useState<SnackbarState>({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   const { data, isLoading, isError, error } = useQuery<ClassTeacherReportData, Error>({
     queryKey: ["class-teacher-report", startDate, endDate, grade, className, exam],
     queryFn: () => {
-      const formattedStartDate = startDate ? format(startDate, 'yyyy-MM-dd') : '';
-      const formattedEndDate = endDate ? format(endDate, 'yyyy-MM-dd') : '';
+      const formattedStartDate = startDate ? format(startDate, "yyyy-MM-dd") : "";
+      const formattedEndDate = endDate ? format(endDate, "yyyy-MM-dd") : "";
       return fetchClassTeacherReport(formattedStartDate, formattedEndDate, grade, className, exam);
     },
-    retry: 1
+    retry: 1,
   });
 
   useEffect(() => {
@@ -78,33 +91,48 @@ const ClassTeacherReport: React.FC = () => {
     }
   }, [isError, error]);
 
-  const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
+  const handleCloseSnackbar = () => setSnackbar((prev) => ({ ...prev, open: false }));
 
   const handleStartDateChange = (newValue: Date | null) => {
     setStartDate(newValue || undefined);
+    // keep end date valid
+    if (newValue && endDate && endDate < newValue) {
+      setEndDate(newValue);
+    }
   };
 
   const handleEndDateChange = (newValue: Date | null) => {
     setEndDate(newValue || undefined);
   };
 
-  const getStackedBarData = () => {
-    if (!data?.student_marks || !data?.subject_marks) return [];
 
-    return data.student_marks.map(student => {
-      const studentData: Record<string, number | string> = {
-        name: student.studentName
-      };
+  // Prepare data for yearly subject averages chart
+  const getYearlySubjectAveragesData = () => {
+    if (!data?.yearly_subject_averages) return [];
+    
+    // First, get all unique subjects across all years
+    const allSubjects = new Set<string>();
+    data.yearly_subject_averages.forEach(yearData => {
+      yearData.subjects.forEach(subject => {
+        allSubjects.add(subject.subject);
+      });
+    });
 
-      data.subject_marks.forEach(subject => {
-        const subjectMark = student.subjects.find(s => s.subject === subject.subject);
-        studentData[subject.subject] = subjectMark ? subjectMark.marks : 0;
+    // Then transform the data into the format Recharts expects
+    return data.yearly_subject_averages.map(yearData => {
+      const yearEntry: any = { year: yearData.year.toString() };
+      
+      // Initialize all subjects to 0
+      allSubjects.forEach(subject => {
+        yearEntry[subject] = 0;
       });
 
-      studentData['total'] = student.total_marks;
-      studentData['average'] = student.average_marks;
+      // Fill in the actual values
+      yearData.subjects.forEach(subject => {
+        yearEntry[subject.subject] = subject.percentage;
+      });
 
-      return studentData;
+      return yearEntry;
     });
   };
 
@@ -113,85 +141,98 @@ const ClassTeacherReport: React.FC = () => {
       <CssBaseline />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       <Box sx={{ flexGrow: 1 }}>
-        <AppBar position="static" sx={{
-          boxShadow: "none", bgcolor: theme.palette.background.paper,
-          borderBottom: `1px solid ${theme.palette.divider}`,
-          color: theme.palette.text.primary
-        }}>
-          <Navbar title="Class Teacher Report" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <AppBar
+          position="static"
+          sx={{
+            boxShadow: "none",
+            bgcolor: theme.palette.background.paper,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            color: theme.palette.text.primary,
+          }}
+        >
+          <Navbar
+            title="Class Teacher Report"
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
         </AppBar>
 
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <Stack spacing={3} sx={{ px: 4, py: 3 }}>
             <Paper elevation={1} sx={{ p: 2 }}>
               <Stack direction="row" spacing={3} flexWrap="wrap" justifyContent="space-between">
+                {/* Start Date */}
                 <DatePicker
                   label="Start Date"
                   value={startDate || null}
                   onChange={handleStartDateChange}
-                  slots={{
-                    textField: (params: any) => (
-                      <TextField
-                        {...params}
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <DateRange />
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={{
-                          minWidth: 150,
-                          flex: 1,
-                          maxWidth: 250,
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: "10px",
-                            height: "45px",
-                          },
-                        }}
-                      />
-                    )
+                  enableAccessibleFieldDOMStructure={false}
+                  slots={{ textField: TextField }}
+                  slotProps={{
+                    textField: {
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DateRange />
+                          </InputAdornment>
+                        ),
+                      },
+                      sx: {
+                        minWidth: 150,
+                        flex: 1,
+                        maxWidth: 250,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "10px",
+                          height: "45px",
+                        },
+                      },
+                    },
                   }}
                 />
 
+                {/* End Date */}
                 <DatePicker
                   label="End Date"
                   value={endDate || null}
                   onChange={handleEndDateChange}
-                  minDate={startDate}
-                  slots={{
-                    textField: (params: any) => (
-                      <TextField
-                        {...params}
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <DateRange />
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={{
-                          minWidth: 150,
-                          flex: 1,
-                          maxWidth: 250,
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: "10px",
-                            height: "45px",
-                          },
-                        }}
-                      />
-                    )
+                  minDate={startDate || undefined}
+                  enableAccessibleFieldDOMStructure={false}
+                  slots={{ textField: TextField }}
+                  slotProps={{
+                    textField: {
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DateRange />
+                          </InputAdornment>
+                        ),
+                      },
+                      sx: {
+                        minWidth: 150,
+                        flex: 1,
+                        maxWidth: 250,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "10px",
+                          height: "45px",
+                        },
+                      },
+                    },
                   }}
                 />
 
+                {/* Grade */}
                 <TextField
                   select
                   label="Student Grade"
                   value={grade}
-                  onChange={e => setGrade(e.target.value)}
-                  InputProps={{ startAdornment: (<InputAdornment position="start"><School /></InputAdornment>) }}
+                  onChange={(e) => setGrade(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <School />
+                      </InputAdornment>
+                    ),
+                  }}
                   sx={{
                     minWidth: 150,
                     flex: 1,
@@ -202,15 +243,26 @@ const ClassTeacherReport: React.FC = () => {
                     },
                   }}
                 >
-                  {grades.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+                  {grades.map((g) => (
+                    <MenuItem key={g} value={g}>
+                      {g}
+                    </MenuItem>
+                  ))}
                 </TextField>
 
+                {/* Class */}
                 <TextField
                   select
                   label="Class"
                   value={className}
-                  onChange={e => setClassName(e.target.value)}
-                  InputProps={{ startAdornment: (<InputAdornment position="start"><Group /></InputAdornment>) }}
+                  onChange={(e) => setClassName(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Group />
+                      </InputAdornment>
+                    ),
+                  }}
                   sx={{
                     minWidth: 150,
                     flex: 1,
@@ -221,15 +273,26 @@ const ClassTeacherReport: React.FC = () => {
                     },
                   }}
                 >
-                  {classes.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                  {classes.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
                 </TextField>
 
+                {/* Exam */}
                 <TextField
                   select
                   label="Exam"
                   value={exam}
-                  onChange={e => setExam(e.target.value)}
-                  InputProps={{ startAdornment: (<InputAdornment position="start"><CalendarMonth /></InputAdornment>) }}
+                  onChange={(e) => setExam(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarMonth />
+                      </InputAdornment>
+                    ),
+                  }}
                   sx={{
                     minWidth: 150,
                     flex: 1,
@@ -240,31 +303,41 @@ const ClassTeacherReport: React.FC = () => {
                     },
                   }}
                 >
-                  {exams.map(e => <MenuItem key={e} value={e}>{e}</MenuItem>)}
+                  {exams.map((ex) => (
+                    <MenuItem key={ex} value={ex}>
+                      {ex}
+                    </MenuItem>
+                  ))}
                 </TextField>
               </Stack>
             </Paper>
 
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
+            <Stack direction={{ xs: "column", md: "row" }} spacing={3} flexWrap="wrap">
               <Paper sx={{ p: 3, flex: 1 }}>
-                <Typography fontWeight={600} mb={2}>Subject Wise Marks</Typography>
+                <Typography fontWeight={600} mb={2}>
+                  Subject Wise Marks
+                </Typography>
                 <ResponsiveContainer width="100%" height={350}>
                   {isLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                    <Box
+                      sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 250 }}
+                    >
                       <CircularProgress />
                     </Box>
                   ) : (
                     <PieChart>
                       <Pie
-                        data={data?.subject_marks.map(sm => ({
+                        data={(data?.subject_marks || []).map((sm) => ({
                           name: sm.subject,
-                          value: sm.average_marks
+                          value: sm.average_marks,
                         }))}
                         dataKey="value"
                         outerRadius={80}
-                        label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                        label={({ name, percent }) =>
+                          `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`
+                        }
                       >
-                        {data?.subject_marks.map((_, idx) => (
+                        {(data?.subject_marks || []).map((_, idx) => (
                           <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
                         ))}
                       </Pie>
@@ -277,97 +350,88 @@ const ClassTeacherReport: React.FC = () => {
                   )}
                 </ResponsiveContainer>
               </Paper>
+
               <Paper sx={{ p: 3, flex: 2 }}>
-              <Typography fontWeight={600} mb={2}>Overall Subjects</Typography>
-              <ResponsiveContainer width="100%" height={350}>
-                {isLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 350 }}>
-                    <CircularProgress />
-                  </Box>
+                <Typography fontWeight={600} mb={2}>
+                  Yearly Subject Averages
+                </Typography>
+                <ResponsiveContainer width="100%" height={350}>
+                  {isLoading ? (
+                    <Box
+                      sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 350 }}
+                    >
+                      <CircularProgress />
+                    </Box>
                   ) : (
-                    <BarChart
-                      data={getStackedBarData()}
+                    <BarChart 
+                      data={getYearlySubjectAveragesData()} 
                       margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="name"
-                        angle={-25}
-                        textAnchor="end"
-                        height={70}
-                        tick={{ fontSize: 12 }}
+                      <XAxis 
+                        dataKey="year"
+                        label={{ value: 'Year', position: 'insideBottomRight', offset: -10 }}
                       />
-                      <YAxis domain={[0, 100]} />
-                      <ReTooltip />
-                      <Legend
-                        layout="horizontal"
-                        verticalAlign="bottom"
-                        wrapperStyle={{ paddingTop: 20 }}
+                      <YAxis 
+                        label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
+                        domain={[0, 100]}
                       />
-                      {data?.subject_marks.map((subject, index) => (
+                      <ReTooltip 
+                        formatter={(value: number) => [`${value}%`, "Percentage"]}
+                        labelFormatter={(label) => `Year: ${label}`}
+                      />
+                      <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ paddingTop: 20 }} />
+                      {Array.from(new Set(data?.yearly_subject_averages.flatMap(y => y.subjects.map(s => s.subject)) || [])).map((subject, index) => (
                         <Bar
-                          key={subject.subject}
-                          dataKey={subject.subject}
+                          key={subject}
+                          dataKey={subject}
                           stackId="a"
                           fill={BAR_COLORS[index % BAR_COLORS.length]}
-                          name={subject.subject}
+                          name={subject}
                         />
                       ))}
                     </BarChart>
                   )}
                 </ResponsiveContainer>
               </Paper>
-
             </Stack>
 
             <Paper sx={{ p: 3, flex: 2 }}>
-              <Typography fontWeight={600} mb={2}>Student Averages</Typography>
+              <Typography fontWeight={600} mb={2}>
+                Student Averages
+              </Typography>
               <ResponsiveContainer width="100%" height={350}>
                 {isLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 350 }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 350 }}
+                  >
                     <CircularProgress />
                   </Box>
                 ) : (
-                  <BarChart
-                    data={data?.student_marks}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
-                  >
+                  <BarChart data={data?.student_marks || []} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
                     <XAxis
                       dataKey="studentName"
                       tick={
                         {
                           angle: -45,
-                          textAnchor: 'end',
-                          fontSize: 12
+                          textAnchor: "end",
+                          fontSize: 12,
                         } as any
                       }
                       height={70}
                     />
                     <YAxis
                       domain={[0, 100]}
-                      label={{
-                        value: 'Average Marks',
-                        angle: -90,
-                        position: 'insideLeft',
-                        offset: 10
-                      }}
+                      label={{ value: "Average Marks", angle: -90, position: "insideLeft", offset: 10 }}
                     />
                     <ReTooltip
                       formatter={(value: number) => [`${value}%`, "Average"]}
                       labelFormatter={(label) => `Student: ${label}`}
                     />
                     <Legend />
-                    <Bar
-                      dataKey="average_marks"
-                      name="Average Marks"
-                      fill="#4285F4"
-                      radius={[4, 4, 0, 0]}
-                    >
-                      {data?.student_marks.map((_student, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={BAR_COLORS[index % BAR_COLORS.length]}
-                        />
+                    <Bar dataKey="average_marks" name="Average Marks" fill="#4285F4" radius={[4, 4, 0, 0]}>
+                      {(data?.student_marks || []).map((_student, index) => (
+                        <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -375,23 +439,29 @@ const ClassTeacherReport: React.FC = () => {
               </ResponsiveContainer>
             </Paper>
 
-
-
-            <Paper elevation={2} sx={{ p: 2, overflow: 'auto' }}>
-              <Typography variant="h6" fontWeight={600} mb={2}>Detailed Marks Breakdown</Typography>
+            <Paper elevation={2} sx={{ p: 2, overflow: "auto" }}>
+              <Typography variant="h6" fontWeight={600} mb={2}>
+                Detailed Marks Breakdown
+              </Typography>
               <TableContainer>
                 <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Student Name</TableCell>
-                      {data?.subject_marks.map((subject) => (
-                        <TableCell key={subject.subject} align="right" sx={{ fontWeight: 'bold' }}>
+                      <TableCell sx={{ fontWeight: "bold" }}>Student Name</TableCell>
+                      {(data?.subject_marks || []).map((subject) => (
+                        <TableCell key={subject.subject} align="right" sx={{ fontWeight: "bold" }}>
                           {subject.subject}
                         </TableCell>
                       ))}
-                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>Total</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>Average</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>Rank</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                        Total
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                        Average
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                        Rank
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -401,15 +471,23 @@ const ClassTeacherReport: React.FC = () => {
                           <CircularProgress size={24} />
                         </TableCell>
                       </TableRow>
+                    ) : (data?.student_marks || []).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          <Typography variant="body2" color="text.secondary">
+                            {isError ? "Failed to load data." : "No records found for the selected filters."}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
                     ) : (
-                      data?.student_marks.map((student) => (
+                      (data?.student_marks || []).map((student) => (
                         <TableRow key={student.studentName} hover>
-                          <TableCell sx={{ fontWeight: 'bold' }}>{student.studentName}</TableCell>
-                          {data.subject_marks.map((subject) => {
-                            const subjectMark = student.subjects.find(s => s.subject === subject.subject);
+                          <TableCell sx={{ fontWeight: "bold" }}>{student.studentName}</TableCell>
+                          {(data?.subject_marks || []).map((subject) => {
+                            const subjectMark = student.subjects.find((s) => s.subject === subject.subject);
                             return (
                               <TableCell key={`${student.studentName}-${subject.subject}`} align="right">
-                                {subjectMark ? subjectMark.marks : '-'}
+                                {subjectMark ? subjectMark.marks : "-"}
                               </TableCell>
                             );
                           })}
@@ -425,11 +503,12 @@ const ClassTeacherReport: React.FC = () => {
             </Paper>
           </Stack>
         </LocalizationProvider>
+
         <Footer />
       </Box>
 
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

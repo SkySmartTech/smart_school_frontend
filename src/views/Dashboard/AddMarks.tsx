@@ -15,7 +15,8 @@ import {
     Alert,
     Box,
     InputAdornment,
-    MenuItem
+    MenuItem,
+    Autocomplete
 } from '@mui/material';
 
 import { DataGrid } from '@mui/x-data-grid';
@@ -23,20 +24,22 @@ import type {
     GridColDef,
     GridRenderCellParams,
     GridRowId,
+    GridCellParams,
 } from '@mui/x-data-grid';
 
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 
 import {
+    fetchStudentMarks,
     submitStudentMarks,
     fetchGradesFromApi,
     fetchClassesFromApi,
-    fetchAdmissionData,
-    calculateGrade,
     type StudentMark,
+    // getAuthToken // ⬅️ Remove this line to fix the warning
 } from '../../api/addmarksApi';
 
+import SchoolIcon from '@mui/icons-material/School';
 import ClassIcon from '@mui/icons-material/Class';
 import SubjectIcon from '@mui/icons-material/Subject';
 import EventIcon from '@mui/icons-material/Event';
@@ -52,10 +55,10 @@ const subjectOptions = [
 ];
 
 const examOptions = [
-    { label: 'First Term', value: 'First' },
-    { label: 'Second Term', value: 'Mid' },
-    { label: 'Third Term', value: 'End' },
-    { label: 'Monthly Test', value: 'Monthly' },
+    { label: '1st Term', value: '1st' },
+    { label: '2nd Term', value: '2nd' },
+    { label: '3rd Term', value: '3rd' },
+    { label: 'Monthly', value: 'monthly' },
 ];
 
 const monthOptions = [
@@ -76,26 +79,13 @@ interface FilterFormData {
     searchQuery: string;
 }
 
-interface AdmissionData {
-    id: number;
-    student_admission: string;
-    student_name: string;
-}
-
 const TeacherDashboard: React.FC = () => {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
-    const [classOptions, setClassOptions] = useState<{ label: string; value: string }[]>([]);
-    const [students, setStudents] = useState<StudentMark[]>([]);
-    const [admissionData, setAdmissionData] = useState<AdmissionData[]>([]);
-    const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<StudentMark>>>({});
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [snackbarMessage, setSnackbarMessage] = useState('');
-    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+    const [hovered] = useState(false);
     const theme = useTheme();
 
-    const { control, watch, reset } = useForm<FilterFormData>({
+    const { control, watch, reset, formState: { errors } } = useForm<FilterFormData>({
         defaultValues: {
             selectedGrade: '',
             selectedClass: '',
@@ -108,17 +98,64 @@ const TeacherDashboard: React.FC = () => {
 
     const formValues = watch();
     const { selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, searchQuery } = formValues;
+
+    const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
+    const [classOptions, setClassOptions] = useState<{ label: string; value: string }[]>([]);
+
+    const [students, setStudents] = useState<StudentMark[]>([]);
+    const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<StudentMark>>>({});
+
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+
     const isMonthFilterEnabled = selectedExam === 'monthly';
 
-    // Fetch dropdown options
+    const fetchData = useCallback(async () => {
+        // ⬅️ FIX: Removed token from arguments and variable declaration.
+        if (!selectedGrade || !selectedClass || !selectedSubject || !selectedExam) {
+            console.log('Required filters not selected. Skipping data fetch.');
+            setLoading(false);
+            setStudents([]); 
+            return;
+        }
+        setLoading(true);
+        setStudents([]);
+        setModifiedMarks({});
+        try {
+            const data = await fetchStudentMarks({
+                grade: selectedGrade,
+                class: selectedClass,
+                subject: selectedSubject,
+                term: selectedExam,
+                month: isMonthFilterEnabled ? selectedMonth : '',
+                searchQuery: searchQuery,
+            });
+            setStudents(data);
+            setSnackbarMessage('Student marks loaded successfully.');
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
+        } catch (error) {
+            console.error('Failed to fetch student marks:', error);
+            setSnackbarMessage(`Failed to load student marks: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, searchQuery, isMonthFilterEnabled]);
+
     const fetchOptions = useCallback(async () => {
         setLoading(true);
         try {
             const grades = await fetchGradesFromApi();
             setGradeOptions(grades);
-
+            
             const classes = await fetchClassesFromApi(selectedGrade);
             setClassOptions(classes);
+            
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
         } catch (error) {
             console.error("Failed to fetch dropdown options:", error);
             setSnackbarMessage(`Failed to load dropdown options: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
@@ -129,142 +166,40 @@ const TeacherDashboard: React.FC = () => {
         }
     }, [selectedGrade]);
 
-    // Fetch admission data when grade and class are selected
-    const fetchAdmissionDataHandler = useCallback(async () => {
-        if (!selectedGrade || !selectedClass) {
-            setAdmissionData([]);
-            setStudents([]);
-            return;
-        }
-        
-        try {
-            setLoading(true);
-            const data = await fetchAdmissionData(selectedGrade, selectedClass, searchQuery);
-            setAdmissionData(data);
-            
-            // Initialize students with admission data
-            const initialStudents: StudentMark[] = data.map((item, index) => ({
-                id: index + 1,
-                student_admission: item.student_admission,
-                student_name: item.student_name,
-                student_grade: selectedGrade,
-                student_class: selectedClass,
-                subject: selectedSubject || '',
-                term: selectedExam || '',
-                marks: '',
-                student_grade_value: '',
-                month: isMonthFilterEnabled ? selectedMonth : undefined
-            }));
-            
-            setStudents(initialStudents);
-            setModifiedMarks({});
-        } catch (error) {
-            console.error('Failed to fetch admission data:', error);
-            setSnackbarMessage(`Failed to load admission data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
-            setSnackbarSeverity('error');
-            setSnackbarOpen(true);
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled, searchQuery]);
-
-    // Update students when subject or term changes
     useEffect(() => {
-        if (admissionData.length > 0) {
-            const updatedStudents = admissionData.map((item, index) => {
-                // Find the existing student to preserve marks
-                const existingStudent = students.find(s => s.student_admission === item.student_admission);
-                
-                return {
-                    id: index + 1,
-                    student_admission: item.student_admission,
-                    student_name: item.student_name,
-                    student_grade: selectedGrade,
-                    student_class: selectedClass,
-                    subject: selectedSubject || '',
-                    term: selectedExam || '',
-                    marks: existingStudent?.marks || '',
-                    student_grade_value: existingStudent?.student_grade_value || '',
-                    month: isMonthFilterEnabled ? selectedMonth : undefined
-                };
-            });
-            setStudents(updatedStudents);
-        }
-    }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled]);
+        fetchOptions();
+    }, [fetchOptions]);
 
-    // Handle marks change and calculate grade
-    const handleMarksChange = useCallback(async (id: GridRowId, value: string) => {
-        // Validate marks input (only numbers, max 3 digits)
-        if (value !== '' && !/^\d{0,3}$/.test(value)) {
-            return;
-        }
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
-        let grade = '';
-        if (value) {
-            try {
-                grade = await calculateGrade(value);
-            } catch (error) {
-                console.error('Failed to calculate grade:', error);
-                grade = 'Error';
-            }
-        }
-
-        setStudents(prevStudents =>
-            prevStudents.map(student =>
-                student.id === id 
-                    ? { ...student, marks: value, student_grade_value: grade } 
-                    : student
+    const handleMarksChange = (id: GridRowId, field: keyof StudentMark, value: any) => {
+        setStudents((prevStudents) =>
+            prevStudents.map((student) =>
+                student.id === id ? { ...student, [field]: value } : student
             )
         );
-
-        setModifiedMarks(prevModified => ({
+        setModifiedMarks((prevModified) => ({
             ...prevModified,
-            [id]: { 
-                ...prevModified[id], 
-                marks: value, 
-                student_grade_value: grade,
-                student_admission: students.find(s => s.id === id)?.student_admission || ''
-            },
+            [id]: { ...prevModified[id], [field]: value },
         }));
-    }, [students]);
+    };
 
     const handleSubmitMarks = async () => {
         setLoading(true);
-        const marksToSubmit: Partial<StudentMark>[] = Object.entries(modifiedMarks)
-            .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '')
-            .map(([id, mark]) => {
-                // Find the corresponding student data
-                const student = students.find(s => s.id.toString() === id);
-                if (!student) {
-                    console.error(`Student not found for id ${id}`);
-                    return null;
-                }
-
-                // Map exam values to full terms
-                const getFullTerm = (term: string) => {
-                    switch(term) {
-                        case '1st': return 'First Term';
-                        case '2nd': return 'Second Term';
-                        case '3rd': return 'Third Term';
-                        case 'monthly': return 'Monthly Test';
-                        default: return term;
-                    }
-                };
-
-                return {
-                    id: parseInt(id as string),
-                    student_admission: mark.student_admission || student.student_admission,
-                    student_name: student.student_name,
-                    student_grade: selectedGrade,
-                    student_class: selectedClass,
-                    subject: selectedSubject,
-                    term: getFullTerm(selectedExam), // Convert to full term name
-                    month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable', // More explicit month value
-                    marks: mark.marks || '0',
-                    student_grade_value: mark.student_grade_value || 'N/A',
-                };
-            })
-            .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
+        const marksToSubmit: Partial<StudentMark>[] = students.filter(student =>
+            modifiedMarks[student.id] && modifiedMarks[student.id].marks !== undefined
+        ).map(student => ({
+            id: student.id,
+            marks: student.marks,
+            subject: student.subject,
+            term: student.term,
+            student_admission: student.student_admission,
+            student_grade: student.student_grade,
+            student_class: student.student_class,
+            ...(isMonthFilterEnabled && selectedMonth && { month: selectedMonth }),
+        }));
 
         if (marksToSubmit.length === 0) {
             setSnackbarMessage('No marks to submit.');
@@ -299,29 +234,11 @@ const TeacherDashboard: React.FC = () => {
 
     const handleClearFilters = () => {
         reset();
-        setAdmissionData([]);
-        setStudents([]);
-        setModifiedMarks({});
     };
-
-    // Fetch options on component mount
-    useEffect(() => {
-        fetchOptions();
-    }, []);
-
-    // Fetch admission data when filters change
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchAdmissionDataHandler();
-        }, 500);
-        
-        return () => clearTimeout(timer);
-    }, [selectedGrade, selectedClass, searchQuery]);
 
     const columns: GridColDef<StudentMark>[] = [
         { field: 'student_admission', headerName: 'Admission No', width: 130, editable: false },
         { field: 'student_name', headerName: 'Student Name', width: 200, editable: false },
-         { field: 'student_class', headerName: 'Class', width: 100, editable: false },
         { field: 'subject', headerName: 'Subject', width: 150, editable: false },
         { field: 'term', headerName: 'Term', width: 100, editable: false },
         {
@@ -329,18 +246,19 @@ const TeacherDashboard: React.FC = () => {
             headerName: 'Marks',
             width: 100,
             editable: true,
+            type: 'string',
             renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
                 <TextField
                     variant="outlined"
                     size="small"
-                    value={params.row.marks || ''}
+                    value={params.value || ''}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        handleMarksChange(params.row.id, e.target.value);
+                        const newValue = e.target.value;
+                        if (newValue === '' || /^\d{0,3}$/.test(newValue)) {
+                            handleMarksChange(params.id, 'marks', newValue);
+                        }
                     }}
-                    inputProps={{ 
-                        style: { textAlign: 'center', padding: '8px 10px' },
-                        maxLength: 3
-                    }}
+                    inputProps={{ style: { textAlign: 'center', padding: '8px 10px' } }}
                     sx={{
                         width: '100%',
                         '& .MuiOutlinedInput-root': {
@@ -351,15 +269,21 @@ const TeacherDashboard: React.FC = () => {
                     }}
                 />
             ),
+            valueFormatter: (params: GridCellParams<StudentMark, string>) => {
+                if (params.value === undefined || params.value === null) {
+                    return '';
+                }
+                return params.value === '0' || params.value === '' ? '' : params.value;
+            },
         },
-        { field: 'student_grade_value', headerName: 'Marks Grade', width: 100, editable: false },
-       
+        { field: 'student_grade', headerName: 'Marks Grade', width: 100, editable: false },
+        { field: 'student_class', headerName: 'Class', width: 100, editable: false },
     ];
 
     return (
-        <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
+        <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh" }}>
             <CssBaseline />
-            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+            <Sidebar open={sidebarOpen || hovered} setOpen={setSidebarOpen} />
             <Box sx={{ flexGrow: 1, overflowX: 'hidden' }}>
                 <AppBar position="static" sx={{
                     boxShadow: "none",
@@ -380,48 +304,47 @@ const TeacherDashboard: React.FC = () => {
                             direction={{ xs: 'column', md: 'row' }}
                             spacing={{ xs: 1, md: 2 }}
                             flexWrap="wrap"
-                            alignItems="center"
-                            justifyContent="space-between"
                             sx={{ mb: 2 }}
                         >
-                            
-                              <Controller
+                            <Controller
                                 control={control}
                                 name="selectedGrade"
                                 render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        select
-                                        label="Student Grade"
-                                        variant="outlined"
+                                    <Autocomplete
+                                        value={gradeOptions.find(option => option.value === field.value) || null}
+                                        onChange={(_event, newValue) => {
+                                            field.onChange(newValue ? newValue.value : '');
+                                        }}
+                                        size="small"
+                                        options={gradeOptions}
+                                        getOptionLabel={(option) => option.label}
                                         sx={{
-                                            minWidth: 150,
-                                            maxWidth: 250,
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
-                                                borderRadius: "10px",
-                                                height: "45px",
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
                                                 '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
                                             }
                                         }}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <ClassIcon fontSize="small" />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                    >
-                                        {gradeOptions.map((option) => (
-                                            <MenuItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </MenuItem>
-                                        ))}
-
-                                    </TextField>
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Student Grade"
+                                                variant="outlined"
+                                                error={!!errors.selectedGrade}
+                                                helperText={!!errors.selectedGrade && "Required"}
+                                                InputProps={{
+                                                    ...params.InputProps,
+                                                    startAdornment: (
+                                                        <InputAdornment position="start">
+                                                            <SchoolIcon fontSize="small" />
+                                                        </InputAdornment>
+                                                    ),
+                                                }}
+                                            />
+                                        )}
+                                    />
                                 )}
                             />
                             <Controller
@@ -434,12 +357,8 @@ const TeacherDashboard: React.FC = () => {
                                         label="Class"
                                         variant="outlined"
                                         sx={{
-                                            minWidth: 150,
-                                            maxWidth: 250,
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
-                                                borderRadius: "10px",
-                                                height: "45px",
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
@@ -459,10 +378,10 @@ const TeacherDashboard: React.FC = () => {
                                                 {option.label}
                                             </MenuItem>
                                         ))}
-
                                     </TextField>
                                 )}
                             />
+
                             <Controller
                                 control={control}
                                 name="selectedSubject"
@@ -474,11 +393,7 @@ const TeacherDashboard: React.FC = () => {
                                         variant="outlined"
                                         sx={{
                                             flex: '1 1 50px',
-                                            minWidth: 150,
-                                            maxWidth: 250,
                                             '& .MuiOutlinedInput-root': {
-                                                height: "45px",
-                                                borderRadius: '10px',
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
@@ -491,7 +406,6 @@ const TeacherDashboard: React.FC = () => {
                                                     <SubjectIcon fontSize="small" />
                                                 </InputAdornment>
                                             ),
-
                                         }}
                                     >
                                         {subjectOptions.map((option) => (
@@ -513,12 +427,8 @@ const TeacherDashboard: React.FC = () => {
                                         label="Exam"
                                         variant="outlined"
                                         sx={{
-                                             minWidth: 150,
-                                            maxWidth: 250,
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
-                                                height: "45px",
-                                                borderRadius: '10px',
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
@@ -553,12 +463,8 @@ const TeacherDashboard: React.FC = () => {
                                         variant="outlined"
                                         disabled={!isMonthFilterEnabled}
                                         sx={{
-                                             minWidth: 150,
-                                            maxWidth: 250,
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
-                                                    height: "45px",
-                                                    borderRadius: '10px',
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
@@ -599,11 +505,9 @@ const TeacherDashboard: React.FC = () => {
                                         variant="outlined"
                                         size="small"
                                         sx={{
-                                            minWidth: 150,
-                                            maxWidth: 250,
                                             flexGrow: 1,
                                             width: { xs: '100%', md: 'auto' },
-                                            
+                                            maxWidth: { xs: '100%', md: '500px' },
                                             '& .MuiOutlinedInput-root': {
                                                 borderRadius: '10px',
                                                 height: '45px',
