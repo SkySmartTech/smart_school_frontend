@@ -8,12 +8,11 @@ import HelpPage from "./views/HelpPage";
 import TeacherDashboard from "./views/Dashboard/TeacherDashboard";
 import CommonDashboard from "./views/Dashboard/CommonDashboard";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
+import UserAccessManagementSystem from "./views/UserAccessManagementSystem";
 // import StudentDashboard from "./views/Dashboard/StudentDashboard";
 
-
-
 // import { useCurrentUser } from "./hooks/useCurrentUser";
-// import UserAccessManagement from "./views/Dashboard/UserAccessManagement/UserAccessManagement";
+
 
 
 // Public pages
@@ -98,8 +97,8 @@ function AppRoutes() {
         {/* 
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/dayReport" element={<DayPlanReport />} />
-        <Route path="/daySummary" element={<DayPlanSummary />} />
-        <Route path="/userAccessManagement" element={<UserAccessManagement/>} /> */}
+        <Route path="/daySummary" element={<DayPlanSummary />} />*/}
+        <Route path="/userAccessManagement" element={<UserAccessManagementSystem/>} /> 
 
 
         {/* 

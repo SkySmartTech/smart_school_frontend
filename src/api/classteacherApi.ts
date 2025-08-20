@@ -7,6 +7,11 @@ interface StudentSubjectMark {
   marks: number;
 }
 
+export interface DropdownOption {
+  label: string;
+  value: string;
+}
+
 interface StudentMark {
   studentName: string;
   subjects: StudentSubjectMark[];
@@ -30,6 +35,30 @@ export interface ClassTeacherReportData {
   subject_marks: SubjectMark[];
   student_marks: StudentMark[];
   yearly_subject_averages: YearlySubjectAverage[];
+}
+
+export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
+    
+    return Array.isArray(res.data)
+      ? res.data.map((item: any) => {
+          // Extract the grade value - it could be in different fields
+          const gradeValue = item.grade || item.id || item.value || item.name || "";
+          
+          // Create the label with "Grade" prefix
+          const gradeLabel = gradeValue ? ` ${gradeValue}` : "Unknown Grade";
+          
+          return {
+            label: gradeLabel,
+            value: gradeValue.toString(), // Ensure value is a string
+          };
+        })
+      : [];
+  } catch (error) {
+    handleApiError(error, "fetchGradesFromApi");
+    return [];
+  }
 }
 
 const getAuthHeader = () => {
@@ -108,5 +137,27 @@ export const fetchClassTeacherReport = async (
       throw new Error(error.response?.data?.message || 'Request failed');
     }
     throw new Error("Network error occurred");
+  }
+};
+// Add this helper function for error handling
+const handleApiError = (error: any, _operation: string) => {
+  if (error.response) {
+    const { status, data } = error.response;
+    switch (status) {
+      case 401:
+        throw new Error("Authentication failed. Please login again.");
+      case 403:
+        throw new Error("You do not have permission to perform this action.");
+      case 404:
+        throw new Error("The requested resource was not found.");
+      case 500:
+        throw new Error("Server error. Please try again later.");
+      default:
+        throw new Error(data?.message || `Error: ${status}`);
+    }
+  } else if (error.request) {
+    throw new Error("Network error. Please check your connection and try again.");
+  } else {
+    throw new Error("An unexpected error occurred. Please try again.");
   }
 };
