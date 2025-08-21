@@ -15,13 +15,13 @@ import {
   Tooltip as ReTooltip, Legend, ResponsiveContainer, CartesianGrid
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { fetchClassTeacherReport } from "../../api/classteacherApi";
+import { fetchClassTeacherReport, fetchGradesFromApi, type DropdownOption } from "../../api/classteacherApi";
 import { format } from "date-fns";
 import Footer from "../../components/Footer";
 
-const grades = ["1", "2", "3", "4", "11"];
+
 const classes = ["Olu", "Araliya", "Nelum"];
-const exams = ["1st Term", "2nd Term", "3rd Term", "First"];
+const exams = ["First", "Second", "Third", "Monthly"];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
 const BAR_COLORS = ["#E3B6E5", "#C5A6D9", "#A795CD", "#8A85C1", "#6D74B5", "#5163A9", "#34529C"];
 
@@ -60,7 +60,8 @@ const ClassTeacherReport: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(2023, 0, 1));
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(2024, 11, 31));
-  const [grade, setGrade] = useState("1");
+  const [grade, setGrade] = useState<string>("");
+  const [gradeOptions, setGradeOptions] = useState<DropdownOption[]>([]);
   const [className, setClassName] = useState("Olu");
   const [exam, setExam] = useState("2nd Term");
 
@@ -86,6 +87,30 @@ const ClassTeacherReport: React.FC = () => {
   });
 
   useEffect(() => {
+    const fetchGrades = async () => {
+      try {
+        const grades = await fetchGradesFromApi();
+        setGradeOptions(grades);
+        // Set default grade if options exist
+        if (grades.length > 0) {
+          setGrade(grades[0].value);
+        }
+      } catch (error) {
+        console.error("Failed to fetch grades:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to load grade options",
+          severity: "error",
+        });
+      }
+    };
+
+    if (checkAuthStatus()) {
+      fetchGrades();
+    }
+  }, []);
+
+  useEffect(() => {
     if (isError && error) {
       setSnackbar({ open: true, message: error.message, severity: "error" });
     }
@@ -109,7 +134,7 @@ const ClassTeacherReport: React.FC = () => {
   // Prepare data for yearly subject averages chart
   const getYearlySubjectAveragesData = () => {
     if (!data?.yearly_subject_averages) return [];
-    
+
     // First, get all unique subjects across all years
     const allSubjects = new Set<string>();
     data.yearly_subject_averages.forEach(yearData => {
@@ -121,7 +146,7 @@ const ClassTeacherReport: React.FC = () => {
     // Then transform the data into the format Recharts expects
     return data.yearly_subject_averages.map(yearData => {
       const yearEntry: any = { year: yearData.year.toString() };
-      
+
       // Initialize all subjects to 0
       allSubjects.forEach(subject => {
         yearEntry[subject] = 0;
@@ -224,12 +249,14 @@ const ClassTeacherReport: React.FC = () => {
                 <TextField
                   select
                   label="Student Grade"
+                  variant="outlined"
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
+                  disabled={isLoading || gradeOptions.length === 0}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <School />
+                        <School color="action" />
                       </InputAdornment>
                     ),
                   }}
@@ -243,9 +270,9 @@ const ClassTeacherReport: React.FC = () => {
                     },
                   }}
                 >
-                  {grades.map((g) => (
-                    <MenuItem key={g} value={g}>
-                      {g}
+                  {gradeOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -363,20 +390,20 @@ const ClassTeacherReport: React.FC = () => {
                       <CircularProgress />
                     </Box>
                   ) : (
-                    <BarChart 
-                      data={getYearlySubjectAveragesData()} 
+                    <BarChart
+                      data={getYearlySubjectAveragesData()}
                       margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
+                      <XAxis
                         dataKey="year"
                         label={{ value: 'Year', position: 'insideBottomRight', offset: -10 }}
                       />
-                      <YAxis 
+                      <YAxis
                         label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
                         domain={[0, 100]}
                       />
-                      <ReTooltip 
+                      <ReTooltip
                         formatter={(value: number) => [`${value}%`, "Percentage"]}
                         labelFormatter={(label) => `Year: ${label}`}
                       />
@@ -514,6 +541,11 @@ const ClassTeacherReport: React.FC = () => {
       </Snackbar>
     </Box>
   );
+};
+
+const checkAuthStatus = () => {
+  // Check if user is authenticated (you might want to implement your own logic here)
+  return true;
 };
 
 export default ClassTeacherReport;
