@@ -369,7 +369,7 @@ const ManagementStaff: React.FC = () => {
               </ResponsiveContainer>
             </Paper>
 
-            <Paper elevation={2} sx={{ p: 3, minWidth: 400, flex: 2 }}>
+            <Paper elevation={2} sx={{ p: 2, minWidth: 400, flex: 2 }}>
               <Typography variant="h6" fontWeight={600} mb={2}>
                 Class Performance
               </Typography>
