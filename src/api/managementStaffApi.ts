@@ -37,6 +37,7 @@ export interface ManagementStaffReportData {
     ict?: number;
     sinhala?: number;
     tamil?: number;
+    buddhism?: number;
   }[];
 }
 
