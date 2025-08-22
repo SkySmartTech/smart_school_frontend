@@ -48,7 +48,7 @@ import {
 } from "../../api/managementStaffApi";
 
 const years = ["2023", "2024", "2025"];
-const exams = ["First", "Second", "Third", "All"];
+const exams = ["First", "Mid", "End", "Monthly"];
 const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 
@@ -448,6 +448,13 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[0]}
                       radius={[4, 4, 0, 0]}
                     />
+                    <Bar
+                      dataKey="Buddhism"
+                      name="Buddhism"
+                      stackId="1"
+                      fill={BAR_COLORS[0]}
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 )}
               </ResponsiveContainer>
@@ -472,7 +479,8 @@ const ManagementStaff: React.FC = () => {
                     <TableCell align="right">sinhala</TableCell>
                     <TableCell align="right">Tamil</TableCell>
                     <TableCell align="right">ICT</TableCell>
-                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="right">Buddhism</TableCell>
+                
                     <TableCell align="right">Average</TableCell>
                   </TableRow>
                 </TableHead>
@@ -497,18 +505,8 @@ const ManagementStaff: React.FC = () => {
                         <TableCell align="right">{row.sinhala}</TableCell>
                         <TableCell align="right">{row.tamil}</TableCell>
                         <TableCell align="right">{row.ict}</TableCell>
-                        <TableCell align="right">
-                          {(
-                            (row.english || 0) +
-                            (row.arts || 0) +
-                            (row.mathematics || 0) +
-                            (row.history || 0) +
-                            (row.science || 0) +
-                            (row.ict || 0) +
-                            (row.sinhala || 0) +
-                            (row.tamil || 0)
-                          ).toFixed(1)}
-                        </TableCell>
+                        <TableCell align="right">{row.buddhism}</TableCell>
+                        
                         <TableCell align="right">
                           {(
                             ((row.english || 0) +

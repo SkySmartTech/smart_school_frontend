@@ -33,7 +33,6 @@ import {
     fetchGradesFromApi,
     fetchClassesFromApi,
     fetchAdmissionData,
-    calculateGrade,
     type StudentMark,
 } from '../../api/addmarksApi';
 
@@ -195,49 +194,39 @@ const TeacherDashboard: React.FC = () => {
         }
     }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled]);
 
-// Handle marks change and calculate grade without backend
-const handleMarksChange = useCallback((id: GridRowId, value: string) => {
-    // Validate marks input (only numbers, max 3 digits)
-    if (value !== '' && !/^\d{0,3}$/.test(value)) {
-        return;
+    const calculateGrade = (marks: number): string => {
+    if (marks <= 40) return "F";
+    if (marks < 50) return "S";
+    if (marks < 65) return "C";
+    if (marks < 75) return "B";
+    return "A";
+  };
+
+  const processRowUpdate = (newRow: StudentMark) => {
+    let grade = "";
+    if (newRow.marks !== "") {
+      const marks = parseInt(newRow.marks, 10);
+      grade = calculateGrade(marks);
     }
 
-    let grade = '';
-    if (value) {
-        const marks = parseInt(value, 10);
+    const updatedRow = { ...newRow, student_grade_value: grade };
 
-        if (marks <= 40) {
-            grade = 'F';
-        } else if (marks > 40 && marks < 50) {
-            grade = 'S';
-        } else if (marks >= 50 && marks < 65) {
-            grade = 'C';
-        } else if (marks >= 65 && marks < 75) {
-            grade = 'B';
-        } else if (marks >= 75) {
-            grade = 'A';
-        }
-    }
-
-    setStudents(prevStudents =>
-        prevStudents.map(student =>
-            student.id === id 
-                ? { ...student, marks: value, student_grade_value: grade } 
-                : student
-        )
+    setStudents((prev) =>
+      prev.map((s) => (s.id === updatedRow.id ? updatedRow : s))
     );
 
-    setModifiedMarks(prevModified => ({
-        ...prevModified,
-        [id]: { 
-            ...prevModified[id], 
-            marks: value, 
-            student_grade_value: grade,
-            student_admission: students.find(s => s.id === id)?.student_admission || ''
-        },
+    setModifiedMarks((prevModified) => ({
+      ...prevModified,
+      [updatedRow.id]: {
+        ...prevModified[updatedRow.id],
+        marks: updatedRow.marks,
+        student_grade_value: updatedRow.student_grade_value,
+        student_admission: updatedRow.student_admission,
+      },
     }));
-}, [students]);
 
+    return updatedRow;
+  };
 
     const handleSubmitMarks = async () => {
         setLoading(true);
@@ -345,9 +334,6 @@ const handleMarksChange = useCallback((id: GridRowId, value: string) => {
                     variant="outlined"
                     size="small"
                     value={params.row.marks || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        handleMarksChange(params.row.id, e.target.value);
-                    }}
                     inputProps={{ 
                         style: { textAlign: 'center', padding: '8px 10px' },
                         maxLength: 3
@@ -671,6 +657,7 @@ const handleMarksChange = useCallback((id: GridRowId, value: string) => {
                                     rows={students}
                                     columns={columns}
                                     getRowId={(row) => row.id}
+                                    processRowUpdate={processRowUpdate}
                                     initialState={{
                                         pagination: { paginationModel: { page: 0, pageSize: 5 }, },
                                     }}
