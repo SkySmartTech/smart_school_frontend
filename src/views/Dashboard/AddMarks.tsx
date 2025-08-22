@@ -33,7 +33,6 @@ import {
     fetchGradesFromApi,
     fetchClassesFromApi,
     fetchAdmissionData,
-    calculateGrade,
     type StudentMark,
 } from '../../api/addmarksApi';
 
@@ -43,19 +42,13 @@ import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SearchIcon from '@mui/icons-material/Search';
 
-const subjectOptions = [
-    { label: 'Mathematics', value: 'math' }, { label: 'Science', value: 'science' },
-    { label: 'Religion', value: 'religion' },
-    { label: 'Sinhala', value: 'sinhala' },
-    { label: 'History', value: 'history' },
-    { label: 'English', value: 'english' },
-];
+import useTeacherProfile from '../../hooks/useTeacherProfile';
 
 const examOptions = [
     { label: 'First Term', value: 'First' },
     { label: 'Second Term', value: 'Mid' },
     { label: 'Third Term', value: 'End' },
-    { label: 'Monthly Test', value: 'Monthly' },
+    { label: 'Monthly Test', value: 'monthly' },
 ];
 
 const monthOptions = [
@@ -67,12 +60,22 @@ const monthOptions = [
     { label: 'November', value: 'November' }, { label: 'December', value: 'December' },
 ];
 
+const yearOptions = [
+    { label: '2023', value: '2023' },
+    { label: '2024', value: '2024' },
+    { label: '2025', value: '2025' },
+    { label: '2026', value: '2026' },
+    { label: '2027', value: '2027' },
+    { label: '2028', value: '2028' },
+];
+
 interface FilterFormData {
     selectedGrade: string;
     selectedClass: string;
     selectedSubject: string;
     selectedExam: string;
     selectedMonth: string;
+    selectedYear: string;
     searchQuery: string;
 }
 
@@ -83,6 +86,15 @@ interface AdmissionData {
 }
 
 const TeacherDashboard: React.FC = () => {
+    const { data: teacherProfile } = useTeacherProfile();
+    const subjectOptions = React.useMemo(() => {
+        if (!teacherProfile?.teacher_data?.subjects) return [];
+        return teacherProfile.teacher_data.subjects.map(subject => ({
+            label: subject,
+            value: subject.toLowerCase()
+        }));
+    }, [teacherProfile?.teacher_data?.subjects]);
+
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
@@ -102,12 +114,13 @@ const TeacherDashboard: React.FC = () => {
             selectedSubject: '',
             selectedExam: '',
             selectedMonth: '',
+            selectedYear: '', // Add this line
             searchQuery: ''
         }
     });
 
     const formValues = watch();
-    const { selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, searchQuery } = formValues;
+    const { selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, searchQuery } = formValues;
     const isMonthFilterEnabled = selectedExam === 'monthly';
 
     // Fetch dropdown options
@@ -136,12 +149,12 @@ const TeacherDashboard: React.FC = () => {
             setStudents([]);
             return;
         }
-        
+
         try {
             setLoading(true);
             const data = await fetchAdmissionData(selectedGrade, selectedClass, searchQuery);
             setAdmissionData(data);
-            
+
             // Initialize students with admission data
             const initialStudents: StudentMark[] = data.map((item, index) => ({
                 id: index + 1,
@@ -153,9 +166,10 @@ const TeacherDashboard: React.FC = () => {
                 term: selectedExam || '',
                 marks: '',
                 student_grade_value: '',
-                month: isMonthFilterEnabled ? selectedMonth : undefined
+                month: isMonthFilterEnabled ? selectedMonth : undefined,
+                year: selectedYear || '' // Add this line
             }));
-            
+
             setStudents(initialStudents);
             setModifiedMarks({});
         } catch (error) {
@@ -166,7 +180,7 @@ const TeacherDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled, searchQuery]);
+    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, searchQuery]);
 
     // Update students when subject or term changes
     useEffect(() => {
@@ -174,7 +188,7 @@ const TeacherDashboard: React.FC = () => {
             const updatedStudents = admissionData.map((item, index) => {
                 // Find the existing student to preserve marks
                 const existingStudent = students.find(s => s.student_admission === item.student_admission);
-                
+
                 return {
                     id: index + 1,
                     student_admission: item.student_admission,
@@ -185,64 +199,61 @@ const TeacherDashboard: React.FC = () => {
                     term: selectedExam || '',
                     marks: existingStudent?.marks || '',
                     student_grade_value: existingStudent?.student_grade_value || '',
-                    month: isMonthFilterEnabled ? selectedMonth : undefined
+                    month: isMonthFilterEnabled ? selectedMonth : undefined,
+                    year: selectedYear || '' // Add this line
                 };
             });
             setStudents(updatedStudents);
         }
-    }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled]);
+    }, [selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled]);
 
-    // Handle marks change and calculate grade
-    const handleMarksChange = useCallback(async (id: GridRowId, value: string) => {
-        // Validate marks input (only numbers, max 3 digits)
-        if (value !== '' && !/^\d{0,3}$/.test(value)) {
-            return;
+    const calculateGrade = (marks: number): string => {
+        if (marks <= 40) return "F";
+        if (marks < 50) return "S";
+        if (marks < 65) return "C";
+        if (marks < 75) return "B";
+        return "A";
+    };
+
+    const processRowUpdate = (newRow: StudentMark) => {
+        let grade = "";
+        if (newRow.marks !== "") {
+            const marks = parseInt(newRow.marks, 10);
+            grade = calculateGrade(marks);
         }
 
-        let grade = '';
-        if (value) {
-            try {
-                grade = await calculateGrade(value);
-            } catch (error) {
-                console.error('Failed to calculate grade:', error);
-                grade = 'Error';
-            }
-        }
+        const updatedRow = { ...newRow, student_grade_value: grade };
 
-        setStudents(prevStudents =>
-            prevStudents.map(student =>
-                student.id === id 
-                    ? { ...student, marks: value, student_grade_value: grade } 
-                    : student
-            )
+        setStudents((prev) =>
+            prev.map((s) => (s.id === updatedRow.id ? updatedRow : s))
         );
 
-        setModifiedMarks(prevModified => ({
+        setModifiedMarks((prevModified) => ({
             ...prevModified,
-            [id]: { 
-                ...prevModified[id], 
-                marks: value, 
-                student_grade_value: grade,
-                student_admission: students.find(s => s.id === id)?.student_admission || ''
+            [updatedRow.id]: {
+                ...prevModified[updatedRow.id],
+                marks: updatedRow.marks,
+                student_grade_value: updatedRow.student_grade_value,
+                student_admission: updatedRow.student_admission,
             },
         }));
-    }, [students]);
+
+        return updatedRow;
+    };
 
     const handleSubmitMarks = async () => {
         setLoading(true);
         const marksToSubmit: Partial<StudentMark>[] = Object.entries(modifiedMarks)
             .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '')
             .map(([id, mark]) => {
-                // Find the corresponding student data
                 const student = students.find(s => s.id.toString() === id);
                 if (!student) {
                     console.error(`Student not found for id ${id}`);
                     return null;
                 }
 
-                // Map exam values to full terms
                 const getFullTerm = (term: string) => {
-                    switch(term) {
+                    switch (term) {
                         case '1st': return 'First Term';
                         case '2nd': return 'Second Term';
                         case '3rd': return 'Third Term';
@@ -258,10 +269,11 @@ const TeacherDashboard: React.FC = () => {
                     student_grade: selectedGrade,
                     student_class: selectedClass,
                     subject: selectedSubject,
-                    term: getFullTerm(selectedExam), // Convert to full term name
-                    month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable', // More explicit month value
+                    term: getFullTerm(selectedExam),
+                    month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable',
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
+                    year: selectedYear // Add this line
                 };
             })
             .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
@@ -314,16 +326,17 @@ const TeacherDashboard: React.FC = () => {
         const timer = setTimeout(() => {
             fetchAdmissionDataHandler();
         }, 500);
-        
+
         return () => clearTimeout(timer);
-    }, [selectedGrade, selectedClass, searchQuery]);
+    }, [selectedGrade, selectedClass, selectedYear, searchQuery]); // Add selectedYear here
 
     const columns: GridColDef<StudentMark>[] = [
         { field: 'student_admission', headerName: 'Admission No', width: 200, editable: false },
         { field: 'student_name', headerName: 'Student Name', width: 400, editable: false },
-         { field: 'student_class', headerName: 'Class', width: 150, editable: false },
+        { field: 'student_class', headerName: 'Class', width: 150, editable: false },
         { field: 'subject', headerName: 'Subject', width: 150, editable: false },
         { field: 'term', headerName: 'Term', width: 130, editable: false },
+        { field: 'year', headerName: 'Year', width: 100, editable: false }, // Add this line
         {
             field: 'marks',
             headerName: 'Marks',
@@ -334,10 +347,7 @@ const TeacherDashboard: React.FC = () => {
                     variant="outlined"
                     size="small"
                     value={params.row.marks || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        handleMarksChange(params.row.id, e.target.value);
-                    }}
-                    inputProps={{ 
+                    inputProps={{
                         style: { textAlign: 'center', padding: '8px 10px' },
                         maxLength: 3
                     }}
@@ -353,7 +363,7 @@ const TeacherDashboard: React.FC = () => {
             ),
         },
         { field: 'student_grade_value', headerName: 'Marks Grade', editable: false },
-       
+
     ];
 
     return (
@@ -384,8 +394,8 @@ const TeacherDashboard: React.FC = () => {
                             justifyContent="space-between"
                             sx={{ mb: 2 }}
                         >
-                            
-                              <Controller
+
+                            <Controller
                                 control={control}
                                 name="selectedGrade"
                                 render={({ field }) => (
@@ -502,6 +512,37 @@ const TeacherDashboard: React.FC = () => {
                                     </TextField>
                                 )}
                             />
+                               <Controller
+                                control={control}
+                                name="selectedYear"
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        select
+                                        label="Year"
+                                        variant="outlined"
+                                        sx={{
+                                            minWidth: 150,
+                                            maxWidth: 250,
+                                            flex: '1 1 50px',
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: "10px",
+                                                height: "45px",
+                                                bgcolor: theme.palette.background.paper,
+                                                '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main }
+                                            }
+                                        }}
+                                    >
+                                        {yearOptions.map((option) => (
+                                            <MenuItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                )}
+                            />
 
                             <Controller
                                 control={control}
@@ -513,7 +554,7 @@ const TeacherDashboard: React.FC = () => {
                                         label="Exam"
                                         variant="outlined"
                                         sx={{
-                                             minWidth: 150,
+                                            minWidth: 150,
                                             maxWidth: 250,
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
@@ -553,12 +594,12 @@ const TeacherDashboard: React.FC = () => {
                                         variant="outlined"
                                         disabled={!isMonthFilterEnabled}
                                         sx={{
-                                             minWidth: 150,
+                                            minWidth: 150,
                                             maxWidth: 250,
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
-                                                    height: "45px",
-                                                    borderRadius: '10px',
+                                                height: "45px",
+                                                borderRadius: '10px',
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
@@ -581,6 +622,8 @@ const TeacherDashboard: React.FC = () => {
                                     </TextField>
                                 )}
                             />
+
+                         
                         </Stack>
 
                         <Stack
@@ -600,10 +643,10 @@ const TeacherDashboard: React.FC = () => {
                                         size="small"
                                         sx={{
                                             minWidth: 150,
-                                            maxWidth: 250,
+                                            maxWidth: 460,
                                             flexGrow: 1,
                                             width: { xs: '100%', md: 'auto' },
-                                            
+
                                             '& .MuiOutlinedInput-root': {
                                                 borderRadius: '10px',
                                                 height: '45px',
@@ -660,6 +703,7 @@ const TeacherDashboard: React.FC = () => {
                                     rows={students}
                                     columns={columns}
                                     getRowId={(row) => row.id}
+                                    processRowUpdate={processRowUpdate}
                                     initialState={{
                                         pagination: { paginationModel: { page: 0, pageSize: 5 }, },
                                     }}
