@@ -43,19 +43,13 @@ import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SearchIcon from '@mui/icons-material/Search';
 
-const subjectOptions = [
-    { label: 'Mathematics', value: 'math' }, { label: 'Science', value: 'science' },
-    { label: 'Religion', value: 'religion' },
-    { label: 'Sinhala', value: 'sinhala' },
-    { label: 'History', value: 'history' },
-    { label: 'English', value: 'english' },
-];
+import useTeacherProfile from '../../hooks/useTeacherProfile';
 
 const examOptions = [
     { label: 'First Term', value: 'First' },
     { label: 'Second Term', value: 'Mid' },
     { label: 'Third Term', value: 'End' },
-    { label: 'Monthly Test', value: 'Monthly' },
+    { label: 'Monthly Test', value: 'monthly' },
 ];
 
 const monthOptions = [
@@ -83,6 +77,15 @@ interface AdmissionData {
 }
 
 const TeacherDashboard: React.FC = () => {
+    const { data: teacherProfile } = useTeacherProfile();
+    const subjectOptions = React.useMemo(() => {
+        if (!teacherProfile?.teacher_data?.subjects) return [];
+        return teacherProfile.teacher_data.subjects.map(subject => ({
+            label: subject,
+            value: subject.toLowerCase()
+        }));
+    }, [teacherProfile?.teacher_data?.subjects]);
+
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
@@ -192,41 +195,49 @@ const TeacherDashboard: React.FC = () => {
         }
     }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled]);
 
-    // Handle marks change and calculate grade
-    const handleMarksChange = useCallback(async (id: GridRowId, value: string) => {
-        // Validate marks input (only numbers, max 3 digits)
-        if (value !== '' && !/^\d{0,3}$/.test(value)) {
-            return;
+// Handle marks change and calculate grade without backend
+const handleMarksChange = useCallback((id: GridRowId, value: string) => {
+    // Validate marks input (only numbers, max 3 digits)
+    if (value !== '' && !/^\d{0,3}$/.test(value)) {
+        return;
+    }
+
+    let grade = '';
+    if (value) {
+        const marks = parseInt(value, 10);
+
+        if (marks <= 40) {
+            grade = 'F';
+        } else if (marks > 40 && marks < 50) {
+            grade = 'S';
+        } else if (marks >= 50 && marks < 65) {
+            grade = 'C';
+        } else if (marks >= 65 && marks < 75) {
+            grade = 'B';
+        } else if (marks >= 75) {
+            grade = 'A';
         }
+    }
 
-        let grade = '';
-        if (value) {
-            try {
-                grade = await calculateGrade(value);
-            } catch (error) {
-                console.error('Failed to calculate grade:', error);
-                grade = 'Error';
-            }
-        }
+    setStudents(prevStudents =>
+        prevStudents.map(student =>
+            student.id === id 
+                ? { ...student, marks: value, student_grade_value: grade } 
+                : student
+        )
+    );
 
-        setStudents(prevStudents =>
-            prevStudents.map(student =>
-                student.id === id 
-                    ? { ...student, marks: value, student_grade_value: grade } 
-                    : student
-            )
-        );
+    setModifiedMarks(prevModified => ({
+        ...prevModified,
+        [id]: { 
+            ...prevModified[id], 
+            marks: value, 
+            student_grade_value: grade,
+            student_admission: students.find(s => s.id === id)?.student_admission || ''
+        },
+    }));
+}, [students]);
 
-        setModifiedMarks(prevModified => ({
-            ...prevModified,
-            [id]: { 
-                ...prevModified[id], 
-                marks: value, 
-                student_grade_value: grade,
-                student_admission: students.find(s => s.id === id)?.student_admission || ''
-            },
-        }));
-    }, [students]);
 
     const handleSubmitMarks = async () => {
         setLoading(true);
