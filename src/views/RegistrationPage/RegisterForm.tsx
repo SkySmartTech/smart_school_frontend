@@ -7,7 +7,7 @@ import {
   CircularProgress,
   IconButton,
   InputAdornment,
-  Avatar,
+  // Avatar,
   Stepper,
   Step,
   StepLabel
@@ -23,7 +23,7 @@ import {
   Work,
   Home,
   Cake,
-  CloudUpload,
+  // CloudUpload,
   AssignmentInd,
   School,
   Class,
@@ -35,25 +35,26 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser, registerStudent, registerTeacher, registerParent } from "../../api/userApi";
 import type { User } from "../../api/userApi";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { styled } from '@mui/material/styles';
+// import { styled } from '@mui/material/styles';
 
-const VisuallyHiddenInput = styled('input')({
-  clip: 'rect(0 0 0 0)',
-  clipPath: 'inset(50%)',
-  height: 1,
-  overflow: 'hidden',
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  whiteSpace: 'nowrap',
-  width: 1,
-});
+// const VisuallyHiddenInput = styled('input')({
+//   clip: 'rect(0 0 0 0)',
+//   clipPath: 'inset(50%)',
+//   height: 1,
+//   overflow: 'hidden',
+//   position: 'absolute',
+//   bottom: 0,
+//   left: 0,
+//   whiteSpace: 'nowrap',
+//   width: 1,
+// });
 
 const gender = ["Male", "Female"];
 const roles = ["Teacher", "Student", "Parent"];
 const professions = ["Engineer", "Doctor", "Teacher", "Designer", "Other"];
+const relations = ["Father", "Mother", "Other"];
 const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
@@ -93,10 +94,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  // const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [registeredUser, setRegisteredUser] = useState<{ userId: number; userType: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -104,7 +105,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     watch,
     formState: { errors },
     setValue,
-    trigger, 
+    trigger,
   } = useForm<FormData>({
     defaultValues: {
       teacherGrades: [],
@@ -198,7 +199,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     if (activeStep === 0) {
       const formData = new FormData();
       const formValues = watch();
-      
+
       // Handle non-array fields
       Object.entries(formValues)
         .filter(([key]) => !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key))
@@ -225,7 +226,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
 
       // Add userRole field
       formData.append('userRole', 'user');
-      
+
       registerBasicUser(formData);
     } else {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -240,7 +241,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     if (!registeredUser) return;
 
     const formData = new FormData();
-    
+
     // Add userId and userType from the first registration
     formData.append('userId', registeredUser.userId.toString());
     formData.append('userType', registeredUser.userType);
@@ -277,13 +278,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     }
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      const file = event.target.files[0];
-      setValue("photo", event.target.files);
-      setPreviewImage(URL.createObjectURL(file));
-    }
-  };
+  // const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (event.target.files && event.target.files.length > 0) {
+  //     const file = event.target.files[0];
+  //     setValue("photo", event.target.files);
+  //     setPreviewImage(URL.createObjectURL(file));
+  //   }
+  // };
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -310,8 +311,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       </Stepper>
 
       {registeredUser && activeStep === 1 && (
-        <Box sx={{ mb: 2, p: 2,  borderRadius: 1, color: 'black' }}>
-         <strong>Role:</strong> {registeredUser.userType}
+        <Box sx={{ mb: 2, p: 2, borderRadius: 1, color: 'black' }}>
+          <strong>Role:</strong> {registeredUser.userType}
         </Box>
       )}
 
@@ -595,7 +596,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   }}
                 />
                 {/* Image Upload */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {/* <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Button
                     component="label"
                     variant="outlined"
@@ -624,7 +625,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       sx={{ width: 100, height: 100, mt: 2 }}
                     />
                   )}
-                </Box>
+                </Box> */}
               </Stack>
             </motion.div>
 
@@ -954,7 +955,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
             )}
 
             {selectedRole === "Parent" && (
-              <Stack direction="row" spacing={2}>
+              <><Stack direction="row" spacing={2}>
                 <TextField
                   select
                   label="Profession"
@@ -1004,9 +1005,63 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       borderRadius: "10px",
                       height: "40px"
                     }
-                  }}
-                />
+                  }} />
               </Stack>
+                <Stack direction="row" spacing={2}>
+                  <TextField
+
+                    label="Student Admission No"
+                    fullWidth
+                    variant="outlined"
+                    {...register("studentAdmissionNo", { required: "Student Admission No is required" })}
+                    error={!!errors.studentAdmissionNo}
+                    helperText={errors.studentAdmissionNo?.message}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Work color={errors.studentAdmissionNo ? "error" : "action"} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "10px",
+                        height: "40px"
+                      }
+                    }}
+                  >
+                  </TextField>
+                  <TextField
+                    select
+                    label="Relation"
+                    fullWidth
+                    variant="outlined"
+                    {...register("relation", { required: "Relation is required" })}
+                    error={!!errors.relation}
+                    helperText={errors.relation?.message}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Work color={errors.relation ? "error" : "action"} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "10px",
+                        height: "40px"
+                      }
+                    }}
+                  >
+                    {relations.map((relation) => (
+                      <MenuItem key={relation} value={relation}>
+                        {relation}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              </>
+
             )}
           </Stack>
         )}

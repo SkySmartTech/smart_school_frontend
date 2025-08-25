@@ -41,14 +41,14 @@ import { useQuery } from "@tanstack/react-query";
 import {
   fetchManagementStaffReport,
   checkAuthStatus,
+  fetchGradesFromApi, type DropdownOption,
   type ClassMarks,
   type ManagementStaffReportData,
   type SubjectMark,
 } from "../../api/managementStaffApi";
 
 const years = ["2023", "2024", "2025"];
-const grades = ["10", "11", "12"];
-const exams = ["First", "Second", "Third", "All"];
+const exams = ["First", "Mid", "End", "Monthly"];
 const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 
@@ -59,7 +59,7 @@ const transformClassDataForStackedBarChart = (classData: ClassMarks | undefined)
     const classEntry: Record<string, string | number> = { name: className };
 
     subjects.forEach((subject) => {
-      classEntry[subject.subject] = parseFloat(subject.average_mark) || 0;
+      classEntry[subject.subject] = subject.subject_percentage || 0;
     });
 
     return classEntry;
@@ -69,8 +69,9 @@ const transformClassDataForStackedBarChart = (classData: ClassMarks | undefined)
 const ManagementStaff: React.FC = () => {
   const theme = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [year, setYear] = useState<string>(years[1]); 
-  const [grade, setGrade] = useState<string>(grades[0]);
+  const [year, setYear] = useState<string>(years[1]);
+  const [grade, setGrade] = useState<string>("");
+  const [gradeOptions, setGradeOptions] = useState<DropdownOption[]>([]);
   const [exam, setExam] = useState<string>(exams[0]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -78,6 +79,31 @@ const ManagementStaff: React.FC = () => {
     severity: "success" | "error" | "info" | "warning";
   }>({ open: false, message: "", severity: "info" });
 
+
+
+  useEffect(() => {
+    const fetchGrades = async () => {
+      try {
+        const grades = await fetchGradesFromApi();
+        setGradeOptions(grades);
+        // Set default grade if options exist
+        if (grades.length > 0) {
+          setGrade(grades[0].value);
+        }
+      } catch (error) {
+        console.error("Failed to fetch grades:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to load grade options",
+          severity: "error",
+        });
+      }
+    };
+
+    if (checkAuthStatus()) {
+      fetchGrades();
+    }
+  }, []);
   // Check authentication status on component mount
   useEffect(() => {
     if (!checkAuthStatus()) {
@@ -208,7 +234,7 @@ const ManagementStaff: React.FC = () => {
                 variant="outlined"
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || gradeOptions.length === 0}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -226,9 +252,9 @@ const ManagementStaff: React.FC = () => {
                   },
                 }}
               >
-                {grades.map((g) => (
-                  <MenuItem key={g} value={g}>
-                   {g}
+                {gradeOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
                   </MenuItem>
                 ))}
               </TextField>
@@ -343,7 +369,7 @@ const ManagementStaff: React.FC = () => {
               </ResponsiveContainer>
             </Paper>
 
-            <Paper elevation={2} sx={{ p: 3, minWidth: 400, flex: 2 }}>
+            <Paper elevation={2} sx={{ p: 2, minWidth: 400, flex: 2 }}>
               <Typography variant="h6" fontWeight={600} mb={2}>
                 Class Performance
               </Typography>
@@ -355,7 +381,10 @@ const ManagementStaff: React.FC = () => {
                 ) : (
                   <BarChart data={transformClassDataForStackedBarChart(data?.class_subject_marks)}>
                     <XAxis dataKey="name" />
-                    <YAxis domain={[0, 100]} />
+                    <YAxis
+                      label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
+                      domain={[0, 100]}
+                    />
                     <RechartsTooltip
                       formatter={(value: number, name: string) => [
                         `${value}%`,
@@ -419,6 +448,13 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[0]}
                       radius={[4, 4, 0, 0]}
                     />
+                    <Bar
+                      dataKey="Buddhism"
+                      name="Buddhism"
+                      stackId="1"
+                      fill={BAR_COLORS[0]}
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 )}
               </ResponsiveContainer>
@@ -443,7 +479,8 @@ const ManagementStaff: React.FC = () => {
                     <TableCell align="right">sinhala</TableCell>
                     <TableCell align="right">Tamil</TableCell>
                     <TableCell align="right">ICT</TableCell>
-                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="right">Buddhism</TableCell>
+                
                     <TableCell align="right">Average</TableCell>
                   </TableRow>
                 </TableHead>
@@ -468,18 +505,8 @@ const ManagementStaff: React.FC = () => {
                         <TableCell align="right">{row.sinhala}</TableCell>
                         <TableCell align="right">{row.tamil}</TableCell>
                         <TableCell align="right">{row.ict}</TableCell>
-                        <TableCell align="right">
-                          {(
-                            (row.english || 0) +
-                            (row.arts || 0) +
-                            (row.mathematics || 0) +
-                            (row.history || 0) +
-                            (row.science || 0) +
-                            (row.ict || 0) +
-                            (row.sinhala || 0) +
-                            (row.tamil || 0) 
-                          ).toFixed(1)}
-                        </TableCell>
+                        <TableCell align="right">{row.buddhism}</TableCell>
+                        
                         <TableCell align="right">
                           {(
                             ((row.english || 0) +

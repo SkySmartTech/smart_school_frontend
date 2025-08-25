@@ -15,7 +15,7 @@ import {
     Tooltip as ReTooltip, Legend, ResponsiveContainer, CartesianGrid
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { fetchClassTeacherReport } from "../../api/classteacherApi";
+import { fetchClassTeacherReport, fetchGradesFromApi, type DropdownOption } from "../../api/classteacherApi";
 import Footer from "../../components/Footer";
 
 const grades = ["1", "2", "3", "4", "11"];

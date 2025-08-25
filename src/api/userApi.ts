@@ -43,6 +43,8 @@ export const userSchema = z.object({
   // Parent specific fields
   profession: z.string().optional(),
   parentContact: z.string().optional(),
+  relation: z.string().optional(),
+  
 }).refine(data => data.password === data.password_confirmation, {
   message: "Passwords don't match",
   path: ["password_confirmation"],
