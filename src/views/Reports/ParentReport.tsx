@@ -18,7 +18,6 @@ import {
     CircularProgress,
     Snackbar,
     Alert,
-    Button
 } from "@mui/material";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
@@ -37,12 +36,10 @@ import {
     BarChart,
     Bar
 } from "recharts";
-import {
-    useQuery,
-    type UseQueryOptions
-} from "@tanstack/react-query";
-import { LocalizationProvider } from '@mui/x-date-pickers';
+import { useQuery } from "@tanstack/react-query";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { type Dayjs } from "dayjs";
 
 import {
     fetchParentReport,
@@ -52,7 +49,7 @@ import {
     type DetailedMarksTableRow
 } from "../../api/parentApi.ts";
 
-const exams = ["1st Term", "2nd Term", "3rd Term", "Monthly"];
+const exams = ["First", "2nd Term", "3rd Term", "Monthly"];
 const months = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ];
@@ -63,10 +60,8 @@ const ParentReport: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [exam, setExam] = useState("");
     const [month, setMonth] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [studentId, setStudentId] = useState<string | null>(null);
-    const [studentDetails, setStudentDetails] = useState<ChildDetails | null>(null);
+    const [startDate, setStartDate] = useState<Dayjs | null>(null);
+    const [endDate, setEndDate] = useState<Dayjs | null>(null);
 
     type SnackbarState = {
         open: boolean;
@@ -75,80 +70,110 @@ const ParentReport: React.FC = () => {
     };
     const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '', severity: 'info' });
 
-    const hasValidFilters = (): boolean => {
-        const hasExamFilter = exam !== "";
-        const hasDateFilter = startDate && endDate;
-        const hasMonthForMonthlyExam = exam !== "Monthly" || (exam === "Monthly" && month !== "");
-        return (hasExamFilter && hasMonthForMonthlyExam) || !!hasDateFilter;
-    };
-
-    const { isLoading: isLoadingChild, isError: isErrorChild, error: errorChild } = useQuery<ChildDetails, Error, ChildDetails, ["child-details"]>(
-        {
-            queryKey: ["child-details"],
-            queryFn: fetchChildDetails,
-            retry: 1,
-            onSuccess: (data: ChildDetails) => {
-                setStudentId(data.studentId);
-                setStudentDetails(data);
-            },
-        } as UseQueryOptions<ChildDetails, Error, ChildDetails, ["child-details"]>
-    );
-
-    const { data: reportData, isLoading: isLoadingReport, isError: isErrorReport, error: errorReport } = useQuery<ParentReportData, Error, ParentReportData, ["parent-report", string, string, string, string, string]>(
-        {
-            queryKey: [
-                "parent-report",
-                studentId || '',
-                exam,
-                month,
-                startDate,
-                endDate
-            ],
-            queryFn: () => {
-                if (!studentId) throw new Error("Student ID not available");
-                return fetchParentReport(
-                    studentId,
-                    "2023",
-                    exam,
-                    exam === "Monthly" ? month : "",
-                    startDate,
-                    endDate
-                );
-            },
-            enabled: !!studentId && hasValidFilters(),
-            retry: 1
-        } as UseQueryOptions<ParentReportData, Error, ParentReportData, ["parent-report", string, string, string, string, string]>
-    );
-
+    // Clear month when exam is not "Monthly"
     useEffect(() => {
         if (exam !== "Monthly") {
             setMonth("");
         }
     }, [exam]);
 
+    const hasValidFilters = (): boolean => {
+        // At least one filter should be provided for meaningful data
+        const hasExamFilter = Boolean(exam);
+        const hasDateFilter = Boolean(startDate && endDate && startDate.isValid() && endDate.isValid());
+
+        // If no filters are provided, don't allow the query
+        return hasExamFilter || hasDateFilter;
+    };
+
+    // Fetches child details and student admission number
+    const {
+        isLoading: isLoadingChild,
+        isError: isErrorChild,
+        error: errorChild,
+        data: childData
+    } = useQuery<ChildDetails, Error>({
+        queryKey: ["child-details"],
+        queryFn: fetchChildDetails,
+        retry: 1,
+    });
+
+
+    // Fetches report data, now enabled by the childData and valid filters
+    const {
+        data: reportData,
+        isLoading: isLoadingReport,
+        isError: isErrorReport,
+        error: errorReport
+    } = useQuery<ParentReportData, Error>({
+        queryKey: [
+            "parent-report",
+            startDate?.format('YYYY-MM-DD') || '',
+            endDate?.format('YYYY-MM-DD') || '',
+            exam,
+            month,
+            childData?.admissionNo || ''
+        ],
+        queryFn: () => {
+            const admissionNo = childData?.admissionNo;
+            if (!admissionNo) {
+                throw new Error("Student admission number not available");
+            }
+
+            // Provide default values for required path parameters
+            const startDateValue = startDate?.format('YYYY-MM-DD') || '2024-01-01';
+            const endDateValue = endDate?.format('YYYY-MM-DD') || '2024-12-31';
+            const examValue = exam || 'First';
+
+            // Send empty string for month when not Monthly exam - API will convert to "null"
+            const monthValue = exam === "Monthly" ? month : "";
+
+            return fetchParentReport(
+                startDateValue,
+                endDateValue,
+                examValue,
+                monthValue,
+                admissionNo
+            );
+        },
+        enabled: Boolean(childData?.admissionNo) && hasValidFilters(),
+        retry: 1
+    });
+
+    // Handle side effects for errors
     useEffect(() => {
-        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        if (isErrorChild && errorChild) {
+            setSnackbar({
+                open: true,
+                message: `Failed to load child details: ${errorChild.message}`,
+                severity: "error"
+            });
+        }
+        if (isErrorReport && errorReport) {
+            setSnackbar({
+                open: true,
+                message: `Failed to load report data: ${errorReport.message}`,
+                severity: "error"
+            });
+        }
+    }, [isErrorChild, errorChild, isErrorReport, errorReport]);
+
+    useEffect(() => {
+        if (startDate && endDate &&
+            startDate.isValid() && endDate.isValid() &&
+            startDate.isAfter(endDate)) {
             setSnackbar({
                 open: true,
                 message: "Start date cannot be after end date",
                 severity: "warning"
             });
-            setEndDate("");
+            setEndDate(null);
         }
     }, [startDate, endDate]);
 
-    useEffect(() => {
-        if (isErrorChild && errorChild) {
-            setSnackbar({ open: true, message: `Failed to load child details: ${errorChild.message}`, severity: "error" });
-        }
-        if (isErrorReport && errorReport) {
-            setSnackbar({ open: true, message: `Failed to load report data: ${errorReport.message}`, severity: "error" });
-        }
-    }, [isErrorChild, errorChild, isErrorReport, errorReport]);
-
     const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
 
-    const renderDetailedMarksTable = () => {
+    const renderDetailedMarksTable = (): React.ReactNode => {
         if (isLoadingReport) {
             return (
                 <TableRow>
@@ -156,6 +181,7 @@ const ParentReport: React.FC = () => {
                 </TableRow>
             );
         }
+
         if (!reportData || !reportData.studentMarksDetailedTable || reportData.studentMarksDetailedTable.length === 0) {
             return (
                 <TableRow>
@@ -163,30 +189,35 @@ const ParentReport: React.FC = () => {
                 </TableRow>
             );
         }
-        return (
-            <>
-                {reportData.studentMarksDetailedTable.map((row: DetailedMarksTableRow, idx: number) => (
-                    <TableRow key={idx} hover>
-                        <TableCell sx={{ fontWeight: 'bold' }}>{row.subject}</TableCell>
-                        <TableCell align="center">{row.highestMarks}</TableCell>
-                        <TableCell align="center">{row.highestMarkGrade}</TableCell>
-                        <TableCell align="center">{row.studentMarks}</TableCell>
-                        <TableCell align="center">{row.studentGrade}</TableCell>
-                    </TableRow>
-                ))}
-                {reportData.studentMarksDetailedTable.length > 0 && (
-                    <TableRow sx={{ backgroundColor: theme.palette.action.hover }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Overall Average</TableCell>
-                        <TableCell align="center">N/A</TableCell>
-                        <TableCell align="center"></TableCell>
-                        <TableCell align="center">
-                            {(reportData.studentMarksDetailedTable.reduce((sum, current) => sum + current.studentMarks, 0) / reportData.studentMarksDetailedTable.length).toFixed(1)}
-                        </TableCell>
-                        <TableCell align="center"></TableCell>
-                    </TableRow>
-                )}
-            </>
-        );
+
+        // Calculate totals only for rows that have student marks
+        const rowsWithMarks = reportData.studentMarksDetailedTable.filter(row => row.studentMarks > 0);
+        const totalMarks = rowsWithMarks.reduce((sum: number, current: DetailedMarksTableRow) => sum + current.studentMarks, 0);
+        const averageMarks = rowsWithMarks.length > 0 ? (totalMarks / rowsWithMarks.length).toFixed(1) : 'N/A';
+
+        const rows = reportData.studentMarksDetailedTable.map((row: DetailedMarksTableRow, idx: number) => (
+            <TableRow key={idx} hover>
+                <TableCell sx={{ fontWeight: 'bold' }}>{row.subject}</TableCell>
+                <TableCell align="center">{row.highestMarks}</TableCell>
+                <TableCell align="center">{row.highestMarkGrade}</TableCell>
+                <TableCell align="center">{row.studentMarks > 0 ? row.studentMarks : 'N/A'}</TableCell>
+                <TableCell align="center">{row.studentGrade !== 'N/A' ? row.studentGrade : 'N/A'}</TableCell>
+            </TableRow>
+        ));
+
+        // Only show average row if there are student marks
+        if (rowsWithMarks.length > 0) {
+            rows.push(
+                <TableRow sx={{ backgroundColor: theme.palette.action.hover }} key="average-row">
+                    <TableCell sx={{ fontWeight: 'bold' }}>Overall Average</TableCell>
+                    <TableCell align="center">N/A</TableCell>
+                    <TableCell align="center"></TableCell>
+                    <TableCell align="center">{averageMarks}</TableCell>
+                    <TableCell align="center"></TableCell>
+                </TableRow>
+            );
+        }
+        return rows;
     };
 
     const renderSubjectAverageCharts = () => {
@@ -200,7 +231,7 @@ const ParentReport: React.FC = () => {
 
         const individualSubjectAverages = reportData?.individualSubjectAverages;
 
-        if (!individualSubjectAverages) {
+        if (!individualSubjectAverages || Object.keys(individualSubjectAverages).length === 0) {
             return (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250, width: '100%' }}>
                     <Typography variant="h6" color="text.secondary">No subject average data available.</Typography>
@@ -210,34 +241,40 @@ const ParentReport: React.FC = () => {
 
         const subjects = Object.keys(individualSubjectAverages);
 
-        if (subjects.length === 0) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250, width: '100%' }}>
-                    <Typography variant="h6" color="text.secondary">No subject average data available.</Typography>
-                </Box>
-            );
+        // Group subjects into rows of 3
+        const subjectRows = [];
+        for (let i = 0; i < subjects.length; i += 3) {
+            subjectRows.push(subjects.slice(i, i + 3));
         }
 
         return (
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
-                {subjects.map((subjectName) => (
-                    <Paper key={subjectName} sx={{ p: 3, flex: 1 }}>
-                        <Typography fontWeight={600} mb={2}>{subjectName} Subject</Typography>
-                        <ResponsiveContainer width="100%" height={250}>
-                            {individualSubjectAverages[subjectName] && individualSubjectAverages[subjectName].length > 0 ? (
-                                <LineChart data={individualSubjectAverages[subjectName]}>
-                                    <XAxis dataKey="x" />
-                                    <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }} />
-                                    <ReTooltip />
-                                    <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
-                                </LineChart>
-                            ) : (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
-                                    <Typography variant="body2" color="text.secondary">No data for {subjectName}</Typography>
-                                </Box>
-                            )}
-                        </ResponsiveContainer>
-                    </Paper>
+            <Stack spacing={3}>
+                {subjectRows.map((row, rowIndex) => (
+                    <Stack key={rowIndex} direction={{ xs: 'column', md: 'row' }} spacing={3}>
+                        {row.map((subjectName) => (
+                            <Paper key={subjectName} sx={{ p: 3, flex: 1, minWidth: 0 }}>
+                                <Typography fontWeight={600} mb={2}>{subjectName} Subject</Typography>
+                                <ResponsiveContainer width="100%" height={250}>
+                                    {individualSubjectAverages[subjectName] && individualSubjectAverages[subjectName]!.length > 0 ? (
+                                        <LineChart data={individualSubjectAverages[subjectName]}>
+                                            <XAxis dataKey="x" />
+                                            <YAxis domain={[0, 100]} label={{ value: 'Marks', angle: -90, position: 'insideLeft' }} />
+                                            <ReTooltip />
+                                            <Line type="monotone" dataKey="y" stroke="#42A5F5" name="Average Marks" />
+                                        </LineChart>
+                                    ) : (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
+                                            <Typography variant="body2" color="text.secondary">No data for {subjectName}</Typography>
+                                        </Box>
+                                    )}
+                                </ResponsiveContainer>
+                            </Paper>
+                        ))}
+                        {/* Fill remaining space if row has less than 3 items */}
+                        {row.length < 3 && Array.from({ length: 3 - row.length }).map((_, emptyIndex) => (
+                            <Box key={`empty-${rowIndex}-${emptyIndex}`} sx={{ flex: 1 }} />
+                        ))}
+                    </Stack>
                 ))}
             </Stack>
         );
@@ -257,11 +294,14 @@ const ParentReport: React.FC = () => {
                         <Navbar title="Parent Report" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
                     </AppBar>
 
-                    <Stack spacing={3} sx={{ px: { xs: 2, md: 2 }, py: 3 }}>
-                        {/* New single row for Filters and Student Details */}
-                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="center" sx={{ width: '100%' }}>
+                    <Stack spacing={3} sx={{ px: { xs: 2, md: 4 }, py: 3 }}>
+                        {/* Single row for Filters and Student Details */}
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="stretch" sx={{ width: '100%' }}>
                             {/* Filter Section */}
-                            <Paper elevation={2} sx={{ p:6, flexGrow: 1 }}>
+                            <Paper elevation={2} sx={{ p: 3, flexGrow: 1 }}>
+                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                                    Report Filters
+                                </Typography>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={2}
@@ -273,23 +313,19 @@ const ParentReport: React.FC = () => {
                                     <TextField
                                         type="date"
                                         label="Start Date"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        InputLabelProps={{
-                                            shrink: true,
-                                        }}
-                                        sx={{ minWidth: { xs: '100%', sm: 250 } }}
+                                        value={startDate ? startDate.format('YYYY-MM-DD') : ''}
+                                        onChange={(e) => setStartDate(e.target.value ? dayjs(e.target.value) : null)}
+                                        InputLabelProps={{ shrink: true }}
+                                        sx={{ minWidth: { xs: '100%', sm: 150 } }}
                                     />
                                     {/* End Date */}
                                     <TextField
                                         type="date"
                                         label="End Date"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        InputLabelProps={{
-                                            shrink: true,
-                                        }}
-                                        sx={{ minWidth: { xs: '100%', sm: 250 } }}
+                                        value={endDate ? endDate.format('YYYY-MM-DD') : ''}
+                                        onChange={(e) => setEndDate(e.target.value ? dayjs(e.target.value) : null)}
+                                        InputLabelProps={{ shrink: true }}
+                                        sx={{ minWidth: { xs: '100%', sm: 150 } }}
                                     />
                                     {/* Exam */}
                                     <TextField
@@ -297,20 +333,24 @@ const ParentReport: React.FC = () => {
                                         label="Exam"
                                         value={exam}
                                         onChange={e => setExam(e.target.value)}
-                                        sx={{ minWidth: { xs: '100%', sm: 250 } }}
+                                        sx={{ minWidth: { xs: '100%', sm: 150 } }}
                                     >
                                         {exams.map(e => (
                                             <MenuItem key={e} value={e}>{e}</MenuItem>
                                         ))}
                                     </TextField>
-                                    {/* Month */}
+                                    {/* Month - Only enabled when Monthly exam is selected */}
                                     <TextField
                                         select
                                         label="Month"
                                         value={month}
                                         onChange={e => setMonth(e.target.value)}
-                                        sx={{ minWidth: { xs: '100%', sm: 250 } }}
                                         disabled={exam !== "Monthly"}
+                                        sx={{
+                                            minWidth: { xs: '100%', sm: 150 },
+                                            opacity: exam !== "Monthly" ? 0.6 : 1
+                                        }}
+                                        helperText={exam !== "Monthly" ? "Available only for Monthly exams" : ""}
                                     >
                                         {months.map(m => (
                                             <MenuItem key={m} value={m}>{m}</MenuItem>
@@ -320,9 +360,12 @@ const ParentReport: React.FC = () => {
                             </Paper>
 
                             {/* Student Details Section */}
-                            <Paper elevation={2} sx={{ p: 2, flexShrink: 0, flexGrow: 0, minWidth: { xs: '100%', md: 650 } }}>
+                            <Paper elevation={2} sx={{ p: 3, flexShrink: 0, minWidth: { xs: '100%', md: 300 } }}>
+                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                                    Student Details
+                                </Typography>
                                 <Box sx={{
-                                    p: 3,
+                                    p: 2,
                                     border: `1px solid ${theme.palette.divider}`,
                                     borderRadius: theme.shape.borderRadius,
                                     textAlign: 'left'
@@ -335,13 +378,13 @@ const ParentReport: React.FC = () => {
                                     ) : (
                                         <Stack spacing={1}>
                                             <Typography variant="body2" fontWeight="bold">
-                                                Student: {studentDetails?.studentName || 'Sewmini thushara hewage'}
+                                                Student: {childData?.studentName || 'N/A'}
                                             </Typography>
                                             <Typography variant="body2" fontWeight="bold">
-                                                Grade: {studentDetails?.grade || 'grade 1'}
+                                                Grade: {childData?.grade || 'N/A'}
                                             </Typography>
                                             <Typography variant="body2" fontWeight="bold">
-                                                Class: {studentDetails?.className || 'N/A'}
+                                                Class: {childData?.className || 'N/A'}
                                             </Typography>
                                         </Stack>
                                     )}
@@ -362,9 +405,9 @@ const ParentReport: React.FC = () => {
                         )}
 
                         {/* Charts and Data - Only show if valid filters are applied */}
-                        {hasValidFilters() && (
+                        {hasValidFilters() && childData && (
                             <>
-                                {/* Other sections like charts and tables */}
+                                {/* Charts Section */}
                                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
                                     {/* Overall Subject Bar Chart */}
                                     <Paper sx={{ p: 3, flex: 2 }}>
@@ -375,17 +418,18 @@ const ParentReport: React.FC = () => {
                                                     <CircularProgress />
                                                 </Box>
                                             ) : (
-                                                <BarChart data={reportData?.overallSubjectLineGraph}>
+                                                <BarChart data={reportData?.overallSubjectLineGraph} barSize={50}>
                                                     <XAxis dataKey="year" />
                                                     <YAxis domain={[0, 100]} />
                                                     <ReTooltip />
                                                     <Bar dataKey="firstTerm" fill="#0d1542ff" name="First Term" />
-                                                    <Bar dataKey="secondTerm" fill="#6c009eff" name="Second Term" />
-                                                    <Bar dataKey="thirdTerm" fill=" #E91E63" name="Third Term" />
+                                                    <Bar dataKey="secondTerm" fill="#1310b6ff" name="Second Term" />
+                                                    <Bar dataKey="thirdTerm" fill=" #77aef5ff" name="Third Term" />
                                                 </BarChart>
                                             )}
                                         </ResponsiveContainer>
                                     </Paper>
+
                                     {/* Subject Wise Marks (Pie Chart) */}
                                     <Paper sx={{ p: 3, flex: 1 }}>
                                         <Typography fontWeight={600} mb={2}>Subject Wise Marks</Typography>
@@ -396,7 +440,13 @@ const ParentReport: React.FC = () => {
                                                 </Box>
                                             ) : (
                                                 <PieChart>
-                                                    <Pie data={reportData?.subjectWiseMarksPie} dataKey="value" nameKey="name" outerRadius={80} label={(entry: any) => entry.name}>
+                                                    <Pie
+                                                        data={reportData?.subjectWiseMarksPie}
+                                                        dataKey="value"
+                                                        nameKey="name"
+                                                        outerRadius={80}
+                                                        label={(entry: any) => entry.name}
+                                                    >
                                                         {(reportData?.subjectWiseMarksPie || []).map((_: any, idx: number) => (
                                                             <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
                                                         ))}
@@ -411,6 +461,7 @@ const ParentReport: React.FC = () => {
 
                                 {renderSubjectAverageCharts()}
 
+                                {/* Detailed Marks Table */}
                                 <Paper elevation={2} sx={{ p: 2, overflowX: 'auto' }}>
                                     <Typography variant="h6" fontWeight={600} mb={2}>
                                         Detailed Marks Breakdown
@@ -421,7 +472,7 @@ const ParentReport: React.FC = () => {
                                                 <TableRow>
                                                     <TableCell rowSpan={2} sx={{ fontWeight: 'bold', minWidth: 100 }}>Subject</TableCell>
                                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', borderBottom: 1, borderColor: 'divider' }}>Highest Student</TableCell>
-                                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', borderBottom: 1, borderColor: 'divider' }}>{studentDetails?.studentName || 'Your Child'}</TableCell>
+                                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', borderBottom: 1, borderColor: 'divider' }}>{childData?.studentName || 'Your Child'}</TableCell>
                                                 </TableRow>
                                                 <TableRow>
                                                     <TableCell align="center" sx={{ fontWeight: 'bold', minWidth: 70 }}>Marks</TableCell>
