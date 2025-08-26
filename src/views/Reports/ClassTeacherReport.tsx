@@ -21,7 +21,12 @@ import Footer from "../../components/Footer";
 
 
 const classes = ["Olu", "Araliya", "Nelum"];
-const exams = ["First", "Second", "Third", "Monthly"];
+const exams = [
+  { label: 'First Term', value: 'First' },
+  { label: 'Second Term', value: 'Mid' },
+  { label: 'Third Term', value: 'End' },
+  { label: 'Monthly Test', value: 'monthly' }
+];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
 const BAR_COLORS = ["#E3B6E5", "#C5A6D9", "#A795CD", "#8A85C1", "#6D74B5", "#5163A9", "#34529C"];
 
@@ -63,7 +68,7 @@ const ClassTeacherReport: React.FC = () => {
   const [grade, setGrade] = useState<string>("");
   const [gradeOptions, setGradeOptions] = useState<DropdownOption[]>([]);
   const [className, setClassName] = useState("Olu");
-  const [exam, setExam] = useState("2nd Term");
+  const [exam, setExam] = useState("Mid");
 
   type SnackbarState = {
     open: boolean;
@@ -331,8 +336,8 @@ const ClassTeacherReport: React.FC = () => {
                   }}
                 >
                   {exams.map((ex) => (
-                    <MenuItem key={ex} value={ex}>
-                      {ex}
+                    <MenuItem key={ex.value} value={ex.value}>
+                      {ex.label}
                     </MenuItem>
                   ))}
                 </TextField>
