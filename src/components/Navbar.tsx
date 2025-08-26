@@ -40,15 +40,15 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
     const fetchUsername = async () => {
       try {
         // Replace with your actual backend API endpoint
-        const response = await fetch('/api/users/current'); // e.g., an endpoint that returns the logged-in user's data
+        const response = await fetch('/api/user'); // e.g., an endpoint that returns the logged-in user's data
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setCurrentUsername(data.username); // Assuming the response has a 'username' field
+        setCurrentUsername(data.name); // Assuming the response has a 'username' field
       } catch (error) {
         console.error("Error fetching username:", error);
-        setCurrentUsername("H.K.N.M.P.D.Perera"); // Fallback if fetching fails
+        setCurrentUsername(""); // Fallback if fetching fails
       }
     };
 
