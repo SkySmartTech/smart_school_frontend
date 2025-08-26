@@ -69,9 +69,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "Dashboard",
       icon: <Layers fontSize="small" />,
       children: [
-        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/studentdashboard" },
-        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherdashboard" },
-        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/commondashboard" },
+        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
+        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
+        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
       ],
     },
     {
@@ -105,7 +105,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       type: "item",
       title: "System Management",
       icon: <Settings fontSize="small" />,
-      href: "/systemManagement",
+      href: "/sample",
     },
     { type: "divider" },
     { type: "headline", text: "Components" },
@@ -125,7 +125,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       type: "item",
       title: "Settings",
       icon: <Settings fontSize="small" />,
-      href: "/setting",
+      href: "/sample",
     },
     {
       type: "item",
