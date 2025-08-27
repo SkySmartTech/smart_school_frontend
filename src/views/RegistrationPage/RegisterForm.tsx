@@ -63,8 +63,6 @@ import { motion } from "framer-motion";
 
 const gender = ["Male", "Female"];
 const roles = ["Teacher", "Student", "Parent"];
-const professions = ["Engineer", "Doctor", "Teacher", "Designer", "Other"];
-const relations = ["Father", "Mother", "Other"];
 const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
@@ -846,7 +844,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       </MenuItem>
                     ))}
                   </TextField>
-                    <TextField
+                  <TextField
                     select
                     label="Medium"
                     fullWidth
@@ -920,7 +918,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       </MenuItem>
                     ))}
                   </TextField>
-                   <TextField
+                  <TextField
                     label="Staff Number"
                     fullWidth
                     variant="outlined"
@@ -941,70 +939,70 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       }
                     }}
                   />
-                
-                 
+
+
                 </Stack>
-                 <Button
-                    variant="contained"
-                    onClick={handleAddAssignment}
-                    sx={{
-                      minWidth: '120px',
-                      height: '40px',
-                      borderRadius: '10px'
-                    }}
-                    startIcon={<Add />}
-                  >
-                    Add to List
-                  </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleAddAssignment}
+                  sx={{
+                    minWidth: '120px',
+                    height: '40px',
+                    borderRadius: '10px'
+                  }}
+                  startIcon={<Add />}
+                >
+                  Add to List
+                </Button>
 
                 {/* Assignments Grid */}
-               {/* Assignments Grid */}
-{teacherAssignments.length > 0 && (
-  <Box sx={{ mt: 2, width: '100%' }}>
-    <TableContainer
-      component={Paper}
-      sx={{
-        maxHeight: 220, // Set the height for scrolling
-        overflowY: 'auto'
-      }}
-    >
-      <Table stickyHeader>
-        <TableHead>
-          <TableRow>
-            <TableCell>Grades</TableCell>
-            <TableCell>Subjects</TableCell>
-            <TableCell>Classes</TableCell>
-            <TableCell>Medium</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {teacherAssignments.map((assignment) => (
-            <TableRow key={assignment.id}>
-              <TableCell>{assignment.grades.join(", ")}</TableCell>
-              <TableCell>{assignment.subjects.join(", ")}</TableCell>
-              <TableCell>{assignment.classes.join(", ")}</TableCell>
-              <TableCell>{assignment.medium.join(", ")}</TableCell>
-              <TableCell>
-                <IconButton
-                  onClick={() => {
-                    setTeacherAssignments(prev => 
-                      prev.filter(item => item.id !== assignment.id)
-                    );
-                  }}
-                  size="small"
-                  color="error"
-                >
-                  <Delete />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-)}
+                {/* Assignments Grid */}
+                {teacherAssignments.length > 0 && (
+                  <Box sx={{ mt: 2, width: '100%' }}>
+                    <TableContainer
+                      component={Paper}
+                      sx={{
+                        maxHeight: 220, // Set the height for scrolling
+                        overflowY: 'auto'
+                      }}
+                    >
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Grades</TableCell>
+                            <TableCell>Subjects</TableCell>
+                            <TableCell>Classes</TableCell>
+                            <TableCell>Medium</TableCell>
+                            <TableCell>Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {teacherAssignments.map((assignment) => (
+                            <TableRow key={assignment.id}>
+                              <TableCell>{assignment.grades.join(", ")}</TableCell>
+                              <TableCell>{assignment.subjects.join(", ")}</TableCell>
+                              <TableCell>{assignment.classes.join(", ")}</TableCell>
+                              <TableCell>{assignment.medium.join(", ")}</TableCell>
+                              <TableCell>
+                                <IconButton
+                                  onClick={() => {
+                                    setTeacherAssignments(prev =>
+                                      prev.filter(item => item.id !== assignment.id)
+                                    );
+                                  }}
+                                  size="small"
+                                  color="error"
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
 
               </>
             )}
@@ -1066,7 +1064,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
             {selectedRole === "Parent" && (
               <><Stack direction="row" spacing={2}>
                 <TextField
-                  select
+
                   label="Profession"
                   fullWidth
                   variant="outlined"
@@ -1087,11 +1085,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     }
                   }}
                 >
-                  {professions.map((profession) => (
-                    <MenuItem key={profession} value={profession}>
-                      {profession}
-                    </MenuItem>
-                  ))}
+
                 </TextField>
                 <TextField
                   label="Contact Number"
@@ -1141,7 +1135,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   >
                   </TextField>
                   <TextField
-                    select
+
                     label="Relation"
                     fullWidth
                     variant="outlined"
@@ -1162,11 +1156,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       }
                     }}
                   >
-                    {relations.map((relation) => (
-                      <MenuItem key={relation} value={relation}>
-                        {relation}
-                      </MenuItem>
-                    ))}
+
                   </TextField>
                 </Stack>
               </>
