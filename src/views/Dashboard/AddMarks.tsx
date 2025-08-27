@@ -114,7 +114,7 @@ const TeacherDashboard: React.FC = () => {
             selectedSubject: '',
             selectedExam: '',
             selectedMonth: '',
-            selectedYear: '', // Add this line
+            selectedYear: '', 
             searchQuery: ''
         }
     });
@@ -167,7 +167,7 @@ const TeacherDashboard: React.FC = () => {
                 marks: '',
                 student_grade_value: '',
                 month: isMonthFilterEnabled ? selectedMonth : undefined,
-                year: selectedYear || '' // Add this line
+                year: selectedYear || '' 
             }));
 
             setStudents(initialStudents);
@@ -200,7 +200,7 @@ const TeacherDashboard: React.FC = () => {
                     marks: existingStudent?.marks || '',
                     student_grade_value: existingStudent?.student_grade_value || '',
                     month: isMonthFilterEnabled ? selectedMonth : undefined,
-                    year: selectedYear || '' // Add this line
+                    year: selectedYear || '' 
                 };
             });
             setStudents(updatedStudents);
