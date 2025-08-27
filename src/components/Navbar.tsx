@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -9,6 +9,7 @@ import {
   MenuItem,
   Button,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -19,6 +20,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useCustomTheme } from "../context/ThemeContext";
 import AnimatedSwitch from "../components/AnimatedSwitch";
+import { useTeacherProfile } from "../hooks/useTeacherProfile"; // ✅ Import hook
 
 interface NavbarProps {
   title: string;
@@ -32,28 +34,10 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
   const [notificationAnchorEl, setNotificationAnchorEl] =
     useState<null | HTMLElement>(null);
   const [notificationCount] = useState(3);
-  const [currentUsername, setCurrentUsername] = useState("Loading..."); // Initialize with a loading state
   const navigate = useNavigate();
 
-  // Fetch username on component mount
-  useEffect(() => {
-    const fetchUsername = async () => {
-      try {
-        // Replace with your actual backend API endpoint
-        const response = await fetch('/api/user'); // e.g., an endpoint that returns the logged-in user's data
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setCurrentUsername(data.name); // Assuming the response has a 'username' field
-      } catch (error) {
-        console.error("Error fetching username:", error);
-        setCurrentUsername(""); // Fallback if fetching fails
-      }
-    };
-
-    fetchUsername();
-  }, []); // Empty dependency array means this runs once on mount
+  // ✅ Fetch teacher profile using react-query
+  const { data: userProfile, isLoading, isError } = useTeacherProfile();
 
   // Account menu handlers
   const handleAccountMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -70,6 +54,7 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
   };
 
   const handleLogout = () => {
+    localStorage.clear();
     navigate("/login");
     handleAccountMenuClose();
   };
@@ -100,6 +85,7 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
 
   return (
     <Toolbar>
+      {/* Sidebar toggle button */}
       <IconButton
         edge="start"
         color="inherit"
@@ -109,19 +95,17 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
         <MenuIcon />
       </IconButton>
 
+      {/* Title */}
       <Typography
         variant="h6"
         noWrap
         component="div"
-        sx={{
-          flexGrow: 1,
-          fontWeight: 600,
-        }}
+        sx={{ flexGrow: 1, fontWeight: 600 }}
       >
         {title}
       </Typography>
 
-      {/* Icons */}
+      {/* Right side icons */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
         {/* Dark mode toggle */}
         <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
@@ -132,7 +116,7 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
           />
         </Box>
 
-        {/* Notifications dropdown */}
+        {/* Notifications */}
         <IconButton onClick={handleNotificationMenuOpen}>
           <Badge badgeContent={notificationCount} color="error">
             <NotificationsIcon />
@@ -142,20 +126,9 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
           anchorEl={notificationAnchorEl}
           open={Boolean(notificationAnchorEl)}
           onClose={handleNotificationMenuClose}
-          anchorOrigin={{
-            vertical: "bottom",
-            horizontal: "right",
-          }}
-          transformOrigin={{
-            vertical: "top",
-            horizontal: "right",
-          }}
-          sx={{
-            "& .MuiPaper-root": {
-              width: 300,
-              maxHeight: 400,
-            },
-          }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          sx={{ "& .MuiPaper-root": { width: 300, maxHeight: 400 } }}
         >
           <MenuItem disabled>
             <Typography variant="body2">
@@ -177,15 +150,30 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
           </MenuItem>
         </Menu>
 
+        {/* Fullscreen button */}
         <IconButton onClick={toggleFullscreen}>
           <FullscreenIcon />
         </IconButton>
 
-        {/* User's Name and Account dropdown menu */}
-        <Box sx={{ display: "flex", alignItems: "center", cursor: "pointer" }} onClick={handleAccountMenuOpen}>
-          <Typography variant="body1" sx={{ mr: 1, display: { xs: 'none', sm: 'block' } }}>
-            {currentUsername}
-          </Typography>
+        {/* ✅ Username + Account dropdown */}
+        <Box
+          sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+          onClick={handleAccountMenuOpen}
+        >
+          {isLoading ? (
+            <CircularProgress size={18} sx={{ mr: 1 }} />
+          ) : isError ? (
+            <Typography variant="body1" sx={{ mr: 1, color: "error.main" }}>
+              Error
+            </Typography>
+          ) : (
+            <Typography
+              variant="body1"
+              sx={{ mr: 1, display: { xs: "none", sm: "block" }, fontWeight: 500 }}
+            >
+              {userProfile?.name || "Guest"}
+            </Typography>
+          )}
           <IconButton color="inherit" sx={{ p: 0 }}>
             <AccountCircleIcon />
           </IconButton>
@@ -194,14 +182,8 @@ const Navbar = ({ title, sidebarOpen, setSidebarOpen }: NavbarProps) => {
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleAccountMenuClose}
-          anchorOrigin={{
-            vertical: "bottom",
-            horizontal: "right",
-          }}
-          transformOrigin={{
-            vertical: "top",
-            horizontal: "right",
-          }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
         >
           <MenuItem onClick={handleProfileClick}>User Profile</MenuItem>
           <MenuItem onClick={handleLogout}>Logout</MenuItem>
