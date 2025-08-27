@@ -97,7 +97,7 @@ const UnderDevelopmentPage = () => {
             <Button
               variant="contained"
               color="primary"
-              onClick={() => window.location.href = "/dashboard"}
+              onClick={() => window.location.href = "/managementStaff"}
             >
               Back to Dashboard
             </Button>
