@@ -48,7 +48,26 @@ import {
 } from "../../api/managementStaffApi";
 
 const years = ["2023", "2024", "2025"];
-const exams = ["First", "Mid", "End", "Monthly"];
+const exams = [
+  { label: 'First Term', value: 'First' },
+  { label: 'Second Term', value: 'Mid' },
+  { label: 'Third Term', value: 'End' },
+  { label: 'Monthly Test', value: 'monthly' }
+];
+const months = [
+  { label: "January", value: "01" },
+  { label: "February", value: "02" },
+  { label: "March", value: "03" },
+  { label: "April", value: "04" },
+  { label: "May", value: "05" },
+  { label: "June", value: "06" },
+  { label: "July", value: "07" },
+  { label: "August", value: "08" },
+  { label: "September", value: "09" },
+  { label: "October", value: "10" },
+  { label: "November", value: "11" },
+  { label: "December", value: "12" },
+];
 const BAR_COLORS = ['#E3B6E5', '#C5A6D9', '#A795CD', '#8A85C1', '#6D74B5', '#5163A9', '#34529C'];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 
@@ -72,7 +91,8 @@ const ManagementStaff: React.FC = () => {
   const [year, setYear] = useState<string>(years[1]);
   const [grade, setGrade] = useState<string>("");
   const [gradeOptions, setGradeOptions] = useState<DropdownOption[]>([]);
-  const [exam, setExam] = useState<string>(exams[0]);
+  const [exam, setExam] = useState<string>(exams[0].value);
+  const [month, setMonth] = useState<string>("01");
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -284,12 +304,44 @@ const ManagementStaff: React.FC = () => {
                   },
                 }}
               >
-                {exams.map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {t}
+                {exams.map((exam) => (
+                  <MenuItem key={exam.value} value={exam.value}>
+                    {exam.label}
                   </MenuItem>
                 ))}
               </TextField>
+
+              {/* Month - visible only if Monthly Test is selected */}
+              {exam === "monthly" && (
+                <TextField
+                  select
+                  label="Month"
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarMonth />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    minWidth: 150,
+                    flex: 1,
+                    maxWidth: 250,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "45px",
+                    },
+                  }}
+                >
+                  {months.map((m) => (
+                    <MenuItem key={m.value} value={m.value}>
+                      {m.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
 
               {/* Refresh Button */}
               <Button
@@ -480,7 +532,7 @@ const ManagementStaff: React.FC = () => {
                     <TableCell align="right">Tamil</TableCell>
                     <TableCell align="right">ICT</TableCell>
                     <TableCell align="right">Buddhism</TableCell>
-                
+
                     <TableCell align="right">Average</TableCell>
                   </TableRow>
                 </TableHead>
@@ -506,7 +558,7 @@ const ManagementStaff: React.FC = () => {
                         <TableCell align="right">{row.tamil}</TableCell>
                         <TableCell align="right">{row.ict}</TableCell>
                         <TableCell align="right">{row.buddhism}</TableCell>
-                        
+
                         <TableCell align="right">
                           {(
                             ((row.english || 0) +

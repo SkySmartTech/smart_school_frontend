@@ -18,6 +18,7 @@ export interface StudentMark {
   marks: string;
   student_grade_value?: string;
   month?: string;
+  year?: string; // Add this line
 }
 
 export interface FetchMarksFilters {
@@ -134,14 +135,16 @@ export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]):
       subject: mark.subject?.toLowerCase().trim() || '',
       medium: "English",
       marks: parseInt(mark.marks || "0"),
-      marksGrade: mark.student_grade_value?.trim() || 'N/A'
+      marksGrade: mark.student_grade_value?.trim() || 'N/A',
+      year: mark.year?.trim() || '' // Add this line
     }));
 
     // Validate required fields before submission
     const isValid = formattedMarks.every(mark => 
       mark.studentName && 
       mark.month && 
-      mark.marksGrade
+      mark.marksGrade &&
+      mark.year // Add this validation
     );
 
     if (!isValid) {

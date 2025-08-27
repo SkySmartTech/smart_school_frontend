@@ -114,7 +114,7 @@ const TeacherDashboard: React.FC = () => {
             selectedSubject: '',
             selectedExam: '',
             selectedMonth: '',
-            selectedYear: '', // Add this line
+            selectedYear: '', 
             searchQuery: ''
         }
     });
@@ -167,7 +167,7 @@ const TeacherDashboard: React.FC = () => {
                 marks: '',
                 student_grade_value: '',
                 month: isMonthFilterEnabled ? selectedMonth : undefined,
-                year: selectedYear || '' // Add this line
+                year: selectedYear || '' 
             }));
 
             setStudents(initialStudents);
@@ -200,7 +200,7 @@ const TeacherDashboard: React.FC = () => {
                     marks: existingStudent?.marks || '',
                     student_grade_value: existingStudent?.student_grade_value || '',
                     month: isMonthFilterEnabled ? selectedMonth : undefined,
-                    year: selectedYear || '' // Add this line
+                    year: selectedYear || '' 
                 };
             });
             setStudents(updatedStudents);
@@ -273,7 +273,7 @@ const TeacherDashboard: React.FC = () => {
                     month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable',
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
-                    year: selectedYear // Add this line
+                    year: selectedYear // Make sure this is included
                 };
             })
             .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
@@ -287,6 +287,11 @@ const TeacherDashboard: React.FC = () => {
         }
 
         try {
+            // Make sure all required fields are present
+            if (!selectedYear) {
+                throw new Error('Please select a year before submitting marks');
+            }
+
             await submitStudentMarks(marksToSubmit);
             setSnackbarMessage('Marks submitted successfully!');
             setSnackbarSeverity('success');
@@ -519,7 +524,7 @@ const TeacherDashboard: React.FC = () => {
                                     <TextField
                                         {...field}
                                         select
-                                        label="Year"
+                                        label="Academic Year"
                                         variant="outlined"
                                         sx={{
                                             minWidth: 150,
