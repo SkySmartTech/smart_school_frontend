@@ -10,7 +10,14 @@ import {
   // Avatar,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper
 } from "@mui/material";
 import {
   AccountCircle,
@@ -28,7 +35,10 @@ import {
   School,
   Class,
   Subject,
-  Numbers
+  Numbers,
+  Add,
+  Delete,
+  Language
 } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -58,6 +68,7 @@ const relations = ["Father", "Mother", "Other"];
 const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
+const mediumOptions = ["Sinhala", "English", "Tamil"];
 
 interface FormData extends Omit<User, 'photo'> {
   photo: FileList | null;
@@ -85,6 +96,14 @@ interface RegisterFormProps {
   onError: (message: string) => void;
 }
 
+type TeacherAssignment = {
+  grades: string[];
+  subjects: string[];
+  classes: string[];
+  medium: string[];
+  id: string; // for grid row identification
+};
+
 const steps = ['Basic Information', 'Role Details'];
 
 const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
@@ -97,6 +116,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   // const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [registeredUser, setRegisteredUser] = useState<{ userId: number; userType: string } | null>(null);
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
   // const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -296,6 +316,31 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
 
   const handleMouseDownPassword = (event: React.MouseEvent) => {
     event.preventDefault();
+  };
+
+  const handleAddAssignment = () => {
+    const currentGrades = watch("teacherGrades") || [];
+    const currentSubjects = watch("subjects") || [];
+    const currentClasses = watch("teacherClass") || [];
+    const currentMedium = watch("medium") || [];
+
+    if (currentGrades.length && currentSubjects.length && currentClasses.length && currentMedium.length) {
+      const newAssignment: TeacherAssignment = {
+        grades: currentGrades,
+        subjects: currentSubjects,
+        classes: currentClasses,
+        medium: currentMedium,
+        id: crypto.randomUUID()
+      };
+
+      setTeacherAssignments(prev => [...prev, newAssignment]);
+
+      // Clear the current selections
+      setValue("teacherGrades", []);
+      setValue("subjects", []);
+      setValue("teacherClass", []);
+      setValue("medium", []);
+    }
   };
 
   const isPending = isRegisteringBasic || isRegisteringStudent || isRegisteringTeacher || isRegisteringParent;
@@ -723,7 +768,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
             </motion.div>
           </Stack>
         )}
-
+        {/*Teacher Field*/}
         {activeStep === 1 && (
           <Stack spacing={2.5}>
             {selectedRole === "Teacher" && (
@@ -742,7 +787,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                         setValue("teacherGrades", value);
                       }
                     }}
-                    {...register("teacherGrades", { required: "Grades are required" })}
+                    {...register("teacherGrades")}
                     error={!!errors.teacherGrades}
                     helperText={errors.teacherGrades?.message}
                     InputProps={{
@@ -778,7 +823,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                         setValue("subjects", value);
                       }
                     }}
-                    {...register("subjects", { required: "Subjects are required" })}
+                    {...register("subjects")}
                     error={!!errors.subjects}
                     helperText={errors.subjects?.message}
                     InputProps={{
@@ -801,6 +846,42 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       </MenuItem>
                     ))}
                   </TextField>
+                    <TextField
+                    select
+                    label="Medium"
+                    fullWidth
+                    variant="outlined"
+                    SelectProps={{
+                      multiple: true,
+                      value: watch("medium") || [],
+                      onChange: (e) => {
+                        const value = e.target.value as string[];
+                        setValue("medium", value);
+                      }
+                    }}
+                    {...register("medium")}
+                    error={!!errors.medium}
+                    helperText={errors.medium?.message}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Language color={errors.medium ? "error" : "action"} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "10px",
+                        minHeight: "40px"
+                      }
+                    }}
+                  >
+                    {mediumOptions.map((medium) => (
+                      <MenuItem key={medium} value={medium}>
+                        {medium}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 </Stack>
                 <Stack direction="row" spacing={2}>
                   <TextField
@@ -816,7 +897,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                         setValue("teacherClass", value);
                       }
                     }}
-                    {...register("teacherClass", { required: "Classes are required" })}
+                    {...register("teacherClass")}
                     error={!!errors.teacherClass}
                     helperText={errors.teacherClass?.message}
                     InputProps={{
@@ -833,13 +914,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       }
                     }}
                   >
-                    {classes.map((cls) => (
-                      <MenuItem key={cls} value={cls}>
-                        {cls}
+                    {classes.map((classItem) => (
+                      <MenuItem key={classItem} value={classItem}>
+                        {classItem}
                       </MenuItem>
                     ))}
                   </TextField>
-                  <TextField
+                   <TextField
                     label="Staff Number"
                     fullWidth
                     variant="outlined"
@@ -856,47 +937,75 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: "10px",
-                        height: "40px"
+                        height: "55px"
                       }
                     }}
                   />
+                
+                 
                 </Stack>
-                <TextField
-                  select
-                  label="Medium"
-                  fullWidth
-                  variant="outlined"
-                  SelectProps={{
-                    multiple: true,
-                    value: watch("medium") || [],
-                    onChange: (e) => {
-                      const value = e.target.value as string[];
-                      setValue("medium", value);
-                    }
+                 <Button
+                    variant="contained"
+                    onClick={handleAddAssignment}
+                    sx={{
+                      minWidth: '120px',
+                      height: '40px',
+                      borderRadius: '10px'
+                    }}
+                    startIcon={<Add />}
+                  >
+                    Add to List
+                  </Button>
+
+                {/* Assignments Grid */}
+               {/* Assignments Grid */}
+{teacherAssignments.length > 0 && (
+  <Box sx={{ mt: 2, width: '100%' }}>
+    <TableContainer
+      component={Paper}
+      sx={{
+        maxHeight: 220, // Set the height for scrolling
+        overflowY: 'auto'
+      }}
+    >
+      <Table stickyHeader>
+        <TableHead>
+          <TableRow>
+            <TableCell>Grades</TableCell>
+            <TableCell>Subjects</TableCell>
+            <TableCell>Classes</TableCell>
+            <TableCell>Medium</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {teacherAssignments.map((assignment) => (
+            <TableRow key={assignment.id}>
+              <TableCell>{assignment.grades.join(", ")}</TableCell>
+              <TableCell>{assignment.subjects.join(", ")}</TableCell>
+              <TableCell>{assignment.classes.join(", ")}</TableCell>
+              <TableCell>{assignment.medium.join(", ")}</TableCell>
+              <TableCell>
+                <IconButton
+                  onClick={() => {
+                    setTeacherAssignments(prev => 
+                      prev.filter(item => item.id !== assignment.id)
+                    );
                   }}
-                  {...register("medium", { required: "Medium is required" })}
-                  error={!!errors.medium}
-                  helperText={errors.medium?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <School color={errors.medium ? "error" : "action"} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "10px",
-                      minHeight: "40px"
-                    }
-                  }}
+                  size="small"
+                  color="error"
                 >
-                  {["Sinhala", "English", "Tamil"].map((medium) => (
-                    <MenuItem key={medium} value={medium}>
-                      {medium}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  <Delete />
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Box>
+)}
+
               </>
             )}
 
