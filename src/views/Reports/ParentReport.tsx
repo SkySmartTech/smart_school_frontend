@@ -405,7 +405,7 @@ const ParentReport: React.FC = () => {
                         )}
 
                         {/* Charts and Data - Only show if valid filters are applied */}
-                        {hasValidFilters() && childData && (
+                        {hasValidFilters() && childData && ( 
                             <>
                                 {/* Charts Section */}
                                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">

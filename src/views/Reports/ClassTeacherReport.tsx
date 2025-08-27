@@ -18,7 +18,6 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchClassTeacherReport, fetchGradesFromApi, type DropdownOption } from "../../api/classteacherApi";
 import Footer from "../../components/Footer";
 
-const grades = ["1", "2", "3", "4", "11"];
 const classes = ["Olu", "Araliya", "Nelum"];
 const exams = ["1st Term", "2nd Term", "3rd Term", "First"];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
@@ -65,6 +64,7 @@ const ClassTeacherReport: React.FC = () => {
     const [grade, setGrade] = useState("1");
     const [className, setClassName] = useState("Olu");
     const [exam, setExam] = useState("2nd Term");
+    const [grades, setGrades] = useState<DropdownOption[]>([]);
 
     type SnackbarState = {
         open: boolean;
@@ -86,6 +86,23 @@ const ClassTeacherReport: React.FC = () => {
         },
         retry: 1,
     });
+
+    // Fetch grades from API
+    const { data: gradesData, isLoading: isGradesLoading } = useQuery<DropdownOption[], Error>({
+        queryKey: ["grades"],
+        queryFn: fetchGradesFromApi,
+        retry: 1,
+    });
+
+    useEffect(() => {
+        if (gradesData) {
+            setGrades(gradesData);
+            // Set default grade if not already set
+            if (gradesData.length > 0 && !grade) {
+                setGrade(gradesData[0].value);
+            }
+        }
+    }, [gradesData, grade]);
 
     useEffect(() => {
         if (isError && error) {
@@ -175,6 +192,7 @@ const ClassTeacherReport: React.FC = () => {
                                     label="Student Grade"
                                     value={grade}
                                     onChange={(e) => setGrade(e.target.value)}
+                                    disabled={isGradesLoading}
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
@@ -184,11 +202,18 @@ const ClassTeacherReport: React.FC = () => {
                                     }}
                                     sx={{ minWidth: { xs: '100%', sm: 150 }, flex: 1, maxWidth: 250, "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "45px", }, }}
                                 >
-                                    {grades.map((g) => (
-                                        <MenuItem key={g} value={g}>
-                                            {g}
+                                    {isGradesLoading ? (
+                                        <MenuItem disabled>
+                                            <CircularProgress size={16} sx={{ mr: 1 }} />
+                                            Loading grades...
                                         </MenuItem>
-                                    ))}
+                                    ) : (
+                                        grades.map((g) => (
+                                            <MenuItem key={g.value} value={g.value}>
+                                                {g.label}
+                                            </MenuItem>
+                                        ))
+                                    )}
                                 </TextField>
 
                                 {/* Class */}

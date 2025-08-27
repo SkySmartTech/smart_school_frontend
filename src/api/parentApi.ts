@@ -119,7 +119,7 @@ export const fetchParentReport = async (
     exam: string,
     month: string,
     studentAdmissionNo: string
-): Promise<ParentReportData> => {
+): Promise<ParentReportData> => { 
     try {
         const studentResponse = await axios.get(`${API_BASE_URL}/api/user`, {
             ...getAuthHeader(),
