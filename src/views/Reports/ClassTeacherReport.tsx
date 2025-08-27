@@ -19,26 +19,7 @@ import { fetchClassTeacherReport, fetchGradesFromApi, type DropdownOption } from
 import Footer from "../../components/Footer";
 
 const classes = ["Olu", "Araliya", "Nelum"];
-const exams = [
-  { label: 'First Term', value: 'First' },
-  { label: 'Second Term', value: 'Mid' },
-  { label: 'Third Term', value: 'End' },
-  { label: 'Monthly Test', value: 'monthly' }
-];
-const months = [
-  { label: "January", value: "01" },
-  { label: "February", value: "02" },
-  { label: "March", value: "03" },
-  { label: "April", value: "04" },
-  { label: "May", value: "05" },
-  { label: "June", value: "06" },
-  { label: "July", value: "07" },
-  { label: "August", value: "08" },
-  { label: "September", value: "09" },
-  { label: "October", value: "10" },
-  { label: "November", value: "11" },
-  { label: "December", value: "12" },
-];
+const exams = ["1st Term", "2nd Term", "3rd Term", "First"];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
 const BAR_COLORS = ["#E3B6E5", "#C5A6D9", "#A795CD", "#8A85C1", "#6D74B5", "#5163A9", "#34529C"];
 
