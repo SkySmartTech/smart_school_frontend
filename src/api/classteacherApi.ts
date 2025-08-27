@@ -80,7 +80,7 @@ const getAuthHeader = () => {
 export const fetchClassTeacherReport = async (
   startDate: string,
   endDate: string,
-  grade: string,
+  grade: string, 
   className: string,
   exam: string
 ): Promise<ClassTeacherReportData> => {
