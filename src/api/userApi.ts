@@ -9,41 +9,53 @@ const API = axios.create({
 });
 
 export const userSchema = z.object({
-  name: z.string().min(1, "Full name is required"),
-  email: z.string().email("Invalid email address"),
-  address: z.string().min(1, "Address is required"),
-  birthDay: z.string().min(1, "Birthday is required"),
-  contact: z.string().min(1, "Phone is required"),
-  userType: z.string().min(1, "Role is required"),
-  username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be less than 20 characters"),
-  password: z.string()
-    .min(6, "Password must be at least 6 characters"),
-  password_confirmation: z.string().min(1, "Please confirm your password"),
-  photo: z.instanceof(File).optional(),
-  gender: z.string().optional(),
-  location: z.string().optional(),
-  userRole: z.string().optional(),
-  // Teacher specific fields
-  grade: z.string().optional(),
-  subject: z.string().optional(),
-  class: z.string().optional(),
-  staffId: z.string().optional(),
-  teacherStaffId: z.string().optional(),
-  // Backend expects these field names for teachers
-  teacherGrades: z.array(z.string()).optional(),
-  teacherClass: z.array(z.string()).optional(),
-  subjects: z.array(z.string()).optional(),
-  staffNo: z.string().optional(),
-  medium: z.array(z.string()).optional(),
-  // Student specific fields
-  studentGrade: z.string().optional(),
-  studentAdmissionNo: z.string().optional(),
-  // Parent specific fields
-  profession: z.string().optional(),
-  parentContact: z.string().optional(),
-  relation: z.string().optional(),
+    name: z.string().min(1, "Full name is required"),
+    email: z.string().email("Invalid email address"),
+    address: z.string().min(1, "Address is required"),
+    birthDay: z.string().min(1, "Birthday is required"),
+    contact: z
+      .string()
+      .min(10, "Phone must be at least 10 digits")
+      .max(15, "Phone must be at most 15 digits"),
+    userType: z.string().min(1, "Role is required"),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(20, "Username must be less than 20 characters"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    password_confirmation: z.string().min(1, "Please confirm your password"),
+
+    photo: z.instanceof(File).optional(),
+
+    gender: z.string().optional(),
+    location: z.string().min(1, "Location is required"),
+    userRole: z.string().min(1, "User role is required"),
+
+    // Teacher specific fields
+    grade: z.string().min(1, "Grade is required"),
+    subject: z.string().min(1, "Subject is required"),
+    class: z.string().min(1, "Class is required"),
+    staffId: z.string().min(1, "Staff ID is required"),
+    teacherStaffId: z.string().min(1, "Teacher Staff ID is required"),
+    teacherGrades: z.array(z.string().min(1)).nonempty("At least one grade is required"),
+    teacherClass: z.array(z.string().min(1)).nonempty("At least one class is required"),
+    subjects: z.array(z.string().min(1)).nonempty("At least one subject is required"),
+    staffNo: z.string().min(1, "Staff number is required"),
+    medium: z.array(z.string().min(1)).nonempty("At least one medium is required"),
+
+    // Student specific fields
+    studentGrade: z.string().min(1, "Student grade is required"),
+    studentClass: z.string().min(1, "Student class is required"),
+    studentAdmissionNo: z.string().min(1, "Admission number is required"),
+    parentNo: z
+      .string()
+      .min(10, "Parent phone must be at least 10 digits")
+      .max(15, "Parent phone must be at most 15 digits"),
+    parentProfession: z.string().min(1, "Parent profession is required"),
+
+    // Parent specific fields
+    profession: z.string().min(1, "Profession is required"),
+    relation: z.string().min(1, "Relation is required"),
   
 }).refine(data => data.password === data.password_confirmation, {
   message: "Passwords don't match",
@@ -64,10 +76,41 @@ export async function registerUser(userData: FormData) {
   }
 }
 
+// Add these interfaces for type safety
+interface StudentRegistrationData {
+  studentGrade: string;
+  medium: string;
+  studentClass: string;
+  studentAdmissionNo: string;
+  parentNo: string;
+  parentProfession: string;
+}
+
+interface ParentRegistrationData {
+  studentAdmissionNo: string;
+  profession: string;
+  relation: string;
+}
+
 // Role-specific registration functions
 export async function registerStudent(studentData: FormData) {
   try {
-    const response = await API.post("/api/user-student-register", studentData);
+    // Convert FormData to JSON object
+    const requestBody: StudentRegistrationData = {
+      studentGrade: studentData.get('studentGrade') as string,
+      medium: studentData.get('medium') as string,
+      studentClass: studentData.get('studentClass') as string,
+      studentAdmissionNo: studentData.get('studentAdmissionNo') as string,
+      parentNo: studentData.get('parentNo') as string,
+      parentProfession: studentData.get('parentProfession') as string
+    };
+
+    // Send as JSON
+    const response = await API.post("/api/user-student-register", requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -79,7 +122,32 @@ export async function registerStudent(studentData: FormData) {
 
 export async function registerTeacher(teacherData: FormData) {
   try {
-    const response = await API.post("/api/user-teacher-register", teacherData);
+    // Convert FormData to an array of teacher assignments
+    const teacherAssignments = JSON.parse(teacherData.get('teacherAssignments') as string);
+    const staffNo = teacherData.get('staffNo'); // Get staffNo from FormData
+
+    if (!staffNo) {
+      throw new Error("Staff number is required");
+    }
+
+    // Create the request body in the expected format
+    const requestBody = {
+      teacherData: teacherAssignments.map((assignment: any) => ({
+        teacherGrade: assignment.teacherGrade,
+        teacherClass: assignment.teacherClass,
+        subject: assignment.subject,
+        medium: assignment.medium,
+        staffNo: staffNo, // Use the staffNo from FormData
+        userId: teacherData.get('userId'),
+        userType: teacherData.get('userType')
+      }))
+    };
+
+    const response = await API.post("/api/user-teacher-register", requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -91,7 +159,19 @@ export async function registerTeacher(teacherData: FormData) {
 
 export async function registerParent(parentData: FormData) {
   try {
-    const response = await API.post("/api/user-parent-register", parentData);
+    // Convert FormData to JSON object
+    const requestBody: ParentRegistrationData = {
+      studentAdmissionNo: parentData.get('studentAdmissionNo') as string,
+      profession: parentData.get('profession') as string,
+      relation: parentData.get('relation') as string
+    };
+
+    // Send as JSON
+    const response = await API.post("/api/user-parent-register", requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
