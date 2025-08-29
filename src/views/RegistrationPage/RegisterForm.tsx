@@ -44,7 +44,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser, registerStudent, registerTeacher, registerParent } from "../../api/userApi";
-import type { User } from "../../api/userApi";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 // import { styled } from '@mui/material/styles';
@@ -63,24 +62,36 @@ import { motion } from "framer-motion";
 
 const gender = ["Male", "Female"];
 const roles = ["Teacher", "Student", "Parent"];
-const professions = ["Engineer", "Doctor", "Teacher", "Designer", "Other"];
-const relations = ["Father", "Mother", "Other"];
 const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
 const mediumOptions = ["Sinhala", "English", "Tamil"];
 
-interface FormData extends Omit<User, 'photo'> {
+interface FormData {
+  // Base User properties (excluding photo)
+  name: string;
+  email: string;
+  address: string;
+  birthDay: string;
+  contact: string;
+  userType: string;
+  username: string;
+  password: string;
+  location: string; // Made required to match User type
+  userRole: string;
+  gender: string;
+
+  // Form-specific properties
   photo: FileList | null;
   password_confirmation: string;
+
+  // Role-specific optional properties
   grade?: string;
   studentGrade?: string;
   subject?: string;
   class?: string;
-  location?: string;
   profession?: string;
   parentContact?: string;
-  gender?: string;
   staffId?: string;
   teacherStaffId?: string;
   studentAdmissionNo?: string;
@@ -89,6 +100,7 @@ interface FormData extends Omit<User, 'photo'> {
   subjects: string[];
   staffNo?: string;
   medium: string[];
+  relation?: string;
 }
 
 interface RegisterFormProps {
@@ -131,7 +143,9 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       teacherGrades: [],
       teacherClass: [],
       subjects: [],
-      medium: []
+      medium: [],
+      location: "", // Provide default value
+      userRole: "user", // Provide default value
     }
   });
 
@@ -202,7 +216,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         "username",
         "password",
         "password_confirmation",
-        "photo"
+        "location",
+        "gender"
       ]);
     } else if (activeStep === 1) {
       if (selectedRole === "Teacher") {
@@ -266,27 +281,32 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     formData.append('userId', registeredUser.userId.toString());
     formData.append('userType', registeredUser.userType);
 
-    // Handle non-array fields
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key)) {
-        if (key === 'photo' && value instanceof FileList && value.length > 0) {
-          formData.append(key, value[0]);
-        } else if (typeof value === 'string' || value instanceof Blob) {
-          formData.append(key, value);
-        }
-      }
-    });
+    if (registeredUser.userType === "Teacher") {
+      // Add staffNo first
+      formData.append('staffNo', data.staffNo || ''); // Make sure staffNo is added
 
-    // Handle array fields
-    const arrayFields = ['teacherGrades', 'teacherClass', 'subjects', 'medium'];
-    arrayFields.forEach(field => {
-      const fieldValue = data[field as keyof FormData];
-      if (fieldValue && Array.isArray(fieldValue)) {
-        fieldValue.forEach(item => {
-          formData.append(`${field}[]`, item);
-        });
-      }
-    });
+      // For teachers, include the teacherAssignments
+      formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
+        teacherGrade: assignment.grades[0],
+        teacherClass: assignment.classes[0],
+        subject: assignment.subjects[0],
+        medium: assignment.medium[0],
+        staffNo: data.staffNo, // Include staffNo in each assignment
+        userId: registeredUser.userId,
+        userType: registeredUser.userType
+      }))));
+    } else {
+      // For other roles, handle as before
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key)) {
+          if (key === 'photo' && value instanceof FileList && value.length > 0) {
+            formData.append(key, value[0]);
+          } else if (typeof value === 'string' || value instanceof Blob) {
+            formData.append(key, value);
+          }
+        }
+      });
+    }
 
     // Submit to appropriate endpoint based on userType
     if (registeredUser.userType === "Student") {
@@ -775,16 +795,113 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               <>
                 <Stack direction="row" spacing={2}>
                   <TextField
+                    label="Staff Number"
+                    fullWidth
+                    variant="outlined"
+                    {...register("staffNo", { required: "Staff number is required" })}
+                    error={!!errors.staffNo}
+                    helperText={errors.staffNo?.message}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <AssignmentInd color={errors.staffNo ? "error" : "action"} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "10px",
+                        height: "55px"
+                      }
+                    }}
+                  />
+
+                  <TextField
+                    select
+                    label="Subjects"
+                    fullWidth
+                    variant="outlined"
+                    SelectProps={{
+                      multiple: true,
+                      value: watch("subjects") || [],
+                      onChange: (e) => {
+                        const value = Array.isArray(e.target.value) ? e.target.value : [e.target.value];
+                        setValue("subjects", value);
+                      }
+                    }}
+                    {...register("subjects")}
+                    error={!!errors.subjects}
+                    helperText={errors.subjects?.message}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Subject color={errors.subjects ? "error" : "action"} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "10px",
+                        minHeight: "40px"
+                      }
+                    }}
+                  >
+                    {subjects.map((subject) => (
+                      <MenuItem key={subject} value={subject}>
+                        {subject}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+
+                </Stack>
+
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    select
+                    label="Classes"
+                    fullWidth
+                    variant="outlined"
+                    SelectProps={{
+                      value: watch("teacherClass") || "",
+                      onChange: (e) => {
+                        const value = e.target.value as string;
+                        setValue("teacherClass", [value]);
+                      }
+                    }}
+                    {...register("teacherClass")}
+                    error={!!errors.teacherClass}
+                    helperText={errors.teacherClass?.message}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Class color={errors.teacherClass ? "error" : "action"} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "10px",
+                        minHeight: "40px"
+                      }
+                    }}
+                  >
+                    {classes.map((classItem) => (
+                      <MenuItem key={classItem} value={classItem}>
+                        {classItem}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
                     select
                     label="Grades"
                     fullWidth
                     variant="outlined"
                     SelectProps={{
-                      multiple: true,
-                      value: watch("teacherGrades") || [],
+                      value: watch("teacherGrades") || "",
                       onChange: (e) => {
-                        const value = e.target.value as string[];
-                        setValue("teacherGrades", value);
+                        const value = e.target.value as string;
+                        setValue("teacherGrades", [value]);
                       }
                     }}
                     {...register("teacherGrades")}
@@ -812,51 +929,14 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   </TextField>
                   <TextField
                     select
-                    label="Subjects"
-                    fullWidth
-                    variant="outlined"
-                    SelectProps={{
-                      multiple: true,
-                      value: watch("subjects") || [],
-                      onChange: (e) => {
-                        const value = e.target.value as string[];
-                        setValue("subjects", value);
-                      }
-                    }}
-                    {...register("subjects")}
-                    error={!!errors.subjects}
-                    helperText={errors.subjects?.message}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Subject color={errors.subjects ? "error" : "action"} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "10px",
-                        minHeight: "40px"
-                      }
-                    }}
-                  >
-                    {subjects.map((subject) => (
-                      <MenuItem key={subject} value={subject}>
-                        {subject}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                    <TextField
-                    select
                     label="Medium"
                     fullWidth
                     variant="outlined"
                     SelectProps={{
-                      multiple: true,
                       value: watch("medium") || [],
                       onChange: (e) => {
-                        const value = e.target.value as string[];
-                        setValue("medium", value);
+                        const value = e.target.value as string;
+                        setValue("medium", [value]);
                       }
                     }}
                     {...register("medium")}
@@ -882,129 +962,71 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       </MenuItem>
                     ))}
                   </TextField>
+
+
+
                 </Stack>
-                <Stack direction="row" spacing={2}>
-                  <TextField
-                    select
-                    label="Classes"
-                    fullWidth
-                    variant="outlined"
-                    SelectProps={{
-                      multiple: true,
-                      value: watch("teacherClass") || [],
-                      onChange: (e) => {
-                        const value = e.target.value as string[];
-                        setValue("teacherClass", value);
-                      }
-                    }}
-                    {...register("teacherClass")}
-                    error={!!errors.teacherClass}
-                    helperText={errors.teacherClass?.message}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Class color={errors.teacherClass ? "error" : "action"} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "10px",
-                        minHeight: "40px"
-                      }
-                    }}
-                  >
-                    {classes.map((classItem) => (
-                      <MenuItem key={classItem} value={classItem}>
-                        {classItem}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                   <TextField
-                    label="Staff Number"
-                    fullWidth
-                    variant="outlined"
-                    {...register("staffNo", { required: "Staff number is required" })}
-                    error={!!errors.staffNo}
-                    helperText={errors.staffNo?.message}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <AssignmentInd color={errors.staffNo ? "error" : "action"} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "10px",
-                        height: "55px"
-                      }
-                    }}
-                  />
-                
-                 
-                </Stack>
-                 <Button
-                    variant="contained"
-                    onClick={handleAddAssignment}
-                    sx={{
-                      minWidth: '120px',
-                      height: '40px',
-                      borderRadius: '10px'
-                    }}
-                    startIcon={<Add />}
-                  >
-                    Add to List
-                  </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleAddAssignment}
+                  sx={{
+                    minWidth: '120px',
+                    height: '40px',
+                    borderRadius: '10px'
+                  }}
+                  startIcon={<Add />}
+                >
+                  Add to List
+                </Button>
 
                 {/* Assignments Grid */}
-               {/* Assignments Grid */}
-{teacherAssignments.length > 0 && (
-  <Box sx={{ mt: 2, width: '100%' }}>
-    <TableContainer
-      component={Paper}
-      sx={{
-        maxHeight: 220, // Set the height for scrolling
-        overflowY: 'auto'
-      }}
-    >
-      <Table stickyHeader>
-        <TableHead>
-          <TableRow>
-            <TableCell>Grades</TableCell>
-            <TableCell>Subjects</TableCell>
-            <TableCell>Classes</TableCell>
-            <TableCell>Medium</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {teacherAssignments.map((assignment) => (
-            <TableRow key={assignment.id}>
-              <TableCell>{assignment.grades.join(", ")}</TableCell>
-              <TableCell>{assignment.subjects.join(", ")}</TableCell>
-              <TableCell>{assignment.classes.join(", ")}</TableCell>
-              <TableCell>{assignment.medium.join(", ")}</TableCell>
-              <TableCell>
-                <IconButton
-                  onClick={() => {
-                    setTeacherAssignments(prev => 
-                      prev.filter(item => item.id !== assignment.id)
-                    );
-                  }}
-                  size="small"
-                  color="error"
-                >
-                  <Delete />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-)}
+                {/* Assignments Grid */}
+                {teacherAssignments.length > 0 && (
+                  <Box sx={{ mt: 2, width: '100%' }}>
+                    <TableContainer
+                      component={Paper}
+                      sx={{
+                        maxHeight: 220, // Set the height for scrolling
+                        overflowY: 'auto'
+                      }}
+                    >
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Grades</TableCell>
+                            <TableCell>Classes</TableCell>
+                            <TableCell>Medium</TableCell>
+                            <TableCell>Subjects</TableCell>
+                            <TableCell>Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {teacherAssignments.map((assignment) => (
+                            <TableRow key={assignment.id}>
+                              <TableCell>{assignment.grades.join(", ")}</TableCell>
+                              <TableCell>{assignment.classes.join(", ")}</TableCell>
+                              <TableCell>{assignment.medium.join(", ")}</TableCell>
+                              <TableCell>{assignment.subjects.join(", ")}</TableCell>
+                              <TableCell>
+                                <IconButton
+                                  onClick={() => {
+                                    setTeacherAssignments(prev =>
+                                      prev.filter(item => item.id !== assignment.id)
+                                    );
+                                  }}
+                                  size="small"
+                                  color="error"
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
 
               </>
             )}
@@ -1066,7 +1088,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
             {selectedRole === "Parent" && (
               <><Stack direction="row" spacing={2}>
                 <TextField
-                  select
+
                   label="Profession"
                   fullWidth
                   variant="outlined"
@@ -1087,11 +1109,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     }
                   }}
                 >
-                  {professions.map((profession) => (
-                    <MenuItem key={profession} value={profession}>
-                      {profession}
-                    </MenuItem>
-                  ))}
+
                 </TextField>
                 <TextField
                   label="Contact Number"
@@ -1141,7 +1159,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                   >
                   </TextField>
                   <TextField
-                    select
+
                     label="Relation"
                     fullWidth
                     variant="outlined"
@@ -1162,11 +1180,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       }
                     }}
                   >
-                    {relations.map((relation) => (
-                      <MenuItem key={relation} value={relation}>
-                        {relation}
-                      </MenuItem>
-                    ))}
+
                   </TextField>
                 </Stack>
               </>
