@@ -50,9 +50,9 @@ import {
 
 const years = ["2023", "2024", "2025"];
 const exams = [
-  { label: 'First Term', value: 'First' },
-  { label: 'Second Term', value: 'Mid' },
-  { label: 'Third Term', value: 'End' },
+  { label: 'First Term', value: 'first' },
+  { label: 'Second Term', value: 'mid' },
+  { label: 'Third Term', value: 'end' },
   { label: 'Monthly Test', value: 'monthly' }
 ];
 const months = [
