@@ -1,5 +1,5 @@
 // src/pages/TeacherDashboard.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
     Stack,
@@ -15,7 +15,9 @@ import {
     Alert,
     Box,
     InputAdornment,
-    MenuItem
+    MenuItem,
+    Chip,
+    Tooltip
 } from '@mui/material';
 
 import { DataGrid } from '@mui/x-data-grid';
@@ -41,13 +43,15 @@ import SubjectIcon from '@mui/icons-material/Subject';
 import EventIcon from '@mui/icons-material/Event';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
+import SaveIcon from '@mui/icons-material/Save';
 
 import useTeacherProfile from '../../hooks/useTeacherProfile';
 
 const examOptions = [
-    { label: 'First Term', value: 'First' },
-    { label: 'Second Term', value: 'Mid' },
-    { label: 'Third Term', value: 'End' },
+    { label: 'First Term', value: 'first' },
+    { label: 'Second Term', value: 'mid' },
+    { label: 'Third Term', value: 'end' },
     { label: 'Monthly Test', value: 'monthly' },
 ];
 
@@ -86,15 +90,8 @@ interface AdmissionData {
 }
 
 const TeacherDashboard: React.FC = () => {
-    const { data: teacherProfile } = useTeacherProfile();
-    const subjectOptions = React.useMemo(() => {
-        if (!teacherProfile?.teacher_data?.subjects) return [];
-        return teacherProfile.teacher_data.subjects.map(subject => ({
-            label: subject,
-            value: subject.toLowerCase()
-        }));
-    }, [teacherProfile?.teacher_data?.subjects]);
-
+    const { data: teacherProfile, isLoading: profileLoading } = useTeacherProfile();
+    const [subjectOptions, setSubjectOptions] = useState<{ label: string; value: string }[]>([]);
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
@@ -123,26 +120,91 @@ const TeacherDashboard: React.FC = () => {
     const { selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, searchQuery } = formValues;
     const isMonthFilterEnabled = selectedExam === 'monthly';
 
-    // Fetch dropdown options
+    // Memoize the subjects calculation
+    const getSubjectsForGradeAndClass = useCallback((grade: string, classValue: string) => {
+        if (!teacherProfile?.teacher_data || !Array.isArray(teacherProfile.teacher_data)) {
+            return [];
+        }
+
+        const subjects = teacherProfile.teacher_data
+            .filter(teacher => 
+                teacher.teacherGrade === grade && 
+                teacher.teacherClass === classValue
+            )
+            .map(teacher => ({
+                label: teacher.subject,
+                value: teacher.subject.toLowerCase()
+            }));
+
+        // Remove duplicates
+        const uniqueSubjects = subjects.filter((subject, index, self) => 
+            index === self.findIndex(s => s.value === subject.value)
+        );
+
+        return uniqueSubjects;
+    }, [teacherProfile]);
+
+    // Memoize filtered students for search
+    const filteredStudents = useMemo(() => {
+        if (!searchQuery.trim()) return students;
+        
+        const query = searchQuery.toLowerCase();
+        return students.filter(student => 
+            student.student_name.toLowerCase().includes(query) ||
+            student.student_admission.toLowerCase().includes(query)
+        );
+    }, [students, searchQuery]);
+
+    // Check if form is valid for submission
+    const isFormValid = useMemo(() => {
+        return selectedGrade && selectedClass && selectedSubject && selectedExam && selectedYear &&
+               (selectedExam !== 'monthly' || selectedMonth);
+    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedYear, selectedMonth]);
+
+    // Count modified marks
+    const modifiedCount = useMemo(() => {
+        return Object.values(modifiedMarks).filter(mark => 
+            mark.marks !== undefined && mark.marks !== ''
+        ).length;
+    }, [modifiedMarks]);
+
+    const showSnackbar = useCallback((message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    }, []);
+
+    // Fetch dropdown options with better error handling
     const fetchOptions = useCallback(async () => {
+        if (profileLoading) return; // Don't fetch if profile is still loading
+        
         setLoading(true);
         try {
-            const grades = await fetchGradesFromApi();
+            const [grades, classes] = await Promise.all([
+                fetchGradesFromApi(),
+                selectedGrade ? fetchClassesFromApi(selectedGrade) : Promise.resolve([])
+            ]);
+            
             setGradeOptions(grades);
-
-            const classes = await fetchClassesFromApi(selectedGrade);
             setClassOptions(classes);
+
+            // Update subjects based on current selection
+            if (selectedGrade && selectedClass) {
+                const subjects = getSubjectsForGradeAndClass(selectedGrade, selectedClass);
+                setSubjectOptions(subjects);
+            }
         } catch (error) {
             console.error("Failed to fetch dropdown options:", error);
-            setSnackbarMessage(`Failed to load dropdown options: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
-            setSnackbarSeverity('error');
-            setSnackbarOpen(true);
+            showSnackbar(
+                `Failed to load dropdown options: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
+                'error'
+            );
         } finally {
             setLoading(false);
         }
-    }, [selectedGrade]);
+    }, [selectedGrade, selectedClass, getSubjectsForGradeAndClass, profileLoading, showSnackbar]);
 
-    // Fetch admission data when grade and class are selected
+    // Fetch admission data with debouncing
     const fetchAdmissionDataHandler = useCallback(async () => {
         if (!selectedGrade || !selectedClass) {
             setAdmissionData([]);
@@ -174,15 +236,34 @@ const TeacherDashboard: React.FC = () => {
             setModifiedMarks({});
         } catch (error) {
             console.error('Failed to fetch admission data:', error);
-            setSnackbarMessage(`Failed to load admission data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
-            setSnackbarSeverity('error');
-            setSnackbarOpen(true);
+            showSnackbar(
+                `Failed to load admission data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
+                'error'
+            );
         } finally {
             setLoading(false);
         }
-    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, searchQuery]);
+    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, searchQuery, showSnackbar]);
 
-    // Update students when subject or term changes
+    // Update subjects when grade or class changes
+    useEffect(() => {
+        if (selectedGrade && selectedClass) {
+            const subjects = getSubjectsForGradeAndClass(selectedGrade, selectedClass);
+            setSubjectOptions(subjects);
+            
+            // Reset subject selection if the current subject is not available for the new grade/class
+            if (selectedSubject && !subjects.some(sub => sub.value === selectedSubject)) {
+                reset({
+                    ...formValues,
+                    selectedSubject: ''
+                });
+            }
+        } else {
+            setSubjectOptions([]);
+        }
+    }, [selectedGrade, selectedClass, selectedSubject, getSubjectsForGradeAndClass, formValues, reset]);
+
+    // Update students when form values change
     useEffect(() => {
         if (admissionData.length > 0) {
             const updatedStudents = admissionData.map((item, index) => {
@@ -205,10 +286,11 @@ const TeacherDashboard: React.FC = () => {
             });
             setStudents(updatedStudents);
         }
-    }, [selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled]);
+    }, [selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, admissionData, selectedGrade, selectedClass]);
 
     const calculateGrade = (marks: number): string => {
-        if (marks <= 40) return "F";
+        if (marks < 0 || marks > 100) return "Invalid";
+        if (marks <= 39) return "F";
         if (marks < 50) return "S";
         if (marks < 65) return "C";
         if (marks < 75) return "B";
@@ -219,6 +301,10 @@ const TeacherDashboard: React.FC = () => {
         let grade = "";
         if (newRow.marks !== "") {
             const marks = parseInt(newRow.marks, 10);
+            if (isNaN(marks) || marks < 0 || marks > 100) {
+                showSnackbar('Please enter valid marks between 0 and 100', 'warning');
+                return students.find(s => s.id === newRow.id) || newRow; // Return original row
+            }
             grade = calculateGrade(marks);
         }
 
@@ -242,6 +328,11 @@ const TeacherDashboard: React.FC = () => {
     };
 
     const handleSubmitMarks = async () => {
+        if (!isFormValid) {
+            showSnackbar('Please fill all required fields before submitting', 'warning');
+            return;
+        }
+
         setLoading(true);
         const marksToSubmit: Partial<StudentMark>[] = Object.entries(modifiedMarks)
             .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '')
@@ -254,9 +345,9 @@ const TeacherDashboard: React.FC = () => {
 
                 const getFullTerm = (term: string) => {
                     switch (term) {
-                        case '1st': return 'First Term';
-                        case '2nd': return 'Second Term';
-                        case '3rd': return 'Third Term';
+                        case 'First': return 'First Term';
+                        case 'Mid': return 'Second Term';
+                        case 'End': return 'Third Term';
                         case 'monthly': return 'Monthly Test';
                         default: return term;
                     }
@@ -273,35 +364,27 @@ const TeacherDashboard: React.FC = () => {
                     month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable',
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
-                    year: selectedYear // Make sure this is included
+                    year: selectedYear
                 };
             })
             .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
 
         if (marksToSubmit.length === 0) {
-            setSnackbarMessage('No marks to submit.');
-            setSnackbarSeverity('info');
-            setSnackbarOpen(true);
+            showSnackbar('No marks to submit.', 'info');
             setLoading(false);
             return;
         }
 
         try {
-            // Make sure all required fields are present
-            if (!selectedYear) {
-                throw new Error('Please select a year before submitting marks');
-            }
-
             await submitStudentMarks(marksToSubmit);
-            setSnackbarMessage('Marks submitted successfully!');
-            setSnackbarSeverity('success');
-            setSnackbarOpen(true);
+            showSnackbar(`Successfully submitted marks for ${marksToSubmit.length} students!`, 'success');
             setModifiedMarks({});
         } catch (error) {
             console.error('Failed to submit marks:', error);
-            setSnackbarMessage(`Failed to submit marks: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
-            setSnackbarSeverity('error');
-            setSnackbarOpen(true);
+            showSnackbar(
+                `Failed to submit marks: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
+                'error'
+            );
         } finally {
             setLoading(false);
         }
@@ -319,21 +402,22 @@ const TeacherDashboard: React.FC = () => {
         setAdmissionData([]);
         setStudents([]);
         setModifiedMarks({});
+        setSubjectOptions([]);
     };
 
     // Fetch options on component mount
     useEffect(() => {
         fetchOptions();
-    }, []);
+    }, [fetchOptions]);
 
-    // Fetch admission data when filters change
+    // Debounced fetch admission data
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchAdmissionDataHandler();
-        }, 500);
+        }, 300); // Reduced debounce time
 
         return () => clearTimeout(timer);
-    }, [selectedGrade, selectedClass, selectedYear, searchQuery]); // Add selectedYear here
+    }, [selectedGrade, selectedClass, selectedYear, fetchAdmissionDataHandler]);
 
     const columns: GridColDef<StudentMark>[] = [
         { field: 'student_admission', headerName: 'Admission No', width: 200, editable: false },
@@ -341,12 +425,13 @@ const TeacherDashboard: React.FC = () => {
         { field: 'student_class', headerName: 'Class', width: 150, editable: false },
         { field: 'subject', headerName: 'Subject', width: 150, editable: false },
         { field: 'term', headerName: 'Term', width: 130, editable: false },
-        { field: 'year', headerName: 'Year', width: 100, editable: false }, // Add this line
+        { field: 'year', headerName: 'Year', width: 100, editable: false },
         {
             field: 'marks',
-            headerName: 'Marks',
+            headerName: 'Marks (0-100)',
             width: 140,
             editable: true,
+            type: 'number',
             renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
                 <TextField
                     variant="outlined"
@@ -354,21 +439,51 @@ const TeacherDashboard: React.FC = () => {
                     value={params.row.marks || ''}
                     inputProps={{
                         style: { textAlign: 'center', padding: '8px 10px' },
+                        min: 0,
+                        max: 100,
                         maxLength: 3
                     }}
                     sx={{
                         width: '100%',
                         '& .MuiOutlinedInput-root': {
                             borderRadius: '4px',
-                            '&:hover fieldset': { borderColor: theme.palette.info.main, },
-                            '&.Mui-focused fieldset': { borderColor: theme.palette.info.main, },
+                            '&:hover fieldset': { borderColor: theme.palette.info.main },
+                            '&.Mui-focused fieldset': { borderColor: theme.palette.info.main },
                         },
                     }}
                 />
             ),
         },
-        { field: 'student_grade_value', headerName: 'Marks Grade', editable: false },
-
+        { 
+            field: 'student_grade_value', 
+            headerName: 'Grade', 
+            editable: false,
+            width: 100,
+            renderCell: (params: GridRenderCellParams<StudentMark, string>) => {
+                const grade = params.row.student_grade_value;
+                if (!grade) return null;
+                
+                const getGradeColor = (grade: string) => {
+                    switch (grade) {
+                        case 'A': return 'success';
+                        case 'B': return 'info';
+                        case 'C': return 'warning';
+                        case 'S': return 'secondary';
+                        case 'F': return 'error';
+                        default: return 'default';
+                    }
+                };
+                
+                return (
+                    <Chip 
+                        label={grade} 
+                        color={getGradeColor(grade) as any}
+                        size="small"
+                        variant="filled"
+                    />
+                );
+            }
+        },
     ];
 
     return (
@@ -435,7 +550,6 @@ const TeacherDashboard: React.FC = () => {
                                                 {option.label}
                                             </MenuItem>
                                         ))}
-
                                     </TextField>
                                 )}
                             />
@@ -474,7 +588,6 @@ const TeacherDashboard: React.FC = () => {
                                                 {option.label}
                                             </MenuItem>
                                         ))}
-
                                     </TextField>
                                 )}
                             />
@@ -487,6 +600,7 @@ const TeacherDashboard: React.FC = () => {
                                         select
                                         label="Subject"
                                         variant="outlined"
+                                        disabled={!selectedGrade || !selectedClass || subjectOptions.length === 0}
                                         sx={{
                                             flex: '1 1 50px',
                                             minWidth: 150,
@@ -506,18 +620,23 @@ const TeacherDashboard: React.FC = () => {
                                                     <SubjectIcon fontSize="small" />
                                                 </InputAdornment>
                                             ),
-
                                         }}
                                     >
-                                        {subjectOptions.map((option) => (
-                                            <MenuItem key={option.value} value={option.value}>
-                                                {option.label}
+                                        {subjectOptions.length === 0 ? (
+                                            <MenuItem value="" disabled>
+                                                {selectedGrade && selectedClass ? 'No subjects found' : 'Select grade and class first'}
                                             </MenuItem>
-                                        ))}
+                                        ) : (
+                                            subjectOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </MenuItem>
+                                            ))
+                                        )}
                                     </TextField>
                                 )}
                             />
-                               <Controller
+                            <Controller
                                 control={control}
                                 name="selectedYear"
                                 render={({ field }) => (
@@ -564,7 +683,7 @@ const TeacherDashboard: React.FC = () => {
                                             flex: '1 1 50px',
                                             '& .MuiOutlinedInput-root': {
                                                 height: "45px",
-                                                borderRadius: '10px',
+                                                borderRadius: "10px",
                                                 bgcolor: theme.palette.background.paper,
                                                 '& .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
                                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.primary.main },
@@ -627,8 +746,6 @@ const TeacherDashboard: React.FC = () => {
                                     </TextField>
                                 )}
                             />
-
-                         
                         </Stack>
 
                         <Stack
@@ -689,6 +806,28 @@ const TeacherDashboard: React.FC = () => {
                                 Clear Filters
                             </Button>
                         </Stack>
+
+                        {/* Status indicators */}
+                        {(modifiedCount > 0 || !isFormValid) && (
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                {modifiedCount > 0 && (
+                                    <Chip 
+                                        label={`${modifiedCount} marks modified`} 
+                                        color="info" 
+                                        size="small" 
+                                        variant="outlined"
+                                    />
+                                )}
+                                {!isFormValid && (
+                                    <Chip 
+                                        label="Complete required fields to enable submission" 
+                                        color="warning" 
+                                        size="small" 
+                                        variant="outlined"
+                                    />
+                                )}
+                            </Box>
+                        )}
                     </Paper>
 
                     {loading ? (
@@ -700,58 +839,145 @@ const TeacherDashboard: React.FC = () => {
                             mt: 3, p: 2, borderRadius: theme.shape.borderRadius, boxShadow: theme.shadows[3], bgcolor: theme.palette.background.paper,
                             overflowX: 'auto'
                         }}>
-                            <Typography variant="h6" align="center" sx={{ mb: 2, color: theme.palette.text.primary }}>
-                                Student Marks
-                            </Typography>
-                            <Box sx={{ height: 400, width: '100%' }}>
-                                <DataGrid
-                                    rows={students}
-                                    columns={columns}
-                                    getRowId={(row) => row.id}
-                                    processRowUpdate={processRowUpdate}
-                                    initialState={{
-                                        pagination: { paginationModel: { page: 0, pageSize: 5 }, },
-                                    }}
-                                    pageSizeOptions={[5, 10, 25]}
-                                    disableRowSelectionOnClick
-                                    sx={{
-                                        '.MuiDataGrid-footerContainer': { backgroundColor: theme.palette.background.paper, color: theme.palette.text.secondary, },
-                                        '.MuiDataGrid-row:nth-of-type(odd)': { backgroundColor: theme.palette.background.paper, },
-                                        '.MuiDataGrid-row:nth-of-type(even)': { backgroundColor: theme.palette.background.paper, },
-                                        '.MuiDataGrid-cell': { borderColor: theme.palette.divider, },
-                                        '.MuiDataGrid-virtualScrollerContent': { '& .MuiDataGrid-row': { '&:hover': { backgroundColor: theme.palette.action.selected, }, }, },
-                                        border: `1px solid ${theme.palette.divider}`,
-                                        borderRadius: theme.shape.borderRadius,
-                                    }}
-                                />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6" sx={{ color: theme.palette.text.primary }}>
+                                    Student Marks {filteredStudents.length > 0 && `(${filteredStudents.length} students)`}
+                                </Typography>
+                                {modifiedCount > 0 && (
+                                    <Tooltip title="Number of students with modified marks">
+                                        <Chip 
+                                            label={`${modifiedCount} unsaved changes`}
+                                            color="warning"
+                                            size="small"
+                                            variant="filled"
+                                        />
+                                    </Tooltip>
+                                )}
                             </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                                <Box sx={{ maxWidth: 300, width: '100%' }}>
+                            
+                            {filteredStudents.length === 0 ? (
+                                <Box sx={{ textAlign: 'center', py: 4 }}>
+                                    <Typography variant="body1" color="text.secondary">
+                                        {!selectedGrade || !selectedClass ? 
+                                            'Please select grade and class to view students' : 
+                                            'No students found for the selected criteria'
+                                        }
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                <Box sx={{ height: 400, width: '100%' }}>
+                                    <DataGrid
+                                        rows={filteredStudents}
+                                        columns={columns}
+                                        getRowId={(row) => row.id}
+                                        processRowUpdate={processRowUpdate}
+                                        onProcessRowUpdateError={(error) => {
+                                            console.error('Row update error:', error);
+                                            showSnackbar('Error updating student marks', 'error');
+                                        }}
+                                        initialState={{
+                                            pagination: { paginationModel: { page: 0, pageSize: 10 } },
+                                        }}
+                                        pageSizeOptions={[5, 10, 25, 50]}
+                                        disableRowSelectionOnClick
+                                        loading={loading}
+                                        sx={{
+                                            '.MuiDataGrid-footerContainer': { 
+                                                backgroundColor: theme.palette.background.paper, 
+                                                color: theme.palette.text.secondary,
+                                            },
+                                            '.MuiDataGrid-row:nth-of-type(odd)': { 
+                                                backgroundColor: theme.palette.background.paper,
+                                            },
+                                            '.MuiDataGrid-row:nth-of-type(even)': { 
+                                                backgroundColor: theme.palette.background.paper,
+                                            },
+                                            '.MuiDataGrid-cell': { 
+                                                borderColor: theme.palette.divider,
+                                            },
+                                            '.MuiDataGrid-virtualScrollerContent': { 
+                                                '& .MuiDataGrid-row': { 
+                                                    '&:hover': { 
+                                                        backgroundColor: theme.palette.action.hover,
+                                                    },
+                                                },
+                                            },
+                                            border: `1px solid ${theme.palette.divider}`,
+                                            borderRadius: theme.shape.borderRadius,
+                                        }}
+                                    />
+                                </Box>
+                            )}
+                            
+                            {filteredStudents.length > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, gap: 2 }}>
                                     <Button
                                         variant="contained"
                                         onClick={handleSubmitMarks}
+                                        disabled={loading || !isFormValid || modifiedCount === 0}
+                                        startIcon={<SaveIcon />}
                                         sx={{
                                             bgcolor: theme.palette.primary.main,
                                             '&:hover': { bgcolor: theme.palette.primary.dark },
                                             color: theme.palette.primary.contrastText,
-                                            px: 5,
+                                            px: 4,
                                             py: 1.2,
                                             borderRadius: theme.shape.borderRadius,
-                                            width: '100%',
+                                            minWidth: 180,
                                         }}
-                                        disabled={loading}
                                     >
-                                        Submit Marks
+                                        {loading ? 'Submitting...' : `Submit ${modifiedCount} Marks`}
                                     </Button>
+                                    
+                                    {modifiedCount > 0 && (
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => {
+                                                setModifiedMarks({});
+                                                // Reset marks in students array
+                                                setStudents(prev => prev.map(student => ({
+                                                    ...student,
+                                                    marks: '',
+                                                    student_grade_value: ''
+                                                })));
+                                                showSnackbar('All unsaved marks cleared', 'info');
+                                            }}
+                                            startIcon={<ClearIcon />}
+                                            sx={{
+                                                borderColor: theme.palette.warning.main,
+                                                color: theme.palette.warning.main,
+                                                '&:hover': {
+                                                    borderColor: theme.palette.warning.dark,
+                                                    color: theme.palette.warning.dark,
+                                                },
+                                                px: 3,
+                                                py: 1.2,
+                                                borderRadius: theme.shape.borderRadius,
+                                            }}
+                                        >
+                                            Clear Changes
+                                        </Button>
+                                    )}
                                 </Box>
-                            </Box>
+                            )}
                         </Paper>
                     )}
                 </Stack>
             </Box>
 
-            <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-                <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+            <Snackbar 
+                open={snackbarOpen} 
+                autoHideDuration={6000} 
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert 
+                    onClose={handleCloseSnackbar} 
+                    severity={snackbarSeverity} 
+                    sx={{ width: '100%' }}
+                    elevation={6}
+                    variant="filled"
+                >
                     {snackbarMessage}
                 </Alert>
             </Snackbar>

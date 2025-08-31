@@ -63,7 +63,7 @@ import { motion } from "framer-motion";
 const gender = ["Male", "Female"];
 const roles = ["Teacher", "Student", "Parent"];
 const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
-const subjects = ["Math", "Science", "English", "History", "Geography", "Art", "Music", "Physical Education", "Computer Science"];
+const subjects = ["Mathematics", "Science", "English", "History", "Geography", "Art", "Music", "ICT", "Buddhism", "Sinhala", "Tamil"];
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
 const mediumOptions = ["Sinhala", "English", "Tamil"];
 
@@ -77,7 +77,7 @@ interface FormData {
   userType: string;
   username: string;
   password: string;
-  location: string; // Made required to match User type
+  location: string; 
   userRole: string;
   gender: string;
 
@@ -821,8 +821,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     label="Subjects"
                     fullWidth
                     variant="outlined"
-                    SelectProps={{
-                      multiple: true,
+                    SelectProps={{                      
                       value: watch("subjects") || [],
                       onChange: (e) => {
                         const value = Array.isArray(e.target.value) ? e.target.value : [e.target.value];
@@ -852,8 +851,6 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                       </MenuItem>
                     ))}
                   </TextField>
-
-
                 </Stack>
 
                 <Stack direction="row" spacing={2}>
