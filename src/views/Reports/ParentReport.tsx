@@ -49,7 +49,7 @@ import {
     type DetailedMarksTableRow
 } from "../../api/parentApi.ts";
 
-const exams = ["First", "2nd Term", "3rd Term", "Monthly"];
+const exams = ["First", "Mid", "End", "Monthly"];
 const months = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ];
