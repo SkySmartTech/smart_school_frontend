@@ -106,7 +106,7 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
         >
           <img src="/images/lgo1.png" alt="School Logo" width="50px" />
           <Typography variant="subtitle1" fontWeight="bold">
-            Student Management Sysetem
+            Student Management System
           </Typography>
         </motion.div>
         <motion.div

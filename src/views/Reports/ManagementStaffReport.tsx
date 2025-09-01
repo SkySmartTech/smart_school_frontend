@@ -50,10 +50,10 @@ import {
 
 const years = ["2023", "2024", "2025"];
 const exams = [
-  { label: 'First Term', value: 'first' },
-  { label: 'Second Term', value: 'mid' },
-  { label: 'Third Term', value: 'end' },
-  { label: 'Monthly Test', value: 'monthly' }
+  { label: 'First Term', value: 'First' },
+  { label: 'Second Term', value: 'Mid' },
+  { label: 'Third Term', value: 'End' },
+  { label: 'Monthly Test', value: 'Monthly' }
 ];
 const months = [
   { label: "January", value: "01" },
@@ -312,7 +312,7 @@ const ManagementStaff: React.FC = () => {
               </TextField>
 
               {/* Month - visible only if Monthly Test is selected */}
-              {exam === "monthly" && (
+              {exam === "Monthly" && (
                 <TextField
                   select
                   label="Month"

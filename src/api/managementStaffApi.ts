@@ -185,7 +185,7 @@ const transformToTableData = (classSubjectMarks: ClassMarks | undefined, overall
     });
 
     // Ensure all subjects have default values
-    ['english', 'arts', 'mathematics', 'science', 'history', 'sinhala', 'tamil', 'ict', 'buddhism'].forEach(subject => {
+    ['English', 'Arts', 'Mathematics', 'Science', 'History', 'Sinhala', 'Tamil', 'ICT', 'Buddhism'].forEach(subject => {
       if (!row[subject]) row[subject] = 0;
     });
 

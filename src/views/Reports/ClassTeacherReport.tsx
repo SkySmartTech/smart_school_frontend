@@ -20,10 +20,10 @@ import Footer from "../../components/Footer";
 
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
 const exams = [
-    { label: 'First Term', value: 'first' },
-    { label: 'Second Term', value: 'mid' },
-    { label: 'Third Term', value: 'end' },
-    { label: 'Monthly Test', value: 'monthly' }
+    { label: 'First Term', value: 'First' },
+    { label: 'Second Term', value: 'Mid' },
+    { label: 'Third Term', value: 'End' },
+    { label: 'Monthly Test', value: 'Monthly' }
 ];
 const months = [
   { label: "January", value: "01" },
@@ -279,7 +279,7 @@ const ClassTeacherReport: React.FC = () => {
                                     ))}
                                 </TextField>
                                               {/* Month - visible only if Monthly Test is selected */}
-                                              {exam === "monthly" && (
+                                              {exam === "Monthly" && (
                                                 <TextField
                                                   select
                                                   label="Month"
