@@ -49,6 +49,12 @@ import {
     type DetailedMarksTableRow
 } from "../../api/parentApi.ts";
 
+const exams = [
+    { label: 'First Term', value: 'first' },
+    { label: 'Second Term', value: 'mid' },
+    { label: 'Third Term', value: 'end' },
+    { label: 'Monthly Test', value: 'monthly' }
+];
 const exams = ["First", "Mid", "End", "Monthly"];
 const months = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -335,8 +341,10 @@ const ParentReport: React.FC = () => {
                                         onChange={e => setExam(e.target.value)}
                                         sx={{ minWidth: { xs: '100%', sm: 150 } }}
                                     >
-                                        {exams.map(e => (
-                                            <MenuItem key={e} value={e}>{e}</MenuItem>
+                                        {exams.map((exam) => (
+                                            <MenuItem key={exam.value} value={exam.value}>
+                                                {exam.label}
+                                            </MenuItem>
                                         ))}
                                     </TextField>
                                     {/* Month - Only enabled when Monthly exam is selected */}
@@ -405,7 +413,7 @@ const ParentReport: React.FC = () => {
                         )}
 
                         {/* Charts and Data - Only show if valid filters are applied */}
-                        {hasValidFilters() && childData && ( 
+                        {hasValidFilters() && childData && (
                             <>
                                 {/* Charts Section */}
                                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
