@@ -8,6 +8,7 @@ export interface SubjectMark {
   average_marks: string;
   percentage: number;
 }
+
 export interface DropdownOption {
   label: string;
   value: string;
@@ -24,9 +25,16 @@ export interface ClassMarks {
   [key: string]: ClassSubjectMark[];
 }
 
+export interface OverallSubjectAverage {
+  [className: string]: {
+    overall_average: number;
+  };
+}
+
 export interface ManagementStaffReportData {
   subject_marks: SubjectMark[];
   class_subject_marks: ClassMarks;
+  overall_subject_average: OverallSubjectAverage;
   tableData?: {
     class: string;
     english: number;
@@ -38,6 +46,7 @@ export interface ManagementStaffReportData {
     sinhala?: number;
     tamil?: number;
     buddhism?: number;
+    overall_average?: number;
   }[];
 }
 
@@ -61,6 +70,7 @@ const getAuthHeader = () => {
     }
   };
 };
+
 export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
   try {
     const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
@@ -85,7 +95,6 @@ export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
   }
 }
 
-
 export const fetchManagementStaffReport = async (
   year: string,
   grade: string,
@@ -109,11 +118,9 @@ export const fetchManagementStaffReport = async (
     );
 
     console.log('API Request params:', filteredParams);
-    console.log('API URL:', `// Use template literals to insert the actual values
-${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`);
+    console.log('API URL:', `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`);
 
     const response = await axios.get(
-      // Use template literals to insert the actual values
       `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`,
       {
         ...getAuthHeader(),
@@ -128,7 +135,8 @@ ${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`);
     const transformedData: ManagementStaffReportData = {
       subject_marks: response.data.subject_marks || [],
       class_subject_marks: response.data.class_subject_marks || {},
-      tableData: transformToTableData(response.data.class_subject_marks),
+      overall_subject_average: response.data.overall_subject_average || {},
+      tableData: transformToTableData(response.data.class_subject_marks, response.data.overall_subject_average),
     };
 
     return transformedData;
@@ -164,7 +172,7 @@ ${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`);
 };
 
 // Helper function to transform class_subject_marks into tableData format
-const transformToTableData = (classSubjectMarks: ClassMarks | undefined) => {
+const transformToTableData = (classSubjectMarks: ClassMarks | undefined, overallSubjectAverage: OverallSubjectAverage | undefined) => {
   if (!classSubjectMarks) return [];
 
   return Object.keys(classSubjectMarks).map((className) => {
@@ -177,9 +185,16 @@ const transformToTableData = (classSubjectMarks: ClassMarks | undefined) => {
     });
 
     // Ensure all subjects have default values
-    ['english', 'arts', 'maths', 'science'].forEach(subject => {
+    ['english', 'arts', 'mathematics', 'science', 'history', 'sinhala', 'tamil', 'ict', 'buddhism'].forEach(subject => {
       if (!row[subject]) row[subject] = 0;
     });
+
+    // Add overall_average from backend data instead of calculating
+    if (overallSubjectAverage && overallSubjectAverage[className]) {
+      row.overall_average = parseFloat(overallSubjectAverage[className].overall_average.toFixed(1));
+    } else {
+      row.overall_average = 0;
+    }
 
     return row;
   });
@@ -218,6 +233,7 @@ export const refreshAuthToken = async (): Promise<void> => {
     throw new Error('Session refresh failed. Please login again.');
   }
 };
+
 const handleApiError = (error: any, _operation: string) => {
   if (error.response) {
     const { status, data } = error.response;
