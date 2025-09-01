@@ -41,7 +41,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   fetchManagementStaffReport,
   checkAuthStatus,
-  fetchGradesFromApi, type DropdownOption,
+  fetchGradesFromApi, 
+  type DropdownOption,
   type ClassMarks,
   type ManagementStaffReportData,
   type SubjectMark,
@@ -49,9 +50,9 @@ import {
 
 const years = ["2023", "2024", "2025"];
 const exams = [
-  { label: 'First Term', value: 'First' },
-  { label: 'Second Term', value: 'Mid' },
-  { label: 'Third Term', value: 'End' },
+  { label: 'First Term', value: 'first' },
+  { label: 'Second Term', value: 'mid' },
+  { label: 'Third Term', value: 'end' },
   { label: 'Monthly Test', value: 'monthly' }
 ];
 const months = [
@@ -99,8 +100,6 @@ const ManagementStaff: React.FC = () => {
     severity: "success" | "error" | "info" | "warning";
   }>({ open: false, message: "", severity: "info" });
 
-
-
   useEffect(() => {
     const fetchGrades = async () => {
       try {
@@ -124,6 +123,7 @@ const ManagementStaff: React.FC = () => {
       fetchGrades();
     }
   }, []);
+
   // Check authentication status on component mount
   useEffect(() => {
     if (!checkAuthStatus()) {
@@ -524,22 +524,18 @@ const ManagementStaff: React.FC = () => {
                   <TableRow>
                     <TableCell sx={{ fontWeight: "bold" }}>Class</TableCell>
                     <TableCell align="right">English</TableCell>
-                    <TableCell align="right">Arts</TableCell>
                     <TableCell align="right">Mathematics</TableCell>
                     <TableCell align="right">Science</TableCell>
                     <TableCell align="right">History</TableCell>
-                    <TableCell align="right">sinhala</TableCell>
-                    <TableCell align="right">Tamil</TableCell>
-                    <TableCell align="right">ICT</TableCell>
+                    <TableCell align="right">Sinhala</TableCell>
                     <TableCell align="right">Buddhism</TableCell>
-
                     <TableCell align="right">Average</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={11} align="center">
+                      <TableCell colSpan={8} align="center">
                         <CircularProgress size={24} />
                       </TableCell>
                     </TableRow>
@@ -550,32 +546,20 @@ const ManagementStaff: React.FC = () => {
                           {row.class}
                         </TableCell>
                         <TableCell align="right">{row.english}</TableCell>
-                        <TableCell align="right">{row.arts}</TableCell>
                         <TableCell align="right">{row.mathematics}</TableCell>
                         <TableCell align="right">{row.science}</TableCell>
                         <TableCell align="right">{row.history}</TableCell>
                         <TableCell align="right">{row.sinhala}</TableCell>
-                        <TableCell align="right">{row.tamil}</TableCell>
-                        <TableCell align="right">{row.ict}</TableCell>
                         <TableCell align="right">{row.buddhism}</TableCell>
-
                         <TableCell align="right">
-                          {(
-                            ((row.english || 0) +
-                              (row.arts || 0) +
-                              (row.mathematics || 0) +
-                              (row.history || 0) +
-                              (row.science || 0) +
-                              (row.ict || 0) +
-                              (row.sinhala || 0) +
-                              (row.tamil || 0)) / 8
-                          ).toFixed(1)}
+                          {/* Use overall_average from backend instead of hardcoded calculation */}
+                          {row.overall_average || 0}
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={11} align="center">
+                      <TableCell colSpan={8} align="center">
                         <Typography variant="body2" color="text.secondary">
                           No data available for the selected criteria
                         </Typography>

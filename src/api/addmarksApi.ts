@@ -18,7 +18,7 @@ export interface StudentMark {
   marks: string;
   student_grade_value?: string;
   month?: string;
-  year?: string; // Add this line
+  year?: string;
 }
 
 export interface FetchMarksFilters {
@@ -39,6 +39,40 @@ export interface AdmissionData {
   id: number;
   student_admission: string;
   student_name: string;
+}
+
+export interface TeacherDataItem {
+  id: number;
+  teacherGrade: string;
+  teacherClass: string;
+  subject: string;
+  medium: string;
+  staffNo: string;
+  userId: string;
+  userType: string;
+  modifiedBy: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserProfileResponse {
+  id: number;
+  name: string;
+  address: string;
+  email: string;
+  birthDay: string;
+  contact: string;
+  userType: string;
+  gender: string;
+  location: string | null;
+  username: string;
+  photo: string | null;
+  userRole: string;
+  status: boolean;
+  created_at: string;
+  updated_at: string;
+  teacher_data: TeacherDataItem[];
+  access: string[];
 }
 
 // ==========================
@@ -67,7 +101,6 @@ const getAuthHeader = () => {
 // ==========================
 
 const handleApiError = (error: any, operation: string) => {
-  // Safely log the error without causing conversion issues
   if (error instanceof Error) {
     console.error(`Error in ${operation}:`, error.message);
   } else if (typeof error === 'object' && error !== null) {
@@ -124,27 +157,25 @@ export async function fetchStudentMarks(filters: FetchMarksFilters): Promise<Stu
 
 export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]): Promise<void> {
   try {
-    // Transform the data to match the expected format
     const formattedMarks = marksToSubmit.map(mark => ({
       studentAdmissionNo: mark.student_admission?.trim(),
-      studentName: mark.student_name?.trim() || '', // Required field
+      studentName: mark.student_name?.trim() || '',
       studentGrade: mark.student_grade?.trim() || '',
       studentClass: mark.student_class?.trim() || '',
-      term: mark.term?.trim() || '', // Now using full term names
+      term: mark.term?.trim() || '',
       month: mark.month?.trim() || 'Not Applicable',
       subject: mark.subject?.toLowerCase().trim() || '',
       medium: "English",
       marks: parseInt(mark.marks || "0"),
       marksGrade: mark.student_grade_value?.trim() || 'N/A',
-      year: mark.year?.trim() || '' // Add this line
+      year: mark.year?.trim() || ''
     }));
 
-    // Validate required fields before submission
     const isValid = formattedMarks.every(mark => 
       mark.studentName && 
       mark.month && 
       mark.marksGrade &&
-      mark.year // Add this validation
+      mark.year
     );
 
     if (!isValid) {
@@ -161,22 +192,21 @@ export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]):
 
 export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
   try {
-    const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
+    const res = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
     
-    return Array.isArray(res.data)
-      ? res.data.map((item: any) => {
-          // Extract the grade value - it could be in different fields
-          const gradeValue = item.grade || item.id || item.value || item.name || "";
-          
-          // Create the label with "Grade" prefix
-          const gradeLabel = gradeValue ? ` ${gradeValue}` : "Unknown Grade";
-          
-          return {
-            label: gradeLabel,
-            value: gradeValue.toString(), // Ensure value is a string
-          };
-        })
-      : [];
+    if (res.data && Array.isArray(res.data.teacher_data)) {
+      // Extract unique grades from teacher_data
+      const uniqueGrades = Array.from(
+        new Set(res.data.teacher_data.map((item: TeacherDataItem) => item.teacherGrade))
+      ).filter((grade): grade is string => typeof grade === 'string' && grade !== '');
+      
+      return uniqueGrades.map(grade => ({
+        label: grade,
+        value: grade
+      }));
+    }
+    
+    return [];
   } catch (error) {
     handleApiError(error, "fetchGradesFromApi");
     return [];
@@ -185,19 +215,56 @@ export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
 
 export async function fetchClassesFromApi(grade?: string): Promise<DropdownOption[]> {
   try {
-    const res = await axios.get(`${API_BASE_URL}/api/grade-classes`, {
-      ...getAuthHeader(),
-      params: grade ? { grade } : {},
-    });
-
-    return Array.isArray(res.data)
-      ? res.data.map((item: any) => ({
-          label: item.class || item.name || "Unknown Class",
-          value: item.class || item.id || "",
-        }))
-      : [];
+    const res = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
+    
+    if (res.data && Array.isArray(res.data.teacher_data)) {
+      let classes = res.data.teacher_data;
+      
+      // Filter by grade if provided
+      if (grade) {
+        classes = classes.filter((item: TeacherDataItem) => item.teacherGrade === grade);
+      }
+      
+      // Extract unique classes
+      const uniqueClasses = Array.from(
+        new Set(classes.map((item: TeacherDataItem) => item.teacherClass))
+      ).filter((className): className is string => typeof className === 'string' && className !== '');
+      
+      return uniqueClasses.map(className => ({
+        label: className,
+        value: className
+      }));
+    }
+    
+    return [];
   } catch (error) {
     handleApiError(error, "fetchClassesFromApi");
+    return [];
+  }
+}
+
+export async function fetchSubjectsFromApi(grade: string, classValue: string): Promise<DropdownOption[]> {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
+    
+    if (res.data && Array.isArray(res.data.teacher_data)) {
+      const subjects = res.data.teacher_data.filter((item: TeacherDataItem) => 
+        item.teacherGrade === grade && item.teacherClass === classValue
+      );
+      
+      const uniqueSubjects = Array.from(
+        new Set(subjects.map((item: TeacherDataItem) => item.subject))
+      ).filter((subject): subject is string => typeof subject === 'string' && subject !== '');
+      
+      return uniqueSubjects.map(subject => ({
+        label: subject,
+        value: subject.toLowerCase()
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    handleApiError(error, "fetchSubjectsFromApi");
     return [];
   }
 }
@@ -205,7 +272,7 @@ export async function fetchClassesFromApi(grade?: string): Promise<DropdownOptio
 // New function to fetch admission data
 export async function fetchAdmissionData(grade: string, classValue: string, keyword?: string): Promise<AdmissionData[]> {
   try {
-    const params: any = {};
+    const params: Record<string, string> = {};
     if (keyword) {
       params.keyword = keyword;
     }

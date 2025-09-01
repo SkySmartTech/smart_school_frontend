@@ -18,8 +18,27 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchClassTeacherReport, fetchGradesFromApi, type DropdownOption } from "../../api/classteacherApi";
 import Footer from "../../components/Footer";
 
-const classes = ["Olu", "Araliya", "Nelum"];
-const exams = ["1st Term", "2nd Term", "3rd Term", "First"];
+const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
+const exams = [
+    { label: 'First Term', value: 'first' },
+    { label: 'Second Term', value: 'mid' },
+    { label: 'Third Term', value: 'end' },
+    { label: 'Monthly Test', value: 'monthly' }
+];
+const months = [
+  { label: "January", value: "01" },
+  { label: "February", value: "02" },
+  { label: "March", value: "03" },
+  { label: "April", value: "04" },
+  { label: "May", value: "05" },
+  { label: "June", value: "06" },
+  { label: "July", value: "07" },
+  { label: "August", value: "08" },
+  { label: "September", value: "09" },
+  { label: "October", value: "10" },
+  { label: "November", value: "11" },
+  { label: "December", value: "12" },
+];
 const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0", "#00ACC1"];
 const BAR_COLORS = ["#E3B6E5", "#C5A6D9", "#A795CD", "#8A85C1", "#6D74B5", "#5163A9", "#34529C"];
 
@@ -60,7 +79,7 @@ const ClassTeacherReport: React.FC = () => {
     // Initializing state with Dayjs objects for consistency
     const [startDate, setStartDate] = useState<Dayjs | null>(dayjs('2023-01-01'));
     const [endDate, setEndDate] = useState<Dayjs | null>(dayjs('2024-12-31'));
-    
+    const [month, setMonth] = useState<string>("01");
     const [grade, setGrade] = useState("1");
     const [className, setClassName] = useState("Olu");
     const [exam, setExam] = useState("2nd Term");
@@ -115,7 +134,7 @@ const ClassTeacherReport: React.FC = () => {
     // Prepare data for yearly subject averages chart
     const getYearlySubjectAveragesData = () => {
         if (!data?.yearly_subject_averages) return [];
-        
+
         // First, get all unique subjects across all years
         const allSubjects = new Set<string>();
         data.yearly_subject_averages.forEach(yearData => {
@@ -127,7 +146,7 @@ const ClassTeacherReport: React.FC = () => {
         // Then transform the data into the format Recharts expects
         return data.yearly_subject_averages.map(yearData => {
             const yearEntry: any = { year: yearData.year.toString() };
-            
+
             // Initialize all subjects to 0
             allSubjects.forEach(subject => {
                 yearEntry[subject] = 0;
@@ -185,7 +204,7 @@ const ClassTeacherReport: React.FC = () => {
                                     InputLabelProps={{ shrink: true }}
                                     sx={{ minWidth: { xs: '100%', sm: 150 } }}
                                 />
-                                
+
                                 {/* Grade */}
                                 <TextField
                                     select
@@ -253,12 +272,43 @@ const ClassTeacherReport: React.FC = () => {
                                     }}
                                     sx={{ minWidth: { xs: '100%', sm: 150 }, flex: 1, maxWidth: 250, "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "45px", }, }}
                                 >
-                                    {exams.map((ex) => (
-                                        <MenuItem key={ex} value={ex}>
-                                            {ex}
+                                    {exams.map((exam) => (
+                                        <MenuItem key={exam.value} value={exam.value}>
+                                            {exam.label}
                                         </MenuItem>
                                     ))}
                                 </TextField>
+                                              {/* Month - visible only if Monthly Test is selected */}
+                                              {exam === "monthly" && (
+                                                <TextField
+                                                  select
+                                                  label="Month"
+                                                  value={month}
+                                                  onChange={(e) => setMonth(e.target.value)}
+                                                  InputProps={{
+                                                    startAdornment: (
+                                                      <InputAdornment position="start">
+                                                        <CalendarMonth />
+                                                      </InputAdornment>
+                                                    ),
+                                                  }}
+                                                  sx={{
+                                                    minWidth: 150,
+                                                    flex: 1,
+                                                    maxWidth: 250,
+                                                    "& .MuiOutlinedInput-root": {
+                                                      borderRadius: "10px",
+                                                      height: "45px",
+                                                    },
+                                                  }}
+                                                >
+                                                  {months.map((m) => (
+                                                    <MenuItem key={m.value} value={m.value}>
+                                                      {m.label}
+                                                    </MenuItem>
+                                                  ))}
+                                                </TextField>
+                                              )}
                             </Stack>
                         </Paper>
 
@@ -313,20 +363,20 @@ const ClassTeacherReport: React.FC = () => {
                                             <CircularProgress />
                                         </Box>
                                     ) : (
-                                        <BarChart 
-                                            data={getYearlySubjectAveragesData()} 
+                                        <BarChart
+                                            data={getYearlySubjectAveragesData()}
                                             margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
                                         >
                                             <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis 
+                                            <XAxis
                                                 dataKey="year"
                                                 label={{ value: 'Year', position: 'insideBottomRight', offset: -10 }}
                                             />
-                                            <YAxis 
+                                            <YAxis
                                                 label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
                                                 domain={[0, 100]}
                                             />
-                                            <ReTooltip 
+                                            <ReTooltip
                                                 formatter={(value: number) => [`${value}%`, "Percentage"]}
                                                 labelFormatter={(label) => `Year: ${label}`}
                                             />
