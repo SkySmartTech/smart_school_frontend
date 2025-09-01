@@ -186,8 +186,8 @@ export const fetchParentReport = async (
             overallSubjectLineGraph: (response.data.yearly_term_averages || []).map((item: any) => ({
                 year: item.year?.toString() || '',
                 firstTerm: item.terms?.find((t: any) => t.term === 'First')?.average_marks || 0,
-                secondTerm: item.terms?.find((t: any) => t.term === '2nd Term')?.average_marks || 0,
-                thirdTerm: item.terms?.find((t: any) => t.term === '3rd Term')?.average_marks || 0,
+                secondTerm: item.terms?.find((t: any) => t.term === 'Mid')?.average_marks || 0,
+                thirdTerm: item.terms?.find((t: any) => t.term === 'End')?.average_marks || 0,
             })),
 
             // Transform subject_yearly_marks to individual subject averages

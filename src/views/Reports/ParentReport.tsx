@@ -49,12 +49,13 @@ import {
     type DetailedMarksTableRow
 } from "../../api/parentApi.ts";
 
-const exams = [
+const examOptions = [
     { label: 'First Term', value: 'first' },
     { label: 'Second Term', value: 'mid' },
     { label: 'Third Term', value: 'end' },
     { label: 'Monthly Test', value: 'monthly' }
 ];
+
 const months = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ];
@@ -77,7 +78,7 @@ const ParentReport: React.FC = () => {
 
     // Clear month when exam is not "Monthly"
     useEffect(() => {
-        if (exam !== "Monthly") {
+        if (exam !== "monthly") {
             setMonth("");
         }
     }, [exam]);
@@ -128,10 +129,10 @@ const ParentReport: React.FC = () => {
             // Provide default values for required path parameters
             const startDateValue = startDate?.format('YYYY-MM-DD') || '2024-01-01';
             const endDateValue = endDate?.format('YYYY-MM-DD') || '2024-12-31';
-            const examValue = exam || 'First';
+            const examValue = exam || 'first';
 
             // Send empty string for month when not Monthly exam - API will convert to "null"
-            const monthValue = exam === "Monthly" ? month : "";
+            const monthValue = exam === "monthly" ? month : "";
 
             return fetchParentReport(
                 startDateValue,
@@ -340,9 +341,9 @@ const ParentReport: React.FC = () => {
                                         onChange={e => setExam(e.target.value)}
                                         sx={{ minWidth: { xs: '100%', sm: 150 } }}
                                     >
-                                        {exams.map((exam) => (
-                                            <MenuItem key={exam.value} value={exam.value}>
-                                                {exam.label}
+                                        {examOptions.map((examOption) => (
+                                            <MenuItem key={examOption.value} value={examOption.value}>
+                                                {examOption.label}
                                             </MenuItem>
                                         ))}
                                     </TextField>
@@ -352,12 +353,12 @@ const ParentReport: React.FC = () => {
                                         label="Month"
                                         value={month}
                                         onChange={e => setMonth(e.target.value)}
-                                        disabled={exam !== "Monthly"}
+                                        disabled={exam !== "monthly"}
                                         sx={{
                                             minWidth: { xs: '100%', sm: 150 },
-                                            opacity: exam !== "Monthly" ? 0.6 : 1
+                                            opacity: exam !== "monthly" ? 0.6 : 1
                                         }}
-                                        helperText={exam !== "Monthly" ? "Available only for Monthly exams" : ""}
+                                        helperText={exam !== "monthly" ? "Available only for Monthly exams" : ""}
                                     >
                                         {months.map(m => (
                                             <MenuItem key={m} value={m}>{m}</MenuItem>
