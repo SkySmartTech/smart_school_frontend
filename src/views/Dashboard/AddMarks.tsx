@@ -152,8 +152,8 @@ const TeacherDashboard: React.FC = () => {
                 teacher.teacherClass === selectedClass
             )
             .map(teacher => ({
-                label: formatSubjectName(teacher.subject), // Format for display
-                value: teacher.subject // Keep original case for value
+                label: formatSubjectName(teacher.subject), 
+                value: teacher.subject 
             }));
 
         // Remove duplicates based on original subject names

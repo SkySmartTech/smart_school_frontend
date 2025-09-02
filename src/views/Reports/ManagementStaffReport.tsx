@@ -465,13 +465,13 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[2]}
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar
+                    {/* <Bar
                       dataKey="Arts"
                       name="Arts"
                       stackId="1"
                       fill={BAR_COLORS[3]}
                       radius={[4, 4, 0, 0]}
-                    />
+                    /> */}
                     <Bar
                       dataKey="Sinhala"
                       name="Sinhala"
@@ -479,13 +479,13 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[4]}
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar
+                    {/* <Bar
                       dataKey="Tamil"
                       name="Tamil"
                       stackId="1"
                       fill={BAR_COLORS[5]}
                       radius={[4, 4, 0, 0]}
-                    />
+                    /> */}
                     <Bar
                       dataKey="History"
                       name="History"
@@ -493,13 +493,13 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[6]}
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar
+                    {/* <Bar
                       dataKey="ICT"
                       name="ICT"
                       stackId="1"
                       fill={BAR_COLORS[0]}
                       radius={[4, 4, 0, 0]}
-                    />
+                    /> */}
                     <Bar
                       dataKey="Buddhism"
                       name="Buddhism"
