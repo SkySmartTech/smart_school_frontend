@@ -142,8 +142,8 @@ const ManagementStaff: React.FC = () => {
     error,
     refetch,
   } = useQuery<ManagementStaffReportData, Error>({
-    queryKey: ["managementReport", year, grade, exam],
-    queryFn: () => fetchManagementStaffReport(year, grade, exam),
+    queryKey: ["managementReport", year, grade, exam, month],
+    queryFn: () => fetchManagementStaffReport(year, grade, exam, month),
     retry: (failureCount, error) => {
       // Don't retry on auth errors
       if (error.message.includes('login') || error.message.includes('Session expired')) {
@@ -151,7 +151,15 @@ const ManagementStaff: React.FC = () => {
       }
       return failureCount < 2;
     },
+    enabled: exam !== "Monthly" || (exam === "Monthly" && !!month),
   });
+
+  // Refetch data when month changes for Monthly exams
+  useEffect(() => {
+    if (exam === "Monthly" && month) {
+      refetch();
+    }
+  }, [month, exam, refetch]);
 
   useEffect(() => {
     if (isError && error) {
@@ -181,6 +189,14 @@ const ManagementStaff: React.FC = () => {
         message: "Please login to refresh data",
         severity: "warning",
       });
+    }
+  };
+
+  const handleExamChange = (newExam: string) => {
+    setExam(newExam);
+    // Reset month to default when switching away from Monthly exam
+    if (newExam !== "Monthly") {
+      setMonth("01");
     }
   };
 
@@ -285,7 +301,7 @@ const ManagementStaff: React.FC = () => {
                 label="Exam"
                 variant="outlined"
                 value={exam}
-                onChange={(e) => setExam(e.target.value)}
+                onChange={(e) => handleExamChange(e.target.value)}
                 disabled={isLoading}
                 InputProps={{
                   startAdornment: (
@@ -304,9 +320,9 @@ const ManagementStaff: React.FC = () => {
                   },
                 }}
               >
-                {exams.map((exam) => (
-                  <MenuItem key={exam.value} value={exam.value}>
-                    {exam.label}
+                {exams.map((examOption) => (
+                  <MenuItem key={examOption.value} value={examOption.value}>
+                    {examOption.label}
                   </MenuItem>
                 ))}
               </TextField>
@@ -318,6 +334,7 @@ const ManagementStaff: React.FC = () => {
                   label="Month"
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
+                  disabled={isLoading}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -434,7 +451,7 @@ const ManagementStaff: React.FC = () => {
                   <BarChart data={transformClassDataForStackedBarChart(data?.class_subject_marks)}>
                     <XAxis dataKey="name" />
                     <YAxis
-                      label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
+                      label={{ value: 'Total Marks', angle: -90, position: 'insideLeft' }}
                       domain={[0, 100]}
                     />
                     <RechartsTooltip
@@ -465,13 +482,6 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[2]}
                       radius={[4, 4, 0, 0]}
                     />
-                    {/* <Bar
-                      dataKey="Arts"
-                      name="Arts"
-                      stackId="1"
-                      fill={BAR_COLORS[3]}
-                      radius={[4, 4, 0, 0]}
-                    /> */}
                     <Bar
                       dataKey="Sinhala"
                       name="Sinhala"
@@ -479,13 +489,6 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[4]}
                       radius={[4, 4, 0, 0]}
                     />
-                    {/* <Bar
-                      dataKey="Tamil"
-                      name="Tamil"
-                      stackId="1"
-                      fill={BAR_COLORS[5]}
-                      radius={[4, 4, 0, 0]}
-                    /> */}
                     <Bar
                       dataKey="History"
                       name="History"
@@ -493,13 +496,6 @@ const ManagementStaff: React.FC = () => {
                       fill={BAR_COLORS[6]}
                       radius={[4, 4, 0, 0]}
                     />
-                    {/* <Bar
-                      dataKey="ICT"
-                      name="ICT"
-                      stackId="1"
-                      fill={BAR_COLORS[0]}
-                      radius={[4, 4, 0, 0]}
-                    /> */}
                     <Bar
                       dataKey="Buddhism"
                       name="Buddhism"
@@ -552,7 +548,6 @@ const ManagementStaff: React.FC = () => {
                         <TableCell align="right">{row.sinhala}</TableCell>
                         <TableCell align="right">{row.buddhism}</TableCell>
                         <TableCell align="right">
-                          {/* Use overall_average from backend instead of hardcoded calculation */}
                           {row.overall_average || 0}
                         </TableCell>
                       </TableRow>

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
     Box, CssBaseline, AppBar, Stack, Typography, Paper, MenuItem, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, useTheme, InputAdornment, TextField, CircularProgress,
-    Snackbar, Alert
+    Snackbar, Alert, Button
 } from "@mui/material";
-import { School, CalendarMonth, Group } from "@mui/icons-material";
+import { School, CalendarMonth, Group, Refresh } from "@mui/icons-material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
@@ -82,7 +82,7 @@ const ClassTeacherReport: React.FC = () => {
     const [month, setMonth] = useState<string>("01");
     const [grade, setGrade] = useState("1");
     const [className, setClassName] = useState("Olu");
-    const [exam, setExam] = useState("2nd Term");
+    const [exam, setExam] = useState("First");
     const [grades, setGrades] = useState<DropdownOption[]>([]);
 
     type SnackbarState = {
@@ -96,14 +96,15 @@ const ClassTeacherReport: React.FC = () => {
         severity: "info",
     });
 
-    const { data, isLoading, isError, error } = useQuery<ClassTeacherReportData, Error>({
-        queryKey: ["class-teacher-report", startDate, endDate, grade, className, exam],
+    const { data, isLoading, isError, error, refetch } = useQuery<ClassTeacherReportData, Error>({
+        queryKey: ["class-teacher-report", startDate, endDate, grade, className, exam, month],
         queryFn: () => {
             const formattedStartDate = startDate ? startDate.format("YYYY-MM-DD") : "";
             const formattedEndDate = endDate ? endDate.format("YYYY-MM-DD") : "";
-            return fetchClassTeacherReport(formattedStartDate, formattedEndDate, grade, className, exam);
+            return fetchClassTeacherReport(formattedStartDate, formattedEndDate, grade, className, exam, month);
         },
         retry: 1,
+        enabled: exam !== "Monthly" || (exam === "Monthly" && !!month),
     });
 
     // Fetch grades from API
@@ -123,6 +124,13 @@ const ClassTeacherReport: React.FC = () => {
         }
     }, [gradesData, grade]);
 
+    // Refetch data when month changes for Monthly exams
+    useEffect(() => {
+        if (exam === "Monthly" && month) {
+            refetch();
+        }
+    }, [month, exam, refetch]);
+
     useEffect(() => {
         if (isError && error) {
             setSnackbar({ open: true, message: error.message, severity: "error" });
@@ -130,6 +138,23 @@ const ClassTeacherReport: React.FC = () => {
     }, [isError, error]);
 
     const handleCloseSnackbar = () => setSnackbar((prev) => ({ ...prev, open: false }));
+
+    const handleRefresh = () => {
+        refetch();
+        setSnackbar({
+            open: true,
+            message: "Refreshing data...",
+            severity: "info",
+        });
+    };
+
+    const handleExamChange = (newExam: string) => {
+        setExam(newExam);
+        // Reset month to default when switching away from Monthly exam
+        if (newExam !== "Monthly") {
+            setMonth("01");
+        }
+    };
 
     // Prepare data for yearly subject averages chart
     const getYearlySubjectAveragesData = () => {
@@ -185,7 +210,7 @@ const ClassTeacherReport: React.FC = () => {
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <Stack spacing={3} sx={{ px: 4, py: 3 }}>
                         <Paper elevation={1} sx={{ p: 2 }}>
-                            <Stack direction="row" spacing={3} flexWrap="wrap" justifyContent="space-between">
+                            <Stack direction="row" spacing={3} flexWrap="wrap" justifyContent="space-between" alignItems="center">
                                 {/* Start Date */}
                                 <TextField
                                     type="date"
@@ -262,7 +287,7 @@ const ClassTeacherReport: React.FC = () => {
                                     select
                                     label="Exam"
                                     value={exam}
-                                    onChange={(e) => setExam(e.target.value)}
+                                    onChange={(e) => handleExamChange(e.target.value)}
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
@@ -272,43 +297,60 @@ const ClassTeacherReport: React.FC = () => {
                                     }}
                                     sx={{ minWidth: { xs: '100%', sm: 150 }, flex: 1, maxWidth: 250, "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "45px", }, }}
                                 >
-                                    {exams.map((exam) => (
-                                        <MenuItem key={exam.value} value={exam.value}>
-                                            {exam.label}
+                                    {exams.map((examOption) => (
+                                        <MenuItem key={examOption.value} value={examOption.value}>
+                                            {examOption.label}
                                         </MenuItem>
                                     ))}
                                 </TextField>
-                                              {/* Month - visible only if Monthly Test is selected */}
-                                              {exam === "Monthly" && (
-                                                <TextField
-                                                  select
-                                                  label="Month"
-                                                  value={month}
-                                                  onChange={(e) => setMonth(e.target.value)}
-                                                  InputProps={{
-                                                    startAdornment: (
-                                                      <InputAdornment position="start">
-                                                        <CalendarMonth />
-                                                      </InputAdornment>
-                                                    ),
-                                                  }}
-                                                  sx={{
-                                                    minWidth: 150,
-                                                    flex: 1,
-                                                    maxWidth: 250,
-                                                    "& .MuiOutlinedInput-root": {
-                                                      borderRadius: "10px",
-                                                      height: "45px",
-                                                    },
-                                                  }}
-                                                >
-                                                  {months.map((m) => (
-                                                    <MenuItem key={m.value} value={m.value}>
-                                                      {m.label}
-                                                    </MenuItem>
-                                                  ))}
-                                                </TextField>
-                                              )}
+
+                                {/* Month - visible only if Monthly Test is selected */}
+                                {exam === "Monthly" && (
+                                    <TextField
+                                        select
+                                        label="Month"
+                                        value={month}
+                                        onChange={(e) => setMonth(e.target.value)}
+                                        disabled={isLoading}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <CalendarMonth />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{
+                                            minWidth: 150,
+                                            flex: 1,
+                                            maxWidth: 250,
+                                            "& .MuiOutlinedInput-root": {
+                                                borderRadius: "10px",
+                                                height: "45px",
+                                            },
+                                        }}
+                                    >
+                                        {months.map((m) => (
+                                            <MenuItem key={m.value} value={m.value}>
+                                                {m.label}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                )}
+
+                                {/* Refresh Button */}
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleRefresh}
+                                    disabled={isLoading}
+                                    startIcon={<Refresh />}
+                                    sx={{
+                                        borderRadius: "10px",
+                                        height: "45px",
+                                        minWidth: 120,
+                                    }}
+                                >
+                                    Refresh
+                                </Button>
                             </Stack>
                         </Paper>
 
@@ -373,7 +415,7 @@ const ClassTeacherReport: React.FC = () => {
                                                 label={{ value: 'Year', position: 'insideBottomRight', offset: -10 }}
                                             />
                                             <YAxis
-                                                label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }}
+                                                label={{ value: 'Total Marks', angle: -90, position: 'insideLeft' }}
                                                 domain={[0, 100]}
                                             />
                                             <ReTooltip

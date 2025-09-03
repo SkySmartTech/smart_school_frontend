@@ -16,7 +16,11 @@ import {
     InputAdornment,
     MenuItem,
     Chip,
-    Tooltip
+    Tooltip,
+    Radio,
+    RadioGroup,
+    FormControlLabel,
+    FormControl
 } from '@mui/material';
 
 import { DataGrid } from '@mui/x-data-grid';
@@ -88,15 +92,20 @@ interface AdmissionData {
     student_name: string;
 }
 
+// Extended StudentMark interface to include attendance
+interface ExtendedStudentMark extends StudentMark {
+    attendance?: 'present' | 'absent';
+}
+
 const TeacherDashboard: React.FC = () => {
     const { data: teacherProfile, isLoading: profileLoading } = useTeacherProfile();
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
     const [classOptions, setClassOptions] = useState<{ label: string; value: string }[]>([]);
-    const [students, setStudents] = useState<StudentMark[]>([]);
+    const [students, setStudents] = useState<ExtendedStudentMark[]>([]);
     const [admissionData, setAdmissionData] = useState<AdmissionData[]>([]);
-    const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<StudentMark>>>({});
+    const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<ExtendedStudentMark>>>({});
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
@@ -182,7 +191,7 @@ const TeacherDashboard: React.FC = () => {
     // Count modified marks
     const modifiedCount = useMemo(() => {
         return Object.values(modifiedMarks).filter(mark => 
-            mark.marks !== undefined && mark.marks !== ''
+            (mark.marks !== undefined && mark.marks !== '') || mark.attendance !== undefined
         ).length;
     }, [modifiedMarks]);
 
@@ -261,7 +270,7 @@ const TeacherDashboard: React.FC = () => {
             lastFetchParamsRef.current = cacheKey;
 
             // Initialize students with admission data - use formatted subject name
-            const initialStudents: StudentMark[] = data.map((item, index) => ({
+            const initialStudents: ExtendedStudentMark[] = data.map((item, index) => ({
                 id: index + 1,
                 student_admission: item.student_admission,
                 student_name: item.student_name,
@@ -272,7 +281,8 @@ const TeacherDashboard: React.FC = () => {
                 marks: '',
                 student_grade_value: '',
                 month: isMonthFilterEnabled ? selectedMonth : undefined,
-                year: year
+                year: year,
+                attendance: 'present' // Default to present
             }));
 
             setStudents(initialStudents);
@@ -288,7 +298,7 @@ const TeacherDashboard: React.FC = () => {
         }
     }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled, showSnackbar, formatSubjectName]);
 
-    const processRowUpdate = useCallback((newRow: StudentMark) => {
+    const processRowUpdate = useCallback((newRow: ExtendedStudentMark) => {
         let grade = "";
         if (newRow.marks !== "") {
             const marks = parseInt(newRow.marks, 10);
@@ -312,11 +322,27 @@ const TeacherDashboard: React.FC = () => {
                 marks: updatedRow.marks,
                 student_grade_value: updatedRow.student_grade_value,
                 student_admission: updatedRow.student_admission,
+                attendance: updatedRow.attendance,
             },
         }));
 
         return updatedRow;
     }, [students, calculateGrade, showSnackbar]);
+
+    // Handle attendance change
+    const handleAttendanceChange = useCallback((studentId: GridRowId, attendance: 'present' | 'absent') => {
+        setStudents((prev) =>
+            prev.map((s) => (s.id === studentId ? { ...s, attendance } : s))
+        );
+
+        setModifiedMarks((prevModified) => ({
+            ...prevModified,
+            [studentId]: {
+                ...prevModified[studentId],
+                attendance,
+            },
+        }));
+    }, []);
 
     const handleSubmitMarks = useCallback(async () => {
         if (!isFormValid) {
@@ -325,8 +351,8 @@ const TeacherDashboard: React.FC = () => {
         }
 
         setLoading(true);
-        const marksToSubmit: Partial<StudentMark>[] = Object.entries(modifiedMarks)
-            .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '')
+        const marksToSubmit: Partial<ExtendedStudentMark>[] = Object.entries(modifiedMarks)
+            .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '' || mark.attendance !== undefined)
             .map(([id, mark]) => {
                 const student = students.find(s => s.id.toString() === id);
                 if (!student) {
@@ -345,7 +371,8 @@ const TeacherDashboard: React.FC = () => {
                     month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable',
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
-                    year: selectedYear
+                    year: selectedYear,
+                    attendance: mark.attendance || student.attendance || 'present'
                 };
             })
             .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
@@ -392,7 +419,8 @@ const TeacherDashboard: React.FC = () => {
         setStudents(prev => prev.map(student => ({
             ...student,
             marks: '',
-            student_grade_value: ''
+            student_grade_value: '',
+            attendance: 'present'
         })));
         showSnackbar('All unsaved marks cleared', 'info');
     }, [showSnackbar]);
@@ -463,7 +491,7 @@ const TeacherDashboard: React.FC = () => {
     }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled, selectedYear, admissionData.length, formatSubjectName]);
 
     // Memoized columns to prevent DataGrid re-renders
-    const columns: GridColDef<StudentMark>[] = useMemo(() => [
+    const columns: GridColDef<ExtendedStudentMark>[] = useMemo(() => [
         { field: 'student_admission', headerName: 'Admission No', width: 200, editable: false },
         { field: 'student_name', headerName: 'Student Name', width: 400, editable: false },
         { field: 'student_class', headerName: 'Class', width: 150, editable: false },
@@ -472,7 +500,7 @@ const TeacherDashboard: React.FC = () => {
             headerName: 'Subject', 
             width: 150, 
             editable: false,
-            renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
                 <span>{formatSubjectName(params.row.subject)}</span>
             )
         },
@@ -481,7 +509,7 @@ const TeacherDashboard: React.FC = () => {
             headerName: 'Term', 
             width: 130, 
             editable: false,
-            renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
                 <span>{params.row.term}</span>
             )
         },
@@ -492,7 +520,7 @@ const TeacherDashboard: React.FC = () => {
             width: 140,
             editable: true,
             type: 'number',
-            renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
                 <TextField
                     variant="outlined"
                     size="small"
@@ -519,7 +547,7 @@ const TeacherDashboard: React.FC = () => {
             headerName: 'Grade', 
             editable: false,
             width: 100,
-            renderCell: (params: GridRenderCellParams<StudentMark, string>) => {
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => {
                 const grade = params.row.student_grade_value;
                 if (!grade) return null;
                 
@@ -544,7 +572,59 @@ const TeacherDashboard: React.FC = () => {
                 );
             }
         },
-    ], [theme.palette.info.main, formatSubjectName]);
+        {
+            field: 'attendance',
+            headerName: 'Attendance',
+            width: 150,
+            editable: false,
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
+                <FormControl component="fieldset" sx={{ minWidth: '100%' }}>
+                    <RadioGroup
+                        row
+                        value={params.row.attendance || 'present'}
+                        onChange={(e) => handleAttendanceChange(params.row.id, e.target.value as 'present' | 'absent')}
+                        sx={{ 
+                            justifyContent: 'center',
+                            '& .MuiFormControlLabel-root': {
+                                margin: '0 2px',
+                                '& .MuiFormControlLabel-label': {
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                }
+                            }
+                        }}
+                    >
+                        <FormControlLabel 
+                            value="present" 
+                            control={
+                                <Radio 
+                                    size="small" 
+                                    sx={{ 
+                                        color: theme.palette.success.main,
+                                        '&.Mui-checked': { color: theme.palette.success.main }
+                                    }} 
+                                />
+                            } 
+                            label="P"
+                        />
+                        <FormControlLabel 
+                            value="absent" 
+                            control={
+                                <Radio 
+                                    size="small"
+                                    sx={{ 
+                                        color: theme.palette.error.main,
+                                        '&.Mui-checked': { color: theme.palette.error.main }
+                                    }}
+                                />
+                            } 
+                            label="A"
+                        />
+                    </RadioGroup>
+                </FormControl>
+            ),
+        },
+    ], [theme.palette.info.main, theme.palette.success.main, theme.palette.error.main, formatSubjectName, handleAttendanceChange]);
 
     return (
         <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
@@ -903,7 +983,7 @@ const TeacherDashboard: React.FC = () => {
                                     Student Marks {filteredStudents.length > 0 && `(${filteredStudents.length} students)`}
                                 </Typography>
                                 {modifiedCount > 0 && (
-                                    <Tooltip title="Number of students with modified marks">
+                                    <Tooltip title="Number of students with modified marks or attendance">
                                         <Chip 
                                             label={`${modifiedCount} unsaved changes`}
                                             color="warning"
@@ -986,7 +1066,7 @@ const TeacherDashboard: React.FC = () => {
                                             minWidth: 180,
                                         }}
                                     >
-                                        {loading ? 'Submitting...' : `Submit ${modifiedCount} Marks`}
+                                        {loading ? 'Submitting...' : `Submit ${modifiedCount} Records`}
                                     </Button>
                                     
                                     {modifiedCount > 0 && (

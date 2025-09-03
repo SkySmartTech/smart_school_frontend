@@ -17,7 +17,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Alert,
+  Snackbar
 } from "@mui/material";
 import {
   AccountCircle,
@@ -131,6 +133,12 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
   // const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Add state for success/error messages
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
+  const [showErrorSnackbar, setShowErrorSnackbar] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -144,8 +152,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       teacherClass: [],
       subjects: [],
       medium: [],
-      location: "", // Provide default value
-      userRole: "user", // Provide default value
+      location: "", 
+      userRole: "user", 
     }
   });
 
@@ -156,6 +164,34 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     setSelectedRole(userType);
   }, [userType]);
 
+  // Helper function to extract error message from API response
+  const extractErrorMessage = (error: any): string => {
+    if (error?.response?.data?.message) {
+      return error.response.data.message;
+    }
+    if (error?.response?.data?.error) {
+      return error.response.data.error;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    return "An unexpected error occurred. Please try again.";
+  };
+
+  // Helper function to show error
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setShowErrorSnackbar(true);
+    onError(message);
+  };
+
+  // Helper function to show success
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setShowSuccessSnackbar(true);
+    onSuccess();
+  };
+
   // Step 1: Register basic user data
   const { mutate: registerBasicUser, isPending: isRegisteringBasic } = useMutation({
     mutationFn: registerUser,
@@ -164,7 +200,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       setActiveStep(1);
     },
     onError: (error: any) => {
-      onError(error.message || "Basic registration failed");
+      const errorMsg = extractErrorMessage(error);
+      showError(errorMsg);
     },
   });
 
@@ -172,33 +209,45 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const { mutate: registerStudentData, isPending: isRegisteringStudent } = useMutation({
     mutationFn: registerStudent,
     onSuccess: () => {
-      onSuccess();
-      navigate("/login");
+      showSuccess("Registration successful! Please contact the Admin to get access to Login.");
+      // Navigate after a delay to allow user to read the message
+      setTimeout(() => {
+        navigate("/login");
+      }, 8000);
     },
     onError: (error: any) => {
-      onError(error.message || "Student registration failed");
+      const errorMsg = extractErrorMessage(error);
+      showError(errorMsg);
     },
   });
 
   const { mutate: registerTeacherData, isPending: isRegisteringTeacher } = useMutation({
     mutationFn: registerTeacher,
     onSuccess: () => {
-      onSuccess();
-      navigate("/login");
+      showSuccess("Registration successful! Please contact the Admin to get access to Login.");
+      // Navigate after a delay to allow user to read the message
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
     },
     onError: (error: any) => {
-      onError(error.message || "Teacher registration failed");
+      const errorMsg = extractErrorMessage(error);
+      showError(errorMsg);
     },
   });
 
   const { mutate: registerParentData, isPending: isRegisteringParent } = useMutation({
     mutationFn: registerParent,
     onSuccess: () => {
-      onSuccess();
-      navigate("/login");
+      showSuccess("Registration successful! Please contact the Admin to get access to Login.");
+      // Navigate after a delay to allow user to read the message
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
     },
     onError: (error: any) => {
-      onError(error.message || "Parent registration failed");
+      const errorMsg = extractErrorMessage(error);
+      showError(errorMsg);
     },
   });
 
@@ -363,10 +412,52 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     }
   };
 
+  const handleCloseSuccessSnackbar = () => {
+    setShowSuccessSnackbar(false);
+  };
+
+  const handleCloseErrorSnackbar = () => {
+    setShowErrorSnackbar(false);
+  };
+
   const isPending = isRegisteringBasic || isRegisteringStudent || isRegisteringTeacher || isRegisteringParent;
 
   return (
     <Box sx={{ width: "100%", maxWidth: 500, overflowY: "auto" }}>
+      {/* Success Snackbar */}
+      <Snackbar
+        open={showSuccessSnackbar}
+        autoHideDuration={6000}
+        onClose={handleCloseSuccessSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseSuccessSnackbar}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={showErrorSnackbar}
+        autoHideDuration={6000}
+        onClose={handleCloseErrorSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseErrorSnackbar}
+          severity="error"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
       <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
         {steps.map((label) => (
           <Step key={label}>
