@@ -74,20 +74,20 @@ const getAuthHeader = () => {
 export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
   try {
     const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
-    
+
     return Array.isArray(res.data)
       ? res.data.map((item: any) => {
-          // Extract the grade value - it could be in different fields
-          const gradeValue = item.grade || item.id || item.value || item.name || "";
-          
-          // Create the label with "Grade" prefix
-          const gradeLabel = gradeValue ? ` ${gradeValue}` : "Unknown Grade";
-          
-          return {
-            label: gradeLabel,
-            value: gradeValue.toString(), 
-          };
-        })
+        // Extract the grade value - it could be in different fields
+        const gradeValue = item.grade || item.id || item.value || item.name || "";
+
+        // Create the label with "Grade" prefix
+        const gradeLabel = gradeValue ? ` ${gradeValue}` : "Unknown Grade";
+
+        return {
+          label: gradeLabel,
+          value: gradeValue.toString(),
+        };
+      })
       : [];
   } catch (error) {
     handleApiError(error, "fetchGradesFromApi");
@@ -98,7 +98,8 @@ export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
 export const fetchManagementStaffReport = async (
   year: string,
   grade: string,
-  exam: string
+  exam: string,
+  month: string = "01" // Add month parameter with default value
 ): Promise<ManagementStaffReportData> => {
   try {
     // Validate inputs
@@ -110,6 +111,7 @@ export const fetchManagementStaffReport = async (
       year,
       grade,
       exam: exam === "All Terms" ? undefined : exam,
+      month: exam === "Monthly" ? month : undefined, // Only include month for Monthly exams
     };
 
     // Remove undefined parameters
@@ -117,11 +119,19 @@ export const fetchManagementStaffReport = async (
       Object.entries(params).filter(([_, value]) => value !== undefined)
     );
 
+    // Build URL based on exam type
+    let apiUrl = `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`;
+
+    // Add month to URL for Monthly exams
+    if (exam === "Monthly" && month) {
+      apiUrl += `/${month}`;
+    }
+
     console.log('API Request params:', filteredParams);
-    console.log('API URL:', `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`);
+    console.log('API URL:', apiUrl);
 
     const response = await axios.get(
-      `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`,
+      apiUrl,
       {
         ...getAuthHeader(),
         params: filteredParams,
@@ -155,7 +165,6 @@ export const fetchManagementStaffReport = async (
         throw new Error('Access denied. You do not have permission to view this data.');
       } else if (error.response?.status === 404) {
         throw new Error('Report endpoint not found. Please contact support.');
-
       } else {
         throw new Error(
           error.response?.data?.message ||
@@ -185,7 +194,7 @@ const transformToTableData = (classSubjectMarks: ClassMarks | undefined, overall
     });
 
     // Ensure all subjects have default values
-    ['english', 'arts', 'mathematics', 'science', 'history', 'sinhala', 'tamil', 'ict', 'buddhism'].forEach(subject => {
+    ['English', 'Arts', 'Mathematics', 'Science', 'History', 'Sinhala', 'Tamil', 'ICT', 'Buddhism'].forEach(subject => {
       if (!row[subject]) row[subject] = 0;
     });
 

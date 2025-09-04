@@ -82,11 +82,22 @@ export const fetchClassTeacherReport = async (
   endDate: string,
   grade: string, 
   className: string,
-  exam: string
+  exam: string,
+  month: string = "01" // Add month parameter with default value
 ): Promise<ClassTeacherReportData> => {
   try {
+    // Build URL based on exam type
+    let apiUrl = `${API_BASE_URL}/api/teacher-report-data/${startDate}/${endDate}/${grade}/${className}/${exam}`;
+    
+    // Add month to URL for Monthly exams
+    if (exam === "Monthly" && month) {
+      apiUrl += `/${month}`;
+    }
+
+    console.log('API URL:', apiUrl);
+
     const response = await axios.get(
-      `${API_BASE_URL}/api/teacher-report-data/${startDate}/${endDate}/${grade}/${className}/${exam}`,
+      apiUrl,
       {
         ...getAuthHeader(),
         timeout: 10000,
@@ -139,6 +150,7 @@ export const fetchClassTeacherReport = async (
     throw new Error("Network error occurred");
   }
 };
+
 // Add this helper function for error handling
 const handleApiError = (error: any, _operation: string) => {
   if (error.response) {

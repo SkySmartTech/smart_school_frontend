@@ -50,10 +50,10 @@ import {
 } from "../../api/parentApi.ts";
 
 const examOptions = [
-    { label: 'First Term', value: 'first' },
-    { label: 'Second Term', value: 'mid' },
-    { label: 'Third Term', value: 'end' },
-    { label: 'Monthly Test', value: 'monthly' }
+    { label: 'First Term', value: 'First' },
+    { label: 'Second Term', value: 'Mid' },
+    { label: 'Third Term', value: 'End' },
+    { label: 'Monthly Test', value: 'Monthly' }
 ];
 
 const months = ["January", "February", "March", "April", "May", "June",

@@ -1,5 +1,4 @@
-// src/pages/TeacherDashboard.tsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
     Stack,
@@ -17,7 +16,11 @@ import {
     InputAdornment,
     MenuItem,
     Chip,
-    Tooltip
+    Tooltip,
+    Radio,
+    RadioGroup,
+    FormControlLabel,
+    FormControl
 } from '@mui/material';
 
 import { DataGrid } from '@mui/x-data-grid';
@@ -49,10 +52,10 @@ import SaveIcon from '@mui/icons-material/Save';
 import useTeacherProfile from '../../hooks/useTeacherProfile';
 
 const examOptions = [
-    { label: 'First Term', value: 'first' },
-    { label: 'Second Term', value: 'mid' },
-    { label: 'Third Term', value: 'end' },
-    { label: 'Monthly Test', value: 'monthly' },
+    { label: 'First Term', value: 'First' },
+    { label: 'Second Term', value: 'Mid' },
+    { label: 'Third Term', value: 'End' },
+    { label: 'Monthly Test', value: 'Monthly' },
 ];
 
 const monthOptions = [
@@ -89,19 +92,28 @@ interface AdmissionData {
     student_name: string;
 }
 
+// Extended StudentMark interface to include attendance
+interface ExtendedStudentMark extends StudentMark {
+    attendance?: 'present' | 'absent';
+}
+
 const TeacherDashboard: React.FC = () => {
     const { data: teacherProfile, isLoading: profileLoading } = useTeacherProfile();
-    const [subjectOptions, setSubjectOptions] = useState<{ label: string; value: string }[]>([]);
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [gradeOptions, setGradeOptions] = useState<{ label: string; value: string }[]>([]);
     const [classOptions, setClassOptions] = useState<{ label: string; value: string }[]>([]);
-    const [students, setStudents] = useState<StudentMark[]>([]);
+    const [students, setStudents] = useState<ExtendedStudentMark[]>([]);
     const [admissionData, setAdmissionData] = useState<AdmissionData[]>([]);
-    const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<StudentMark>>>({});
+    const [modifiedMarks, setModifiedMarks] = useState<Record<GridRowId, Partial<ExtendedStudentMark>>>({});
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+    
+    // Refs to prevent unnecessary re-renders and manage timeouts
+    const admissionDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastFetchParamsRef = useRef<string>('');
+    
     const theme = useTheme();
 
     const { control, watch, reset } = useForm<FilterFormData>({
@@ -118,31 +130,46 @@ const TeacherDashboard: React.FC = () => {
 
     const formValues = watch();
     const { selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, searchQuery } = formValues;
-    const isMonthFilterEnabled = selectedExam === 'monthly';
+    const isMonthFilterEnabled = selectedExam === 'Monthly';
 
-    // Memoize the subjects calculation
-    const getSubjectsForGradeAndClass = useCallback((grade: string, classValue: string) => {
-        if (!teacherProfile?.teacher_data || !Array.isArray(teacherProfile.teacher_data)) {
+    // Helper function to format subject names to proper case
+    const formatSubjectName = useCallback((subject: string): string => {
+        if (!subject) return subject;
+        return subject.charAt(0).toUpperCase() + subject.slice(1).toLowerCase();
+    }, []);
+
+    // Helper function to format exam names for submission (keeping the formatted version for API)
+    const formatExamName = useCallback((exam: string): string => {
+        const examMap: Record<string, string> = {
+            'First Term': 'First',
+            'Second Term': 'Mid',
+            'Third Term': 'End',
+            'Monthly Term': 'Monthly'
+        };
+        return examMap[exam] || exam;
+    }, []);
+
+    // Memoize subject options calculation - keep original casing as value
+    const subjectOptions = useMemo(() => {
+        if (!teacherProfile?.teacher_data || !Array.isArray(teacherProfile.teacher_data) || !selectedGrade || !selectedClass) {
             return [];
         }
 
         const subjects = teacherProfile.teacher_data
             .filter(teacher => 
-                teacher.teacherGrade === grade && 
-                teacher.teacherClass === classValue
+                teacher.teacherGrade === selectedGrade && 
+                teacher.teacherClass === selectedClass
             )
             .map(teacher => ({
-                label: teacher.subject,
-                value: teacher.subject.toLowerCase()
+                label: formatSubjectName(teacher.subject), 
+                value: teacher.subject 
             }));
 
-        // Remove duplicates
-        const uniqueSubjects = subjects.filter((subject, index, self) => 
-            index === self.findIndex(s => s.value === subject.value)
+        // Remove duplicates based on original subject names
+        return subjects.filter((subject, index, self) => 
+            index === self.findIndex(s => s.value.toLowerCase() === subject.value.toLowerCase())
         );
-
-        return uniqueSubjects;
-    }, [teacherProfile]);
+    }, [teacherProfile?.teacher_data, selectedGrade, selectedClass, formatSubjectName]);
 
     // Memoize filtered students for search
     const filteredStudents = useMemo(() => {
@@ -158,78 +185,104 @@ const TeacherDashboard: React.FC = () => {
     // Check if form is valid for submission
     const isFormValid = useMemo(() => {
         return selectedGrade && selectedClass && selectedSubject && selectedExam && selectedYear &&
-               (selectedExam !== 'monthly' || selectedMonth);
+               (selectedExam !== 'Monthly' || selectedMonth);
     }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedYear, selectedMonth]);
 
     // Count modified marks
     const modifiedCount = useMemo(() => {
         return Object.values(modifiedMarks).filter(mark => 
-            mark.marks !== undefined && mark.marks !== ''
+            (mark.marks !== undefined && mark.marks !== '') || mark.attendance !== undefined
         ).length;
     }, [modifiedMarks]);
 
+    // Stable utility functions
     const showSnackbar = useCallback((message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
         setSnackbarMessage(message);
         setSnackbarSeverity(severity);
         setSnackbarOpen(true);
     }, []);
 
-    // Fetch dropdown options with better error handling
-    const fetchOptions = useCallback(async () => {
-        if (profileLoading) return; // Don't fetch if profile is still loading
+    const calculateGrade = useCallback((marks: number): string => {
+        if (marks < 0 || marks > 100) return "Invalid";
+        if (marks <= 39) return "F";
+        if (marks < 50) return "S";
+        if (marks < 65) return "C";
+        if (marks < 75) return "B";
+        return "A";
+    }, []);
+
+    // Fetch grades only - called once on mount
+    const fetchGrades = useCallback(async () => {
+        if (profileLoading) return;
         
         setLoading(true);
         try {
-            const [grades, classes] = await Promise.all([
-                fetchGradesFromApi(),
-                selectedGrade ? fetchClassesFromApi(selectedGrade) : Promise.resolve([])
-            ]);
-            
+            const grades = await fetchGradesFromApi();
             setGradeOptions(grades);
-            setClassOptions(classes);
-
-            // Update subjects based on current selection
-            if (selectedGrade && selectedClass) {
-                const subjects = getSubjectsForGradeAndClass(selectedGrade, selectedClass);
-                setSubjectOptions(subjects);
-            }
         } catch (error) {
-            console.error("Failed to fetch dropdown options:", error);
+            console.error("Failed to fetch grades:", error);
             showSnackbar(
-                `Failed to load dropdown options: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
+                `Failed to load grades: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
                 'error'
             );
         } finally {
             setLoading(false);
         }
-    }, [selectedGrade, selectedClass, getSubjectsForGradeAndClass, profileLoading, showSnackbar]);
+    }, [profileLoading, showSnackbar]);
 
-    // Fetch admission data with debouncing
-    const fetchAdmissionDataHandler = useCallback(async () => {
-        if (!selectedGrade || !selectedClass) {
+    // Fetch classes when grade changes
+    const fetchClasses = useCallback(async (grade: string) => {
+        if (!grade) {
+            setClassOptions([]);
+            return;
+        }
+
+        try {
+            const classes = await fetchClassesFromApi(grade);
+            setClassOptions(classes);
+        } catch (error) {
+            console.error("Failed to fetch classes:", error);
+            showSnackbar(
+                `Failed to load classes: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
+                'error'
+            );
+        }
+    }, [showSnackbar]);
+
+    // Fetch admission data with caching check
+    const fetchAdmissionDataHandler = useCallback(async (grade: string, classValue: string, year: string) => {
+        if (!grade || !classValue || !year) {
             setAdmissionData([]);
             setStudents([]);
             return;
         }
 
+        // Create a cache key to prevent unnecessary API calls
+        const cacheKey = `${grade}-${classValue}-${year}`;
+        if (lastFetchParamsRef.current === cacheKey) {
+            return; // Don't refetch if parameters haven't changed
+        }
+
         try {
             setLoading(true);
-            const data = await fetchAdmissionData(selectedGrade, selectedClass, searchQuery);
+            const data = await fetchAdmissionData(grade, classValue, '');
             setAdmissionData(data);
+            lastFetchParamsRef.current = cacheKey;
 
-            // Initialize students with admission data
-            const initialStudents: StudentMark[] = data.map((item, index) => ({
+            // Initialize students with admission data - use formatted subject name
+            const initialStudents: ExtendedStudentMark[] = data.map((item, index) => ({
                 id: index + 1,
                 student_admission: item.student_admission,
                 student_name: item.student_name,
-                student_grade: selectedGrade,
-                student_class: selectedClass,
-                subject: selectedSubject || '',
+                student_grade: grade,
+                student_class: classValue,
+                subject: selectedSubject ? formatSubjectName(selectedSubject) : '', // Use formatted subject
                 term: selectedExam || '',
                 marks: '',
                 student_grade_value: '',
                 month: isMonthFilterEnabled ? selectedMonth : undefined,
-                year: selectedYear || '' 
+                year: year,
+                attendance: 'present' // Default to present
             }));
 
             setStudents(initialStudents);
@@ -243,67 +296,15 @@ const TeacherDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, searchQuery, showSnackbar]);
+    }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled, showSnackbar, formatSubjectName]);
 
-    // Update subjects when grade or class changes
-    useEffect(() => {
-        if (selectedGrade && selectedClass) {
-            const subjects = getSubjectsForGradeAndClass(selectedGrade, selectedClass);
-            setSubjectOptions(subjects);
-            
-            // Reset subject selection if the current subject is not available for the new grade/class
-            if (selectedSubject && !subjects.some(sub => sub.value === selectedSubject)) {
-                reset({
-                    ...formValues,
-                    selectedSubject: ''
-                });
-            }
-        } else {
-            setSubjectOptions([]);
-        }
-    }, [selectedGrade, selectedClass, selectedSubject, getSubjectsForGradeAndClass, formValues, reset]);
-
-    // Update students when form values change
-    useEffect(() => {
-        if (admissionData.length > 0) {
-            const updatedStudents = admissionData.map((item, index) => {
-                // Find the existing student to preserve marks
-                const existingStudent = students.find(s => s.student_admission === item.student_admission);
-
-                return {
-                    id: index + 1,
-                    student_admission: item.student_admission,
-                    student_name: item.student_name,
-                    student_grade: selectedGrade,
-                    student_class: selectedClass,
-                    subject: selectedSubject || '',
-                    term: selectedExam || '',
-                    marks: existingStudent?.marks || '',
-                    student_grade_value: existingStudent?.student_grade_value || '',
-                    month: isMonthFilterEnabled ? selectedMonth : undefined,
-                    year: selectedYear || '' 
-                };
-            });
-            setStudents(updatedStudents);
-        }
-    }, [selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, admissionData, selectedGrade, selectedClass]);
-
-    const calculateGrade = (marks: number): string => {
-        if (marks < 0 || marks > 100) return "Invalid";
-        if (marks <= 39) return "F";
-        if (marks < 50) return "S";
-        if (marks < 65) return "C";
-        if (marks < 75) return "B";
-        return "A";
-    };
-
-    const processRowUpdate = (newRow: StudentMark) => {
+    const processRowUpdate = useCallback((newRow: ExtendedStudentMark) => {
         let grade = "";
         if (newRow.marks !== "") {
             const marks = parseInt(newRow.marks, 10);
             if (isNaN(marks) || marks < 0 || marks > 100) {
                 showSnackbar('Please enter valid marks between 0 and 100', 'warning');
-                return students.find(s => s.id === newRow.id) || newRow; // Return original row
+                return students.find(s => s.id === newRow.id) || newRow;
             }
             grade = calculateGrade(marks);
         }
@@ -321,21 +322,37 @@ const TeacherDashboard: React.FC = () => {
                 marks: updatedRow.marks,
                 student_grade_value: updatedRow.student_grade_value,
                 student_admission: updatedRow.student_admission,
+                attendance: updatedRow.attendance,
             },
         }));
 
         return updatedRow;
-    };
+    }, [students, calculateGrade, showSnackbar]);
 
-    const handleSubmitMarks = async () => {
+    // Handle attendance change
+    const handleAttendanceChange = useCallback((studentId: GridRowId, attendance: 'present' | 'absent') => {
+        setStudents((prev) =>
+            prev.map((s) => (s.id === studentId ? { ...s, attendance } : s))
+        );
+
+        setModifiedMarks((prevModified) => ({
+            ...prevModified,
+            [studentId]: {
+                ...prevModified[studentId],
+                attendance,
+            },
+        }));
+    }, []);
+
+    const handleSubmitMarks = useCallback(async () => {
         if (!isFormValid) {
             showSnackbar('Please fill all required fields before submitting', 'warning');
             return;
         }
 
         setLoading(true);
-        const marksToSubmit: Partial<StudentMark>[] = Object.entries(modifiedMarks)
-            .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '')
+        const marksToSubmit: Partial<ExtendedStudentMark>[] = Object.entries(modifiedMarks)
+            .filter(([_, mark]) => mark.marks !== undefined && mark.marks !== '' || mark.attendance !== undefined)
             .map(([id, mark]) => {
                 const student = students.find(s => s.id.toString() === id);
                 if (!student) {
@@ -343,28 +360,19 @@ const TeacherDashboard: React.FC = () => {
                     return null;
                 }
 
-                const getFullTerm = (term: string) => {
-                    switch (term) {
-                        case 'First': return 'First Term';
-                        case 'Mid': return 'Second Term';
-                        case 'End': return 'Third Term';
-                        case 'monthly': return 'Monthly Test';
-                        default: return term;
-                    }
-                };
-
                 return {
                     id: parseInt(id as string),
                     student_admission: mark.student_admission || student.student_admission,
                     student_name: student.student_name,
                     student_grade: selectedGrade,
                     student_class: selectedClass,
-                    subject: selectedSubject,
-                    term: getFullTerm(selectedExam),
+                    subject: formatSubjectName(selectedSubject), // Ensure proper capitalization
+                    term: formatExamName(selectedExam), 
                     month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable',
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
-                    year: selectedYear
+                    year: selectedYear,
+                    attendance: mark.attendance || student.attendance || 'present'
                 };
             })
             .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
@@ -388,43 +396,123 @@ const TeacherDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isFormValid, modifiedMarks, students, selectedGrade, selectedClass, selectedSubject, selectedExam, selectedMonth, selectedYear, isMonthFilterEnabled, showSnackbar, formatSubjectName, formatExamName]);
 
-    const handleCloseSnackbar = (_event?: React.SyntheticEvent | Event, reason?: string) => {
+    const handleCloseSnackbar = useCallback((_event?: React.SyntheticEvent | Event, reason?: string) => {
         if (reason === 'clickaway') {
             return;
         }
         setSnackbarOpen(false);
-    };
+    }, []);
 
-    const handleClearFilters = () => {
+    const handleClearFilters = useCallback(() => {
         reset();
         setAdmissionData([]);
         setStudents([]);
         setModifiedMarks({});
-        setSubjectOptions([]);
-    };
+        setClassOptions([]);
+        lastFetchParamsRef.current = '';
+    }, [reset]);
 
-    // Fetch options on component mount
+    const handleClearChanges = useCallback(() => {
+        setModifiedMarks({});
+        setStudents(prev => prev.map(student => ({
+            ...student,
+            marks: '',
+            student_grade_value: '',
+            attendance: 'present'
+        })));
+        showSnackbar('All unsaved marks cleared', 'info');
+    }, [showSnackbar]);
+
+    // Effect 1: Fetch grades only once when component mounts and profile loads
     useEffect(() => {
-        fetchOptions();
-    }, [fetchOptions]);
+        if (!profileLoading && gradeOptions.length === 0) {
+            fetchGrades();
+        }
+    }, [profileLoading]); // Only depend on profileLoading
 
-    // Debounced fetch admission data
+    // Effect 2: Fetch classes when grade changes
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchAdmissionDataHandler();
-        }, 300); // Reduced debounce time
+        fetchClasses(selectedGrade);
+    }, [selectedGrade]); // Only depend on selectedGrade
 
-        return () => clearTimeout(timer);
-    }, [selectedGrade, selectedClass, selectedYear, fetchAdmissionDataHandler]);
+    // Effect 3: Reset subject if it's not available for the new grade/class combination
+    useEffect(() => {
+        if (selectedGrade && selectedClass && selectedSubject && subjectOptions.length > 0) {
+            const availableSubjects = subjectOptions.map(s => s.value);
+            if (!availableSubjects.includes(selectedSubject)) {
+                reset({
+                    ...formValues,
+                    selectedSubject: ''
+                });
+            }
+        }
+    }, [subjectOptions]); // Only depend on subjectOptions
 
-    const columns: GridColDef<StudentMark>[] = [
+    // Effect 4: Debounced admission data fetching
+    useEffect(() => {
+        // Clear any existing timeout
+        if (admissionDataTimeoutRef.current) {
+            clearTimeout(admissionDataTimeoutRef.current);
+        }
+
+        // Only fetch if we have the required core fields
+        if (selectedGrade && selectedClass && selectedYear) {
+            admissionDataTimeoutRef.current = setTimeout(() => {
+                fetchAdmissionDataHandler(selectedGrade, selectedClass, selectedYear);
+            }, 300);
+        } else {
+            setAdmissionData([]);
+            setStudents([]);
+            lastFetchParamsRef.current = '';
+        }
+
+        return () => {
+            if (admissionDataTimeoutRef.current) {
+                clearTimeout(admissionDataTimeoutRef.current);
+            }
+        };
+    }, [selectedGrade, selectedClass, selectedYear]); // Fixed dependencies
+
+    // Effect 5: Update existing student fields when subject/exam/month changes
+    useEffect(() => {
+        if (admissionData.length > 0) {
+            setStudents(prevStudents => 
+                prevStudents.map(student => ({
+                    ...student,
+                    subject: selectedSubject ? formatSubjectName(selectedSubject) : '', // Use formatted subject
+                    term: selectedExam || '',
+                    month: isMonthFilterEnabled ? selectedMonth : undefined,
+                    year: selectedYear || ''
+                }))
+            );
+        }
+    }, [selectedSubject, selectedExam, selectedMonth, isMonthFilterEnabled, selectedYear, admissionData.length, formatSubjectName]);
+
+    // Memoized columns to prevent DataGrid re-renders
+    const columns: GridColDef<ExtendedStudentMark>[] = useMemo(() => [
         { field: 'student_admission', headerName: 'Admission No', width: 200, editable: false },
         { field: 'student_name', headerName: 'Student Name', width: 400, editable: false },
         { field: 'student_class', headerName: 'Class', width: 150, editable: false },
-        { field: 'subject', headerName: 'Subject', width: 150, editable: false },
-        { field: 'term', headerName: 'Term', width: 130, editable: false },
+        { 
+            field: 'subject', 
+            headerName: 'Subject', 
+            width: 150, 
+            editable: false,
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
+                <span>{formatSubjectName(params.row.subject)}</span>
+            )
+        },
+        { 
+            field: 'term', 
+            headerName: 'Term', 
+            width: 130, 
+            editable: false,
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
+                <span>{params.row.term}</span>
+            )
+        },
         { field: 'year', headerName: 'Year', width: 100, editable: false },
         {
             field: 'marks',
@@ -432,7 +520,7 @@ const TeacherDashboard: React.FC = () => {
             width: 140,
             editable: true,
             type: 'number',
-            renderCell: (params: GridRenderCellParams<StudentMark, string>) => (
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
                 <TextField
                     variant="outlined"
                     size="small"
@@ -459,7 +547,7 @@ const TeacherDashboard: React.FC = () => {
             headerName: 'Grade', 
             editable: false,
             width: 100,
-            renderCell: (params: GridRenderCellParams<StudentMark, string>) => {
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => {
                 const grade = params.row.student_grade_value;
                 if (!grade) return null;
                 
@@ -484,7 +572,59 @@ const TeacherDashboard: React.FC = () => {
                 );
             }
         },
-    ];
+        {
+            field: 'attendance',
+            headerName: 'Attendance',
+            width: 150,
+            editable: false,
+            renderCell: (params: GridRenderCellParams<ExtendedStudentMark, string>) => (
+                <FormControl component="fieldset" sx={{ minWidth: '100%' }}>
+                    <RadioGroup
+                        row
+                        value={params.row.attendance || 'present'}
+                        onChange={(e) => handleAttendanceChange(params.row.id, e.target.value as 'present' | 'absent')}
+                        sx={{ 
+                            justifyContent: 'center',
+                            '& .MuiFormControlLabel-root': {
+                                margin: '0 2px',
+                                '& .MuiFormControlLabel-label': {
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                }
+                            }
+                        }}
+                    >
+                        <FormControlLabel 
+                            value="present" 
+                            control={
+                                <Radio 
+                                    size="small" 
+                                    sx={{ 
+                                        color: theme.palette.success.main,
+                                        '&.Mui-checked': { color: theme.palette.success.main }
+                                    }} 
+                                />
+                            } 
+                            label="P"
+                        />
+                        <FormControlLabel 
+                            value="absent" 
+                            control={
+                                <Radio 
+                                    size="small"
+                                    sx={{ 
+                                        color: theme.palette.error.main,
+                                        '&.Mui-checked': { color: theme.palette.error.main }
+                                    }}
+                                />
+                            } 
+                            label="A"
+                        />
+                    </RadioGroup>
+                </FormControl>
+            ),
+        },
+    ], [theme.palette.info.main, theme.palette.success.main, theme.palette.error.main, formatSubjectName, handleAttendanceChange]);
 
     return (
         <Box sx={{ display: "flex", width: "99vw", minHeight: "100vh" }}>
@@ -514,7 +654,6 @@ const TeacherDashboard: React.FC = () => {
                             justifyContent="space-between"
                             sx={{ mb: 2 }}
                         >
-
                             <Controller
                                 control={control}
                                 name="selectedGrade"
@@ -760,7 +899,8 @@ const TeacherDashboard: React.FC = () => {
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
-                                        label="Search"
+                                        label="Search Students"
+                                        placeholder="Search by name or admission number"
                                         variant="outlined"
                                         size="small"
                                         sx={{
@@ -768,7 +908,6 @@ const TeacherDashboard: React.FC = () => {
                                             maxWidth: 460,
                                             flexGrow: 1,
                                             width: { xs: '100%', md: 'auto' },
-
                                             '& .MuiOutlinedInput-root': {
                                                 borderRadius: '10px',
                                                 height: '45px',
@@ -844,7 +983,7 @@ const TeacherDashboard: React.FC = () => {
                                     Student Marks {filteredStudents.length > 0 && `(${filteredStudents.length} students)`}
                                 </Typography>
                                 {modifiedCount > 0 && (
-                                    <Tooltip title="Number of students with modified marks">
+                                    <Tooltip title="Number of students with modified marks or attendance">
                                         <Chip 
                                             label={`${modifiedCount} unsaved changes`}
                                             color="warning"
@@ -858,8 +997,9 @@ const TeacherDashboard: React.FC = () => {
                             {filteredStudents.length === 0 ? (
                                 <Box sx={{ textAlign: 'center', py: 4 }}>
                                     <Typography variant="body1" color="text.secondary">
-                                        {!selectedGrade || !selectedClass ? 
-                                            'Please select grade and class to view students' : 
+                                        {!selectedGrade || !selectedClass || !selectedYear ? 
+                                            'Please select grade, class, and year to view students' : 
+                                            searchQuery ? 'No students found matching your search criteria' :
                                             'No students found for the selected criteria'
                                         }
                                     </Typography>
@@ -926,22 +1066,13 @@ const TeacherDashboard: React.FC = () => {
                                             minWidth: 180,
                                         }}
                                     >
-                                        {loading ? 'Submitting...' : `Submit ${modifiedCount} Marks`}
+                                        {loading ? 'Submitting...' : `Submit ${modifiedCount} Records`}
                                     </Button>
                                     
                                     {modifiedCount > 0 && (
                                         <Button
                                             variant="outlined"
-                                            onClick={() => {
-                                                setModifiedMarks({});
-                                                // Reset marks in students array
-                                                setStudents(prev => prev.map(student => ({
-                                                    ...student,
-                                                    marks: '',
-                                                    student_grade_value: ''
-                                                })));
-                                                showSnackbar('All unsaved marks cleared', 'info');
-                                            }}
+                                            onClick={handleClearChanges}
                                             startIcon={<ClearIcon />}
                                             sx={{
                                                 borderColor: theme.palette.warning.main,

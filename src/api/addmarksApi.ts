@@ -164,7 +164,7 @@ export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]):
       studentClass: mark.student_class?.trim() || '',
       term: mark.term?.trim() || '',
       month: mark.month?.trim() || 'Not Applicable',
-      subject: mark.subject?.toLowerCase().trim() || '',
+      subject: mark.subject?.trim() || '',
       medium: "English",
       marks: parseInt(mark.marks || "0"),
       marksGrade: mark.student_grade_value?.trim() || 'N/A',
