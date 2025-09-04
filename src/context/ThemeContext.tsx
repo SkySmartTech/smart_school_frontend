@@ -5,7 +5,7 @@ import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/st
 type ThemeMode = 'light' | 'dark';
 
 interface ThemeContextType {
-  mode: ThemeMode;
+  mode: ThemeMode; 
   toggleTheme: () => void;
 }
 
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     palette: {
       mode,
       primary: {
-        main: mode === 'light' ? '#ffffffff' : '#90caf9',
+        main: mode === 'light' ? '#1976d2' : '#90caf9',
       },
       secondary: {
         main: mode === 'light' ? '#dc004e' : '#f48fb1',

@@ -18,6 +18,7 @@ import {
   ExitToApp,
   ExpandLess,
   ExpandMore,
+  NoteAdd as NoteAddIcon,
   SubdirectoryArrowRight,
   SupervisedUserCircle,
   SupervisedUserCircleTwoTone,
@@ -32,7 +33,7 @@ interface SidebarProps {
   setOpen: (open: boolean) => void;
 }
 
-const drawerWidth = 250;
+const drawerWidth = 300;
 const collapsedWidth = 56;
 
 const Sidebar = ({ open, setOpen }: SidebarProps) => {
@@ -68,10 +69,16 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "Dashboard",
       icon: <Layers fontSize="small" />,
       children: [
-        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/home" },
-        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherdashboard" },
-        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/dayPlan" },
+        { title: "Student Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
+        { title: "Teacher Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
+        { title: "Common Dashboard", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/sample" },
       ],
+    },
+    {
+      type: "item",
+      title: "Add Marks",
+      icon: <NoteAddIcon fontSize="small" />,
+      href: "/addmarks",
     },
     { type: "divider" },
     { type: "headline", text: "Configuration" },
@@ -80,7 +87,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "User Management",
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
-        { title: "User Account", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userProfile" },
         { title: "User Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userManagement" },
         { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
       ],
@@ -90,30 +96,36 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "Reports",
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
-        { title: "Summary", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/summary" },
-        { title: "Details", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userManagement" },
-        { title: "Students", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/userAccessManagement" },
+        { title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/managementStaff" },
+        { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/teacherReport" },
+        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />, href: "/parentReport" },
       ],
     },
     {
       type: "item",
       title: "System Management",
       icon: <Settings fontSize="small" />,
-      href: "/systemManagement",
+      href: "/sample",
     },
     { type: "divider" },
     { type: "headline", text: "Components" },
     {
       type: "item",
+      title: "User Profile",
+      icon: <Settings fontSize="small" />,
+      href: "/userProfile",
+    },
+    {
+      type: "item",
       title: "Help",
       icon: <SupervisedUserCircle fontSize="small" />,
-      href: "/userProfile",
+      href: "/help",
     },
     {
       type: "item",
       title: "Settings",
       icon: <Settings fontSize="small" />,
-      href: "/setting",
+      href: "/sample",
     },
     {
       type: "item",
@@ -242,7 +254,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                     </>
                   )}
                 </ListItemButton>
-                
+
                 <Collapse in={openSections[item.title!] && open} timeout="auto" unmountOnExit>
                   <List disablePadding sx={{ pl: 2 }}>
                     {item.children?.map((child, childIndex) => (

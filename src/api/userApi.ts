@@ -8,39 +8,65 @@ const API = axios.create({
   },
 });
 
-// User Schema with all 15 fields
 export const userSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  email: z.string().email("Invalid email address"),
-  address: z.string().min(1, "Address is required"),
-  birthday: z.string().min(1, "Birthday is required"),
-  phone: z.string().min(1, "Phone is required"),
-  medium: z.string().min(1, "Medium is required"),
-  gender: z.string().min(1, "Gender is required"),
-  idNumber: z.string().min(1, "ID number is required"),
-  role: z.string().min(1, "Role is required"),
-  parent: z.string().optional(),
-  profession: z.string().optional(),
-  image: z.instanceof(File).optional(),
-  username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be less than 20 characters"),
-  password: z.string()
-    .min(6, "Password must be at least 6 characters")
-    .regex(/[A-Z]/, "Must contain at least one uppercase letter")
-    .regex(/[0-9]/, "Must contain at least one number"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine(data => data.password === data.confirmPassword, {
+    name: z.string().min(1, "Full name is required"),
+    email: z.string().email("Invalid email address"),
+    address: z.string().min(1, "Address is required"),
+    birthDay: z.string().min(1, "Birthday is required"),
+    contact: z
+      .string()
+      .min(10, "Phone must be at least 10 digits")
+      .max(15, "Phone must be at most 15 digits"),
+    userType: z.string().min(1, "Role is required"),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(20, "Username must be less than 20 characters"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    password_confirmation: z.string().min(1, "Please confirm your password"),
+
+    photo: z.instanceof(File).optional(),
+
+    gender: z.string().optional(),
+    location: z.string().min(1, "Location is required"),
+    userRole: z.string().min(1, "User role is required"),
+
+    // Teacher specific fields
+    grade: z.string().min(1, "Grade is required"),
+    subject: z.string().min(1, "Subject is required"),
+    class: z.string().min(1, "Class is required"),
+    staffId: z.string().min(1, "Staff ID is required"),
+    teacherStaffId: z.string().min(1, "Teacher Staff ID is required"),
+    teacherGrades: z.array(z.string().min(1)).nonempty("At least one grade is required"),
+    teacherClass: z.array(z.string().min(1)).nonempty("At least one class is required"),
+    subjects: z.array(z.string().min(1)).nonempty("At least one subject is required"),
+    staffNo: z.string().min(1, "Staff number is required"),
+    medium: z.array(z.string().min(1)).nonempty("At least one medium is required"),
+
+    // Student specific fields
+    studentGrade: z.string().min(1, "Student grade is required"),
+    studentClass: z.string().min(1, "Student class is required"),
+    studentAdmissionNo: z.string().min(1, "Admission number is required"),
+    parentNo: z
+      .string()
+      .min(10, "Parent phone must be at least 10 digits")
+      .max(15, "Parent phone must be at most 15 digits"),
+    parentProfession: z.string().min(1, "Parent profession is required"),
+
+    // Parent specific fields
+    profession: z.string().min(1, "Profession is required"),
+    relation: z.string().min(1, "Relation is required"),
+  
+}).refine(data => data.password === data.password_confirmation, {
   message: "Passwords don't match",
-  path: ["confirmPassword"],
+  path: ["password_confirmation"],
 });
 
 export type User = z.infer<typeof userSchema>;
 
-// Register User with all fields
 export async function registerUser(userData: FormData) {
   try {
-    const response = await API.post("/auth/register", userData);
+    const response = await API.post("/api/user-register", userData);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -50,7 +76,111 @@ export async function registerUser(userData: FormData) {
   }
 }
 
-// Login User
+// Add these interfaces for type safety
+interface StudentRegistrationData {
+  studentGrade: string;
+  medium: string;
+  studentClass: string;
+  studentAdmissionNo: string;
+  parentNo: string;
+  parentProfession: string;
+}
+
+interface ParentRegistrationData {
+  studentAdmissionNo: string;
+  profession: string;
+  relation: string;
+}
+
+// Role-specific registration functions
+export async function registerStudent(studentData: FormData) {
+  try {
+    // Convert FormData to JSON object
+    const requestBody: StudentRegistrationData = {
+      studentGrade: studentData.get('studentGrade') as string,
+      medium: studentData.get('medium') as string,
+      studentClass: studentData.get('studentClass') as string,
+      studentAdmissionNo: studentData.get('studentAdmissionNo') as string,
+      parentNo: studentData.get('parentNo') as string,
+      parentProfession: studentData.get('parentProfession') as string
+    };
+
+    // Send as JSON
+    const response = await API.post("/api/user-student-register", requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || "Student registration failed");
+    }
+    throw new Error("Student registration failed");
+  }
+}
+
+export async function registerTeacher(teacherData: FormData) {
+  try {
+    // Convert FormData to an array of teacher assignments
+    const teacherAssignments = JSON.parse(teacherData.get('teacherAssignments') as string);
+    const staffNo = teacherData.get('staffNo'); // Get staffNo from FormData
+
+    if (!staffNo) {
+      throw new Error("Staff number is required");
+    }
+
+    // Create the request body in the expected format
+    const requestBody = {
+      teacherData: teacherAssignments.map((assignment: any) => ({
+        teacherGrade: assignment.teacherGrade,
+        teacherClass: assignment.teacherClass,
+        subject: assignment.subject,
+        medium: assignment.medium,
+        staffNo: staffNo, // Use the staffNo from FormData
+        userId: teacherData.get('userId'),
+        userType: teacherData.get('userType')
+      }))
+    };
+
+    const response = await API.post("/api/user-teacher-register", requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || "Teacher registration failed");
+    }
+    throw new Error("Teacher registration failed");
+  }
+}
+
+export async function registerParent(parentData: FormData) {
+  try {
+    // Convert FormData to JSON object
+    const requestBody: ParentRegistrationData = {
+      studentAdmissionNo: parentData.get('studentAdmissionNo') as string,
+      profession: parentData.get('profession') as string,
+      relation: parentData.get('relation') as string
+    };
+
+    // Send as JSON
+    const response = await API.post("/api/user-parent-register", requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.message || "Parent registration failed");
+    }
+    throw new Error("Parent registration failed");
+  }
+}
+
 export async function loginUser(credentials: { username: string; password: string }) {
   try {
     const response = await API.post("/auth/login", credentials);
@@ -63,7 +193,6 @@ export async function loginUser(credentials: { username: string; password: strin
   }
 }
 
-// Get User Profile
 export async function getUserProfile(userId: string) {
   try {
     const response = await API.get(`/users/${userId}`);
@@ -76,7 +205,6 @@ export async function getUserProfile(userId: string) {
   }
 }
 
-// Update User Profile
 export async function updateUserProfile(userId: string, userData: Partial<User>) {
   try {
     const response = await API.patch(`/users/${userId}`, userData);
@@ -89,7 +217,6 @@ export async function updateUserProfile(userId: string, userData: Partial<User>)
   }
 }
 
-// Validate User Token
 export async function validateUser() {
   try {
     const response = await API.get("/auth/validate");
