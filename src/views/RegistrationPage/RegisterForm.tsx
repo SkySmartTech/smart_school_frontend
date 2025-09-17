@@ -37,7 +37,6 @@ import {
   School,
   Class,
   Subject,
-  Numbers,
   Add,
   Delete,
   Language
@@ -90,10 +89,13 @@ interface FormData {
   // Role-specific optional properties
   grade?: string;
   studentGrade?: string;
+  studentClass?: string;            // <-- added
   subject?: string;
   class?: string;
-  profession?: string;
+  profession?: string;              // <-- added (for Parent)
   parentContact?: string;
+  parentNo?: string;                // <-- added (standardized name)
+  parentProfession?: string;
   staffId?: string;
   teacherStaffId?: string;
   studentAdmissionNo?: string;
@@ -101,9 +103,12 @@ interface FormData {
   teacherClass: string[];
   subjects: string[];
   staffNo?: string;
-  medium: string[];
-  relation?: string;
+  medium?: string | string[];       // <-- allow string for student, array for teacher
+  relation?: string;                // <-- added (for Parent)
 }
+
+// Add this alias so RegisterFormValues is defined and matches the form shape
+type RegisterFormValues = FormData;
 
 interface RegisterFormProps {
   onSuccess: () => void;
@@ -146,7 +151,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     formState: { errors },
     setValue,
     trigger,
-  } = useForm<FormData>({
+  } = useForm<RegisterFormValues>({
     defaultValues: {
       teacherGrades: [],
       teacherClass: [],
@@ -272,9 +277,11 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       if (selectedRole === "Teacher") {
         isValid = await trigger(["teacherGrades", "subjects", "teacherClass", "staffNo", "medium"]);
       } else if (selectedRole === "Student") {
-        isValid = await trigger(["studentGrade", "studentAdmissionNo"]);
+        // validate student fields
+        isValid = await trigger(["studentGrade", "studentAdmissionNo", "studentClass"]);
       } else if (selectedRole === "Parent") {
-        isValid = await trigger(["profession", "parentContact"]);
+        // validate parent fields
+        isValid = await trigger(["profession", "parentNo"]);
       }
     }
 
@@ -321,31 +328,52 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: RegisterFormValues) => {
     if (!registeredUser) return;
 
     const formData = new FormData();
 
-    // Add userId and userType from the first registration
     formData.append('userId', registeredUser.userId.toString());
     formData.append('userType', registeredUser.userType);
 
-    if (registeredUser.userType === "Teacher") {
-      // Add staffNo first
-      formData.append('staffNo', data.staffNo || ''); // Make sure staffNo is added
+    const role = (registeredUser.userType || '').toLowerCase();
 
-      // For teachers, include the teacherAssignments
+    if (role === "teacher") {
+      formData.append('staffNo', data.staffNo || '');
       formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
         teacherGrade: assignment.grades[0],
         teacherClass: assignment.classes[0],
         subject: assignment.subjects[0],
         medium: assignment.medium[0],
-        staffNo: data.staffNo, // Include staffNo in each assignment
+        staffNo: data.staffNo,
         userId: registeredUser.userId,
         userType: registeredUser.userType
       }))));
+    } else if (role === "student") {
+      const studentPayload = [{
+        studentGrade: data.studentGrade ?? "",
+        studentClass: data.studentClass ?? "",
+        medium: (Array.isArray(data.medium) ? (data.medium[0] ?? "") : (data.medium ?? "")),
+        studentAdmissionNo: data.studentAdmissionNo ?? "",
+        userId: registeredUser.userId,
+        userType: registeredUser.userType
+      }];
+
+      // append JSON string under 'studentData' key
+      formData.append('studentData', JSON.stringify(studentPayload));
+    } else if (role === "parent") {
+      const parentPayload = [{
+        studentAdmissionNo: data.studentAdmissionNo ?? "",
+        profession: data.profession ?? "",
+        relation: data.relation ?? "",
+        parentNo: data.parentNo ?? null,
+        userId: registeredUser.userId,
+        userType: registeredUser.userType
+      }];
+
+      formData.append('parentData', JSON.stringify(parentPayload));
     } else {
-      // For other roles, handle as before
+      // fallback — append non-array fields
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null && !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key)) {
           if (key === 'photo' && value instanceof FileList && value.length > 0) {
@@ -357,14 +385,9 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       });
     }
 
-    // Submit to appropriate endpoint based on userType
-    if (registeredUser.userType === "Student") {
-      registerStudentData(formData);
-    } else if (registeredUser.userType === "Teacher") {
-      registerTeacherData(formData);
-    } else if (registeredUser.userType === "Parent") {
-      registerParentData(formData);
-    }
+    if (role === "student") registerStudentData(formData);
+    else if (role === "teacher") registerTeacherData(formData);
+    else if (role === "parent") registerParentData(formData);
   };
 
   // const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,7 +421,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         grades: currentGrades,
         subjects: currentSubjects,
         classes: currentClasses,
-        medium: currentMedium,
+        medium: Array.isArray(currentMedium) ? currentMedium : [currentMedium],
         id: crypto.randomUUID()
       };
 
@@ -1120,159 +1143,110 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
             )}
 
             {selectedRole === "Student" && (
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  select
-                  label="Grade"
-                  fullWidth
-                  variant="outlined"
-                  {...register("studentGrade", { required: "Grade is required" })}
-                  error={!!errors.studentGrade}
-                  helperText={errors.studentGrade?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <School color={errors.grade ? "error" : "action"} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "10px",
-                      height: "40px"
-                    }
-                  }}
-                >
-                  {grades.map((grade) => (
-                    <MenuItem key={grade} value={grade}>
-                      {grade}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label="Admission Number"
-                  fullWidth
-                  variant="outlined"
-                  {...register("studentAdmissionNo", { required: "Admission number is required" })}
-                  error={!!errors.studentAdmissionNo}
-                  helperText={errors.studentAdmissionNo?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AssignmentInd color={errors.studentAdmissionNo ? "error" : "action"} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "10px",
-                      height: "40px"
-                    }
-                  }}
-                />
-              </Stack>
+              <>
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    select
+                    label="Grade"
+                    fullWidth
+                    variant="outlined"
+                    {...register("studentGrade", { required: "Grade is required" })}
+                    error={!!errors.studentGrade}
+                    helperText={errors.studentGrade?.message}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  >
+                    {grades.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+                  </TextField>
+
+                  <TextField
+                    select
+                    label="Class"
+                    fullWidth
+                    variant="outlined"
+                    {...register("studentClass", { required: "Class is required" })}
+                    error={!!errors.studentClass}
+                    helperText={errors.studentClass?.message}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  >
+                    {classes.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                  </TextField>
+                </Stack>
+
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    select
+                    label="Medium"
+                    fullWidth
+                    variant="outlined"
+                    {...register("medium", { required: "Medium is required" })}
+                    error={!!errors.medium}
+                    helperText={errors.medium?.message}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  >
+                    {mediumOptions.map((m) => <MenuItem key={m} value={m.toLowerCase()}>{m}</MenuItem>)}
+                  </TextField>
+
+                  <TextField
+                    label="Admission Number"
+                    fullWidth
+                    variant="outlined"
+                    {...register("studentAdmissionNo", { required: "Admission number is required" })}
+                    error={!!errors.studentAdmissionNo}
+                    helperText={errors.studentAdmissionNo?.message}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  />
+                </Stack>
+              </>
             )}
 
             {selectedRole === "Parent" && (
-              <><Stack direction="row" spacing={2}>
-                <TextField
-
-                  label="Profession"
-                  fullWidth
-                  variant="outlined"
-                  {...register("profession", { required: "Profession is required" })}
-                  error={!!errors.profession}
-                  helperText={errors.profession?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Work color={errors.profession ? "error" : "action"} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "10px",
-                      height: "40px"
-                    }
-                  }}
-                >
-
-                </TextField>
-                <TextField
-                  label="Contact Number"
-                  fullWidth
-                  variant="outlined"
-                  {...register("parentContact", {
-                    required: "Contact Number is required"
-                  })}
-                  error={!!errors.parentContact}
-                  helperText={errors.parentContact?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Numbers color={errors.parentContact ? "error" : "action"} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "10px",
-                      height: "40px"
-                    }
-                  }} />
-              </Stack>
+              <>
                 <Stack direction="row" spacing={2}>
                   <TextField
-
-                    label="Student Admission No"
+                    label="Child Admission Number"
                     fullWidth
                     variant="outlined"
-                    {...register("studentAdmissionNo", { required: "Student Admission No is required" })}
+                    {...register("studentAdmissionNo", { required: "Child admission number is required" })}
                     error={!!errors.studentAdmissionNo}
                     helperText={errors.studentAdmissionNo?.message}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Work color={errors.studentAdmissionNo ? "error" : "action"} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "10px",
-                        height: "40px"
-                      }
-                    }}
-                  >
-                  </TextField>
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  />
                   <TextField
+                    label="Contact Number"
+                    fullWidth
+                    variant="outlined"
+                    {...register("parentNo", {
+                      required: "Contact number is required",
+                      minLength: { value: 10, message: "Phone must be at least 10 digits" },
+                      maxLength: { value: 15, message: "Phone must be at most 15 digits" },
+                    })}
+                    error={!!errors.parentNo}
+                    helperText={errors.parentNo?.message}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  />
+                </Stack>
 
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    label="Profession"
+                    fullWidth
+                    variant="outlined"
+                    {...register("profession", { required: "Profession is required" })}
+                    error={!!errors.profession}
+                    helperText={errors.profession?.message}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  />
+                  <TextField
                     label="Relation"
                     fullWidth
                     variant="outlined"
                     {...register("relation", { required: "Relation is required" })}
                     error={!!errors.relation}
                     helperText={errors.relation?.message}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Work color={errors.relation ? "error" : "action"} />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "10px",
-                        height: "40px"
-                      }
-                    }}
-                  >
-
-                  </TextField>
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
+                  />
                 </Stack>
               </>
-
             )}
           </Stack>
         )}

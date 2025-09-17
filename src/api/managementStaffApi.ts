@@ -99,7 +99,7 @@ export const fetchManagementStaffReport = async (
   year: string,
   grade: string,
   exam: string,
-  month: string = "01" // Add month parameter with default value
+  month: string = "01"
 ): Promise<ManagementStaffReportData> => {
   try {
     // Validate inputs
@@ -107,35 +107,31 @@ export const fetchManagementStaffReport = async (
       throw new Error('Missing required parameters: year, grade, or exam');
     }
 
-    const params = {
-      year,
-      grade,
-      exam: exam === "All Terms" ? undefined : exam,
-      month: exam === "Monthly" ? month : undefined, // Only include month for Monthly exams
-    };
-
-    // Remove undefined parameters
-    const filteredParams = Object.fromEntries(
-      Object.entries(params).filter(([_, value]) => value !== undefined)
-    );
-
-    // Build URL based on exam type
-    let apiUrl = `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}`;
-
-    // Add month to URL for Monthly exams
-    if (exam === "Monthly" && month) {
-      apiUrl += `/${month}`;
+    // Format the month parameter based on exam type
+    let monthParam = "null";
+    if (exam === "Monthly") {
+      // Convert month number to month name for Monthly exam type
+      const monthNames = {
+        "01": "January", "02": "February", "03": "March", "04": "April",
+        "05": "May", "06": "June", "07": "July", "08": "August",
+        "09": "September", "10": "October", "11": "November", "12": "December"
+      };
+      monthParam = monthNames[month as keyof typeof monthNames] || "January";
     }
 
-    console.log('API Request params:', filteredParams);
+    // Build base URL with required parameters
+    const apiUrl = `${API_BASE_URL}/api/management-staff-report/${year}/${grade}/${exam}/${monthParam}`
+      .replace(/([^:]\/)\/+/g, "$1") // Remove any double slashes (except after http/https)
+      .trim();
+
     console.log('API URL:', apiUrl);
 
     const response = await axios.get(
-      apiUrl,
+      encodeURI(apiUrl),
       {
         ...getAuthHeader(),
-        params: filteredParams,
         timeout: 10000,
+        withCredentials: true
       }
     );
 
@@ -151,20 +147,23 @@ export const fetchManagementStaffReport = async (
 
     return transformedData;
   } catch (error) {
-    console.error('API Error:', error); // Debug log
+    console.error('API Error:', error);
 
     if (axios.isAxiosError(error)) {
+      // Handle CORS error specifically
+      if (error.message === 'Network Error') {
+        throw new Error('CORS error or network issue. Please check server configuration.');
+      }
+      
       if (error.response?.status === 401) {
-        // Clear invalid token
         localStorage.removeItem('authToken');
         localStorage.removeItem('token');
         localStorage.removeItem('access_token');
-
         throw new Error('Session expired. Please login again.');
       } else if (error.response?.status === 403) {
         throw new Error('Access denied. You do not have permission to view this data.');
       } else if (error.response?.status === 404) {
-        throw new Error('Report endpoint not found. Please contact support.');
+        throw new Error('Report endpoint not found. Please check the URL format.');
       } else {
         throw new Error(
           error.response?.data?.message ||
@@ -172,8 +171,6 @@ export const fetchManagementStaffReport = async (
           `Request failed with status ${error.response?.status}`
         );
       }
-    } else if (error instanceof Error) {
-      throw error;
     }
 
     throw new Error("Network error or unknown error occurred");

@@ -83,24 +83,50 @@ export const fetchClassTeacherReport = async (
   grade: string, 
   className: string,
   exam: string,
-  month: string = "01" // Add month parameter with default value
+  month: string = "01"
 ): Promise<ClassTeacherReportData> => {
   try {
-    // Build URL based on exam type
-    let apiUrl = `${API_BASE_URL}/api/teacher-report-data/${startDate}/${endDate}/${grade}/${className}/${exam}`;
-    
-    // Add month to URL for Monthly exams
-    if (exam === "Monthly" && month) {
-      apiUrl += `/${month}`;
+    // Validate inputs
+    if (!startDate || !endDate || !grade || !className || !exam) {
+      throw new Error('Missing required parameters');
     }
+
+    // Format dates to match required format (YYYY.MM.DD)
+    const formatDate = (date: string) => {
+      return date.replace(/-/g, '.');
+    };
+
+    // Format the month parameter based on exam type
+    let monthParam = "null";
+    if (exam === "Monthly") {
+      // Convert month number to month name for Monthly exam type
+      const monthNames = {
+        "01": "January", "02": "February", "03": "March", "04": "April",
+        "05": "May", "06": "June", "07": "July", "08": "August",
+        "09": "September", "10": "October", "11": "November", "12": "December"
+      };
+      monthParam = monthNames[month as keyof typeof monthNames] || "January";
+    }
+
+    // Build base URL with required parameters
+    const apiUrl = `${API_BASE_URL}/api/teacher-report-data/${formatDate(startDate)}/${formatDate(endDate)}/${grade}/${className}/${exam}/${monthParam}`
+      .replace(/([^:]\/)\/+/g, "$1") // Remove any double slashes (except after http/https)
+      .trim();
 
     console.log('API URL:', apiUrl);
 
     const response = await axios.get(
-      apiUrl,
+      encodeURI(apiUrl),
       {
         ...getAuthHeader(),
         timeout: 10000,
+        withCredentials: true,
+        headers: {
+          ...getAuthHeader().headers,
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Origin, Content-Type, Accept, Authorization'
+        }
       }
     );
 
@@ -138,15 +164,32 @@ export const fetchClassTeacherReport = async (
       })) || []
     };
   } catch (error) {
+    console.error('API Error:', error);
+
     if (axios.isAxiosError(error)) {
+      // Handle CORS error specifically
+      if (error.message === 'Network Error') {
+        throw new Error('CORS error or network issue. Please check server configuration.');
+      }
+      
       if (error.response?.status === 401) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('token');
         localStorage.removeItem('access_token');
         throw new Error('Session expired. Please login again.');
+      } else if (error.response?.status === 403) {
+        throw new Error('Access denied. You do not have permission to view this data.');
+      } else if (error.response?.status === 404) {
+        throw new Error('Report endpoint not found. Please check the URL format.');
+      } else {
+        throw new Error(
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          `Request failed with status ${error.response?.status}`
+        );
       }
-      throw new Error(error.response?.data?.message || 'Request failed');
     }
+
     throw new Error("Network error occurred");
   }
 };

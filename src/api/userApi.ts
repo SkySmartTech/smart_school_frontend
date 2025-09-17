@@ -76,40 +76,42 @@ export async function registerUser(userData: FormData) {
   }
 }
 
-// Add these interfaces for type safety
-interface StudentRegistrationData {
-  studentGrade: string;
-  medium: string;
-  studentClass: string;
-  studentAdmissionNo: string;
-  parentNo: string;
-  parentProfession: string;
-}
-
-interface ParentRegistrationData {
-  studentAdmissionNo: string;
-  profession: string;
-  relation: string;
-}
-
 // Role-specific registration functions
 export async function registerStudent(studentData: FormData) {
   try {
-    // Convert FormData to JSON object
-    const requestBody: StudentRegistrationData = {
-      studentGrade: studentData.get('studentGrade') as string,
-      medium: studentData.get('medium') as string,
-      studentClass: studentData.get('studentClass') as string,
-      studentAdmissionNo: studentData.get('studentAdmissionNo') as string,
-      parentNo: studentData.get('parentNo') as string,
-      parentProfession: studentData.get('parentProfession') as string
+    // Try reading a JSON string payload first (preferred)
+    const raw = studentData.get('studentData');
+    let studentArr: any[] = [];
+
+    if (raw) {
+      studentArr = JSON.parse(raw as string);
+    } else {
+      // fallback: convert individual fields into a single-item array
+      studentArr = [
+        {
+          studentGrade: studentData.get('studentGrade'),
+          medium: studentData.get('medium'),
+          studentClass: studentData.get('studentClass'),
+          studentAdmissionNo: studentData.get('studentAdmissionNo'),
+          userId: studentData.get('userId'),
+          userType: studentData.get('userType'),
+        },
+      ];
+    }
+
+    const requestBody = {
+      studentData: studentArr.map((item: any) => ({
+        studentGrade: item.studentGrade,
+        studentClass: item.studentClass,
+        medium: item.medium,
+        studentAdmissionNo: item.studentAdmissionNo,
+        userId: studentData.get('userId'),
+        userType: studentData.get('userType'),
+      })),
     };
 
-    // Send as JSON
     const response = await API.post("/api/user-student-register", requestBody, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
     return response.data;
   } catch (error) {
@@ -159,18 +161,37 @@ export async function registerTeacher(teacherData: FormData) {
 
 export async function registerParent(parentData: FormData) {
   try {
-    // Convert FormData to JSON object
-    const requestBody: ParentRegistrationData = {
-      studentAdmissionNo: parentData.get('studentAdmissionNo') as string,
-      profession: parentData.get('profession') as string,
-      relation: parentData.get('relation') as string
+    const raw = parentData.get('parentData');
+    let parentArr: any[] = [];
+
+    if (raw) {
+      parentArr = JSON.parse(raw as string);
+    } else {
+      parentArr = [
+        {
+          studentAdmissionNo: parentData.get('studentAdmissionNo'),
+          profession: parentData.get('profession'),
+          relation: parentData.get('relation'),
+          parentNo: parentData.get('parentNo'),
+          userId: parentData.get('userId'),
+          userType: parentData.get('userType'),
+        }
+      ];
+    }
+
+    const requestBody = {
+      parentData: parentArr.map((item: any) => ({
+        studentAdmissionNo: item.studentAdmissionNo,
+        profession: item.profession,
+        relation: item.relation,
+        parentNo: item.parentNo ?? null,
+        userId: parentData.get('userId'),
+        userType: parentData.get('userType'),
+      }))
     };
 
-    // Send as JSON
     const response = await API.post("/api/user-parent-register", requestBody, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
     return response.data;
   } catch (error) {
