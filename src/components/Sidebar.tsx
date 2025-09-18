@@ -105,7 +105,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       type: "item",
       title: "System Management",
       icon: <Settings fontSize="small" />,
-      href: "/sample",
+      href: "/systemManagement",
     },
     { type: "divider" },
     { type: "headline", text: "Components" },
