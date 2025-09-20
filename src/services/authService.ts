@@ -43,27 +43,6 @@ function resetInactivityTimer() {
 }
 
 // Function to setup activity listeners
-function setupActivityListeners() {
-  // Listen for various user activity events
-  const events = [
-    'mousedown', 'mousemove', 'keypress', 'scroll', 
-    'touchstart', 'click', 'input', 'wheel'
-  ];
-  
-  events.forEach(event => {
-    window.addEventListener(event, detectUserActivity, { passive: true });
-  });
-  
-  // Special case for visibility changes
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      detectUserActivity();
-    }
-  });
-  
-  // Initialize the timer
-  resetInactivityTimer();
-}
 
 // Login function
 export async function login({
@@ -73,21 +52,42 @@ export async function login({
   username: string;
   password: string;
 }) {
-  const res = await api.post("/api/login", {
-    username,
-    password,
-  });
+  try {
+    const res = await api.post("/api/login", {
+      username,
+      password,
+    });
 
-  if (res.data.token) {
-    localStorage.setItem('token', res.data.token);
-    if (res.data.user) {
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+    console.log('Login response:', res.data); // Debug log
+
+    // Store token
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
     }
-    // Start tracking activity after successful login
-    setupActivityListeners();
-  }
 
-  return res.data;
+    let userData = res.data.user || res.data;
+
+    // Store the complete user data
+    localStorage.setItem('userData', JSON.stringify(userData));
+
+    // Handle permissions
+    if (userData.access && userData.access.length > 0) {
+      try {
+        // The access array contains a JSON string that needs to be parsed
+        const permissionsArray = JSON.parse(userData.access[0]);
+        // Store the parsed permissions array
+        localStorage.setItem('userPermissions', JSON.stringify(permissionsArray));
+      } catch (error) {
+        console.error('Error parsing permissions:', error);
+        localStorage.setItem('userPermissions', '[]');
+      }
+    }
+
+    return userData;
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
 }
 
 // Logout function (unchanged)
@@ -110,33 +110,44 @@ export async function logout() {
     console.error("Logout failed:", error);
   } finally {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('userPermissions');
   }
 }
 
-// Validate user session (unchanged)
+// Validate user session
 export async function validateUser() {
   const token = localStorage.getItem('token');
   if (!token) return null;
 
   try {
-    const response = await api.get('/api/user', {  
+    const response = await api.get('/api/user', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
-    if (response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      // Reset activity timer on validation
-      detectUserActivity();
-      return response.data.user;
+    if (response.data) {
+      const userData = response.data;
+      localStorage.setItem('userData', JSON.stringify(userData));
+
+      if (userData.access && userData.access.length > 0) {
+        try {
+          const permissionsArray = JSON.parse(userData.access[0]);
+          localStorage.setItem('userPermissions', JSON.stringify(permissionsArray));
+        } catch (error) {
+          console.error('Error parsing permissions:', error);
+        }
+      }
+
+      return userData;
     }
     return null;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userPermissions');
     }
     console.error("User validation failed:", error);
     return null;

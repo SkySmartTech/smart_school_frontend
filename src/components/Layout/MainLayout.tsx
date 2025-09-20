@@ -1,40 +1,31 @@
 import { useState } from "react";
-import { Box, CssBaseline } from "@mui/material";
+import { Box, AppBar } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../Sidebar";
 
 const drawerWidth = 240;
-const collapsedWidth = 56;
+const collapsedWidth = 60;
 
 const MainLayout = () => {
-  const [open, setOpen] = useState(false);
-  const [hovered] = useState(false);
+  const [open] = useState(false);
 
   return (
-    <Box sx={{ display: "flex", width: "100vw", height: "100vh", overflow: "hidden" }}>
-      <CssBaseline />
-      <Sidebar
-        open={open || hovered}
-        setOpen={setOpen}
-      />
-      <Box
-        component="main"
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      
+      <AppBar
+        position="fixed"
         sx={{
-          flexGrow: 1,
-          width: `calc(100vw - ${open || hovered ? drawerWidth : collapsedWidth}px)`,
-          height: "100vh",
-          overflow: "auto",
-          transition: (theme) => theme.transitions.create(['margin', 'width'], {
+          width: { sm: `calc(100% - ${open ? drawerWidth : collapsedWidth}px)` },
+          ml: { sm: `${open ? drawerWidth : collapsedWidth}px` },
+          transition: theme => theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
-          marginLeft: `${open || hovered ? drawerWidth : collapsedWidth}px`,
-          p: 3,
-          backgroundColor: "#f5f5f5"
         }}
       >
-        <Outlet />
-      </Box>
+       
+      </AppBar>
+
+     <Outlet />
     </Box>
   );
 };
