@@ -76,18 +76,44 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
 
   const { mutate: loginMutation, isPending } = useMutation({
     mutationFn: login,
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["current-user"] });
-      localStorage.setItem("token", data?.token);
-
+      
       if (rememberMe) {
-        localStorage.setItem("rememberedUsername", variables.username);
+        localStorage.setItem("rememberedUsername", data.username);
       } else {
         localStorage.removeItem("rememberedUsername");
       }
 
+      // Store user data
+      if (data) {
+        localStorage.setItem('userData', JSON.stringify(data));
+        
+        // Check if access permissions exist and store them
+        if (data.access && data.access.length > 0) {
+          try {
+            const userPermissions = JSON.parse(data.access[0]);
+            localStorage.setItem('userPermissions', JSON.stringify(userPermissions));
+
+            // Navigate based on permissions
+            if (userPermissions.includes('teacherDashboard')) {
+              navigate('/teacher-dashboard');
+            } else if (userPermissions.includes('studentDashboard')) {
+              navigate('/student-dashboard');
+            } else {
+              navigate('/dashboard');
+            }
+          } catch (error) {
+            console.error('Error parsing permissions:', error);
+            navigate('/dashboard'); // Default fallback
+          }
+        } else {
+          console.warn('No permissions found in user data');
+          navigate('/dashboard'); // Default fallback
+        }
+      }
+
       enqueueSnackbar("Welcome Back!", { variant: "success" });
-      navigate("/managementStaff");
     },
     onError: (error: any) => {
       console.log("Login error:", error);

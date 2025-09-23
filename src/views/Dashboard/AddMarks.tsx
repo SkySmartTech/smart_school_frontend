@@ -95,6 +95,7 @@ interface AdmissionData {
 // Extended StudentMark interface to include attendance
 interface ExtendedStudentMark extends StudentMark {
     attendance?: 'present' | 'absent';
+    status?: boolean; // true = present, false = absent
 }
 
 const TeacherDashboard: React.FC = () => {
@@ -282,7 +283,8 @@ const TeacherDashboard: React.FC = () => {
                 student_grade_value: '',
                 month: isMonthFilterEnabled ? selectedMonth : undefined,
                 year: year,
-                attendance: 'present' // Default to present
+                attendance: 'present', // Default to present
+                status: true // Default to present (true)
             }));
 
             setStudents(initialStudents);
@@ -323,6 +325,7 @@ const TeacherDashboard: React.FC = () => {
                 student_grade_value: updatedRow.student_grade_value,
                 student_admission: updatedRow.student_admission,
                 attendance: updatedRow.attendance,
+                status: updatedRow.attendance === 'present' ? true : false,
             },
         }));
 
@@ -331,8 +334,17 @@ const TeacherDashboard: React.FC = () => {
 
     // Handle attendance change
     const handleAttendanceChange = useCallback((studentId: GridRowId, attendance: 'present' | 'absent') => {
+        const status = attendance === 'present' ? true : false;
+        
         setStudents((prev) =>
-            prev.map((s) => (s.id === studentId ? { ...s, attendance } : s))
+            prev.map((s) => (s.id === studentId ? { 
+                ...s, 
+                attendance, 
+                status,
+                // Clear marks when marked as absent
+                marks: attendance === 'absent' ? '' : s.marks,
+                student_grade_value: attendance === 'absent' ? '' : s.student_grade_value
+            } : s))
         );
 
         setModifiedMarks((prevModified) => ({
@@ -340,6 +352,10 @@ const TeacherDashboard: React.FC = () => {
             [studentId]: {
                 ...prevModified[studentId],
                 attendance,
+                status,
+                // Clear marks when marked as absent
+                marks: attendance === 'absent' ? '' : prevModified[studentId]?.marks,
+                student_grade_value: attendance === 'absent' ? '' : prevModified[studentId]?.student_grade_value
             },
         }));
     }, []);
@@ -372,7 +388,8 @@ const TeacherDashboard: React.FC = () => {
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
                     year: selectedYear,
-                    attendance: mark.attendance || student.attendance || 'present'
+                    attendance: mark.attendance || student.attendance || 'present',
+                    status: mark.status !== undefined ? mark.status : (mark.attendance === 'present' ? true : false)
                 };
             })
             .filter((mark): mark is NonNullable<typeof mark> => mark !== null);
@@ -420,7 +437,8 @@ const TeacherDashboard: React.FC = () => {
             ...student,
             marks: '',
             student_grade_value: '',
-            attendance: 'present'
+            attendance: 'present',
+            status: true
         })));
         showSnackbar('All unsaved marks cleared', 'info');
     }, [showSnackbar]);
@@ -484,7 +502,8 @@ const TeacherDashboard: React.FC = () => {
                     subject: selectedSubject ? formatSubjectName(selectedSubject) : '', // Use formatted subject
                     term: selectedExam || '',
                     month: isMonthFilterEnabled ? selectedMonth : undefined,
-                    year: selectedYear || ''
+                    year: selectedYear || '',
+                    status: student.attendance === 'present' ? true : false // Keep status in sync with attendance
                 }))
             );
         }
@@ -525,8 +544,26 @@ const TeacherDashboard: React.FC = () => {
                     variant="outlined"
                     size="small"
                     value={params.row.marks || ''}
+                    disabled={params.row.attendance === 'absent'}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        // Only process if attendance is present
+                        if (params.row.attendance === 'present') {
+                            if (value === '' || (Number(value) >= 0 && Number(value) <= 100)) {
+                                const updatedRow = {
+                                    ...params.row,
+                                    marks: value
+                                };
+                                processRowUpdate(updatedRow);
+                            }
+                        }
+                    }}
                     inputProps={{
-                        style: { textAlign: 'center', padding: '8px 10px' },
+                        style: { 
+                            textAlign: 'center', 
+                            padding: '8px 10px',
+                            backgroundColor: params.row.attendance === 'absent' ? theme.palette.action.disabledBackground : 'inherit'
+                        },
                         min: 0,
                         max: 100,
                         maxLength: 3
@@ -535,8 +572,19 @@ const TeacherDashboard: React.FC = () => {
                         width: '100%',
                         '& .MuiOutlinedInput-root': {
                             borderRadius: '4px',
-                            '&:hover fieldset': { borderColor: theme.palette.info.main },
-                            '&.Mui-focused fieldset': { borderColor: theme.palette.info.main },
+                            '&:hover fieldset': { 
+                                borderColor: params.row.attendance === 'absent' ? 
+                                    theme.palette.action.disabled : 
+                                    theme.palette.info.main 
+                            },
+                            '&.Mui-focused fieldset': { 
+                                borderColor: params.row.attendance === 'absent' ? 
+                                    theme.palette.action.disabled : 
+                                    theme.palette.info.main 
+                            },
+                            '&.Mui-disabled': {
+                                backgroundColor: theme.palette.action.disabledBackground
+                            }
                         },
                     }}
                 />
