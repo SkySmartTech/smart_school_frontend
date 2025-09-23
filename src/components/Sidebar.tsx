@@ -130,6 +130,8 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "System Management",
       icon: <Settings fontSize="small" />,
       permission: "systemManagement",
+
+
       href: "/systemManagement",
     },
     { type: "divider" },
