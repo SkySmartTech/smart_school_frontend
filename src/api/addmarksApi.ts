@@ -19,6 +19,7 @@ export interface StudentMark {
   student_grade_value?: string;
   month?: string;
   year?: string;
+  status?: boolean; // true = present, false = absent
 }
 
 export interface FetchMarksFilters {
@@ -168,7 +169,8 @@ export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]):
       medium: "English",
       marks: parseInt(mark.marks || "0"),
       marksGrade: mark.student_grade_value?.trim() || 'N/A',
-      year: mark.year?.trim() || ''
+      year: mark.year?.trim() || '',
+      status: mark.status !== undefined ? mark.status : true // Default to present if not specified
     }));
 
     const isValid = formattedMarks.every(mark => 

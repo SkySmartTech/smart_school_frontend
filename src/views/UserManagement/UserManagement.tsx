@@ -49,23 +49,46 @@ import {
   updateUser,
   deactivateUser,
   searchUsers,
-  bulkDeactivateUsers
+  bulkDeactivateUsers,
+  getUserRole
 } from "../../api/userManagementApi";
 import Navbar from "../../components/Navbar";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import debounce from "lodash/debounce";
 
-type UserCategory = 'TEACHER' | 'STUDENT' | 'PARENT';
+// Update UserCategory type
+type UserCategory = 'Student' | 'Teacher' | 'Parent';
 
 const UserManagement: React.FC = () => {
   const [form, setForm] = useState<Omit<User, 'id'> & { id?: number }>({
     name: "",
     username: "",
     email: "",
-    userType: "STUDENT",
+    userType: "Student",
+    userRole: getUserRole("Student"),
     status: true,
-    password: ""
+    password: "",
+    contact: "",
+    // Optional fields with empty strings
+    address: "",
+    birthDay: "",
+    gender: "",
+    location: "",
+    photo: "",
+    // Role-specific fields
+    grade: "",
+    class: "",
+    medium: "",
+    subject: "",
+    profession: "",
+    studentAdmissionNo: "",
+    // Additional form fields
+    studentClass: "",
+    teacherClass: [],
+    studentGrade: "",
+    teacherGrade: "",
+    teacherGrades: [],
   });
   const [editId, setEditId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -76,7 +99,7 @@ const UserManagement: React.FC = () => {
   });
   const [rowSelectionModel, setRowSelectionModel] = useState<GridRowId[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<UserCategory>('STUDENT');
+  const [activeTab, setActiveTab] = useState<UserCategory>('Student');
   const theme = useTheme();
   const dataGridRef = useRef<any>(null);
   useCustomTheme();
@@ -84,11 +107,13 @@ const UserManagement: React.FC = () => {
   const queryClient = useQueryClient();
 
   const { data: allUsers = [], isLoading: isDataLoading, refetch } = useQuery<User[]>({
-    queryKey: ["users"],
-    queryFn: fetchUsers, 
+    queryKey: ["users", activeTab], // Add activeTab to query key so it refreshes on tab change
+    queryFn: () => fetchUsers(activeTab), // Pass activeTab to fetchUsers
   });
 
-  const users = allUsers.filter(user => user.userType === activeTab);
+  // Remove this line as we're now fetching filtered data directly from API
+  // const users = allUsers.filter(user => user.userType === activeTab);
+  const users = allUsers; // Use the data directly since it's already filtered by the API
 
   const { data: apiSearchResults = [], isLoading: isSearching, refetch: searchRefetch } = useQuery({
     queryKey: ["searchUsers", searchTerm, activeTab],
@@ -133,7 +158,7 @@ const UserManagement: React.FC = () => {
   });
 
   const deactivateUserMutation = useMutation({
-    mutationFn: deactivateUser,
+    mutationFn: (id: number) => deactivateUser(id, activeTab),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       showSnackbar("User deactivated successfully!", "success");
@@ -144,7 +169,7 @@ const UserManagement: React.FC = () => {
   });
 
   const bulkDeactivateMutation = useMutation({
-    mutationFn: bulkDeactivateUsers,
+    mutationFn: (ids: number[]) => bulkDeactivateUsers(ids, activeTab),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       showSnackbar(`${rowSelectionModel.length} users deactivated successfully!`, "success");
@@ -203,8 +228,29 @@ const UserManagement: React.FC = () => {
       username: "",
       email: "",
       userType: activeTab,
+      userRole: getUserRole(activeTab),
       status: true,
-      password: ""
+      password: "",
+      contact: "",
+      // Optional fields with empty strings
+      address: "",
+      birthDay: "",
+      gender: "",
+      location: "",
+      photo: "",
+      // Role-specific fields
+      grade: "",
+      class: "",
+      medium: "",
+      subject: "",
+      profession: "",
+      studentAdmissionNo: "",
+      // Additional form fields
+      studentClass: "",
+      teacherClass: [],
+      studentGrade: "",
+      teacherGrade: "",
+      teacherGrades: [],
     });
     setEditId(null);
   };
@@ -212,9 +258,27 @@ const UserManagement: React.FC = () => {
   const handleEdit = (id: number) => {
     const userToEdit = (searchTerm ? apiSearchResults : users).find(user => user.id === id);
     if (userToEdit) {
-      setForm({
-        ...userToEdit,
-        password: ""
+      setForm({ name: userToEdit.name || "",
+      username: userToEdit.username || "",
+      email: userToEdit.email || "",
+      userType: userToEdit.userType,
+      userRole: getUserRole(userToEdit.userType),
+      status: userToEdit.status,
+      password: "",
+      contact: userToEdit.contact || "",
+      address: userToEdit.address || "",
+      birthDay: userToEdit.birthDay || "",
+      gender: userToEdit.gender || "",
+      location: userToEdit.location || "",
+      photo: userToEdit.photo || "",
+      // Only include fields that actually exist for this user type
+      grade: userToEdit.grade || "",
+      class: userToEdit.class || "",
+      medium: userToEdit.medium || "",
+      subject: userToEdit.subject || "",
+      profession: userToEdit.profession || "",
+      studentAdmissionNo: userToEdit.studentAdmissionNo || "",
+      staffNo: userToEdit.staffNo || "",
       });
       setEditId(id);
     }
@@ -237,65 +301,69 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    const dataToExport = searchTerm ? apiSearchResults : users;
-    
-    const tableData = dataToExport.map(user => [
-      user.name,
-      user.username,
-      user.email,
-      user.address || '-',
-      user.birthday || '-',
-      user.phoneNo || '-',
-      user.gender || '-',
-      activeTab === 'STUDENT' ? user.grade || '-' : 
-        activeTab === 'TEACHER' ? user.class || '-' : user.profession || '-',
-      activeTab === 'STUDENT' ? user.medium || '-' : 
-        activeTab === 'TEACHER' ? user.subject || '-' : user.parentNo || '-',
-      user.status ? 'Active' : 'Inactive'
-    ]);
+const handleExportPDF = () => {
+  const doc = new jsPDF();
+  const dataToExport = searchTerm ? apiSearchResults : users;
+  
+  const tableData = dataToExport.map(user => [
+    user.name,
+    user.username,
+    user.email,
+    user.address || '-',
+    user.birthDay || '-',
+    user.contact || '-', // Changed from gender to contact (phone number)
+    user.gender || '-',
+    activeTab === 'Student' ? user.grade || '-' : 
+      activeTab === 'Teacher' ? user.class || '-' : user.profession || '-',
+    activeTab === 'Student' ? user.medium || '-' : 
+      activeTab === 'Teacher' ? user.subject || '-' : (user as any).parentNo || '-', // Safe access for parentNo
+    user.status ? 'Active' : 'Inactive'
+  ]);
 
-    const headers = [
-      'Name', 'Username', 'Email', 'Address', 'Birthday', 'Phone No', 'Gender',
-      activeTab === 'STUDENT' ? 'Grade' : activeTab === 'TEACHER' ? 'Class' : 'Profession',
-      activeTab === 'STUDENT' ? 'Medium' : activeTab === 'TEACHER' ? 'Subject' : 'Parent No',
-      'Status'
-    ];
+  const headers = [
+    'Name', 'Username', 'Email', 'Address', 'Birthday', 'Phone No', 'Gender',
+    activeTab === 'Student' ? 'Grade' : activeTab === 'Teacher' ? 'Class' : 'Profession',
+    activeTab === 'Student' ? 'Medium' : activeTab === 'Teacher' ? 'Subject' : 'Parent No',
+    'Status'
+  ];
 
-    doc.text(`${activeTab} Management Report`, 14, 16);
-    autoTable(doc, {
-      head: [headers],
-      body: tableData,
-      startY: 20,
-      styles: {
-        cellPadding: 3,
-        fontSize: 8,
-        valign: 'middle',
-        halign: 'center',
-      },
-      headStyles: {
-        fillColor: [25, 118, 210],
-        textColor: 255,
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      }
-    });
+  doc.text(`${activeTab} Management Report`, 14, 16);
+  autoTable(doc, {
+    head: [headers],
+    body: tableData,
+    startY: 20,
+    styles: {
+      cellPadding: 3,
+      fontSize: 8,
+      valign: 'middle',
+      halign: 'center',
+    },
+    headStyles: {
+      fillColor: [25, 118, 210],
+      textColor: 255,
+      fontStyle: 'bold'
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245]
+    }
+  });
 
-    doc.save(`${activeTab.toLowerCase()}-management-report.pdf`);
-  };
+  doc.save(`${activeTab.toLowerCase()}-management-report.pdf`);
+};
 
   const handleClearSearch = () => {
     setSearchTerm("");
   };
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) => {
-    setActiveTab(newValue);
-    setSearchTerm("");
-    handleClear();
-  };
+const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) => {
+  setActiveTab(newValue);
+  setForm(prev => ({
+    ...prev,
+    userType: newValue,
+    userRole: getUserRole(newValue)
+  }));
+  setSearchTerm("");
+};
 
   const debouncedSearch = useRef(
     debounce((term: string) => {
@@ -324,8 +392,8 @@ const UserManagement: React.FC = () => {
       { field: 'username', headerName: 'Username', width: 120, flex: 1 },
       { field: 'email', headerName: 'Email', width: 180, flex: 1 },
       { field: 'address', headerName: 'Address', width: 150, flex: 1 },
-      { field: 'birthday', headerName: 'Birthday', width: 100, flex: 1 },
-      { field: 'phoneNo', headerName: 'Phone No', width: 120, flex: 1 },
+      { field: 'birthDay', headerName: 'Birthday', width: 100, flex: 1 },
+      { field: 'contact', headerName: 'Phone No', width: 120, flex: 1 },
       { field: 'gender', headerName: 'Gender', width: 100, flex: 1 },
     ];
 
@@ -379,28 +447,31 @@ const UserManagement: React.FC = () => {
     };
 
     switch (activeTab) {
-      case 'STUDENT':
+      case 'Student':
         return [
           ...commonColumns,
           { field: 'grade', headerName: 'Grade', width: 100, flex: 1 },
           { field: 'medium', headerName: 'Medium', width: 100, flex: 1 },
+          { field: 'class', headerName: 'Class', width: 100, flex: 1 },
           statusColumn,
           actionColumn
         ];
-      case 'TEACHER':
+      case 'Teacher':
         return [
           ...commonColumns,
+          { field: 'grade', headerName: 'Grade', width: 100, flex: 1 },
           { field: 'class', headerName: 'Class', width: 100, flex: 1 },
           { field: 'subject', headerName: 'Subject', width: 120, flex: 1 },
           { field: 'medium', headerName: 'Medium', width: 100, flex: 1 },
           statusColumn,
           actionColumn
         ];
-      case 'PARENT':
+      case 'Parent':
         return [
           ...commonColumns,
           { field: 'profession', headerName: 'Profession', width: 120, flex: 1 },
           { field: 'parentNo', headerName: 'Parent No', width: 120, flex: 1 },
+          { field: 'studentAdmissionNo', headerName: 'Student Admission No', width: 150, flex: 1 },
           statusColumn,
           actionColumn
         ];
@@ -487,8 +558,8 @@ const UserManagement: React.FC = () => {
         <TextField
           label="Birthday"
           type="date"
-          name="birthday"
-          value={form.birthday || ''}
+          name="birthDay"
+          value={form.birthDay || ''}
           onChange={handleChange}
           InputLabelProps={{ shrink: true }}
           sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
@@ -496,8 +567,8 @@ const UserManagement: React.FC = () => {
         />
         <TextField
           label="Phone No"
-          name="phoneNo"
-          value={form.phoneNo || ''}
+          name="contact"
+          value={form.contact || ''}
           onChange={handleChange}
           sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
           size="small"
@@ -511,7 +582,7 @@ const UserManagement: React.FC = () => {
           sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
           size="small"
         >
-          {genderOptions.map((gender) => (
+          {genderOptions.map((gender: string) => (
             <MenuItem key={gender} value={gender}>
               {gender}
             </MenuItem>
@@ -547,7 +618,7 @@ const UserManagement: React.FC = () => {
     );
 
     switch (activeTab) {
-      case 'STUDENT':
+      case 'Student':
         return (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {commonFields}
@@ -560,7 +631,7 @@ const UserManagement: React.FC = () => {
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             >
-              {gradeOptions.map((grade) => (
+              {gradeOptions.map((grade: string) => (
                 <MenuItem key={grade} value={grade}>
                   {grade}
                 </MenuItem>
@@ -575,15 +646,30 @@ const UserManagement: React.FC = () => {
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             >
-              {mediumOptions.map((medium) => (
+              {mediumOptions.map((medium: string) => (
                 <MenuItem key={medium} value={medium}>
                   {medium}
                 </MenuItem>
               ))}
             </TextField>
+             <TextField
+              select
+              label="Class"
+              name="class"
+              value={form.class || ''}
+              onChange={(e) => handleSelectChange(e, "class")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {classOptions.map((cls: string) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         );
-      case 'TEACHER':
+      case 'Teacher':
         return (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {commonFields}
@@ -596,7 +682,7 @@ const UserManagement: React.FC = () => {
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             >
-              {classOptions.map((cls) => (
+              {classOptions.map((cls: string) => (
                 <MenuItem key={cls} value={cls}>
                   {cls}
                 </MenuItem>
@@ -611,7 +697,7 @@ const UserManagement: React.FC = () => {
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             >
-              {subjectOptions.map((subject) => (
+              {subjectOptions.map((subject: string) => (
                 <MenuItem key={subject} value={subject}>
                   {subject}
                 </MenuItem>
@@ -626,15 +712,30 @@ const UserManagement: React.FC = () => {
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             >
-              {mediumOptions.map((medium) => (
+              {mediumOptions.map((medium: string) => (
                 <MenuItem key={medium} value={medium}>
                   {medium}
                 </MenuItem>
               ))}
             </TextField>
+              <TextField
+              select
+              label="Grade"
+              name="grade"
+              value={form.grade || ''}
+              onChange={(e) => handleSelectChange(e, "grade")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            >
+              {gradeOptions.map((grade: string) => (
+                <MenuItem key={grade} value={grade}>
+                  {grade}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         );
-      case 'PARENT':
+      case 'Parent':
         return (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {commonFields}
@@ -724,11 +825,17 @@ const UserManagement: React.FC = () => {
               alignItems: 'center', 
               mb: 2 
             }}>
-              <Tabs value={activeTab} onChange={handleTabChange}>
-                <Tab label="Students" value="STUDENT" />
-                <Tab label="Teachers" value="TEACHER" />
-                <Tab label="Parents" value="PARENT" />
-              </Tabs>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                <Tabs 
+                  value={activeTab} 
+                  onChange={handleTabChange}
+                  variant="fullWidth"
+                >
+                  <Tab label="Students" value="Student" />
+                  <Tab label="Teachers" value="Teacher" />
+                  <Tab label="Parents" value="Parent" />
+                </Tabs>
+              </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
                   placeholder={`Search ${activeTab.toLowerCase()}s...`}
@@ -816,3 +923,5 @@ const UserManagement: React.FC = () => {
 };
 
 export default UserManagement;
+
+

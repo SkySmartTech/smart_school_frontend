@@ -50,11 +50,11 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
 
     switch (activeTab) {
       case "STUDENT":
-        return [...commonColumns.slice(0, 7), "Grade", "Medium", ...commonColumns.slice(7)];
+        return [...commonColumns.slice(0, 7), "Grade", "Class", "Medium", ...commonColumns.slice(7)];
       case "TEACHER":
-        return [...commonColumns.slice(0, 7), "Class", "Subject", "Medium", ...commonColumns.slice(7)];
+        return [...commonColumns.slice(0, 7), "Grade", "Class", "Subject", "Medium", ...commonColumns.slice(7)];
       case "PARENT":
-        return [...commonColumns.slice(0, 7), "Profession", "Parent No", ...commonColumns.slice(7)];
+        return [...commonColumns.slice(0, 7), "Profession", "Parent No", "Student Admission No", ...commonColumns.slice(7)];
       default:
         return commonColumns;
     }
@@ -71,23 +71,28 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
       case "address":
         return user.address || "-";
       case "birthday":
-        return user.birthday || "-";
+        return user.birthDay || "-";
       case "phone no":
-        return user.phoneNo || "-";
+        return user.contact || "-";
       case "gender":
         return user.gender || "-";
+      // Student specific
       case "grade":
         return user.grade || "-";
       case "class":
         return user.class || "-";
-      case "subject":
-        return user.subject || "-";
       case "medium":
         return user.medium || "-";
+      // Teacher specific
+      case "subject":
+        return user.subject || "-";
+      // Parent specific
       case "profession":
         return user.profession || "-";
       case "parent no":
         return user.parentNo || "-";
+      case "student admission no":
+        return user.studentAdmissionNo || "-";
       case "status":
         const statusOption = statusOptions.find(opt => opt.value === user.status);
         return (
