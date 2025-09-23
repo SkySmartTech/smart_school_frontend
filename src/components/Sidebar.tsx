@@ -129,13 +129,8 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       type: "item",
       title: "System Management",
       icon: <Settings fontSize="small" />,
-
-
-
       permission: "systemManagement",
 
-
-      permission: "systemManagement",
 
       href: "/systemManagement",
     },
