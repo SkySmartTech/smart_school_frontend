@@ -1,5 +1,5 @@
 // src/App.tsx (Make sure TeacherDashboard is NOT imported here)
-import { CssBaseline, styled } from "@mui/material";
+import { CssBaseline } from "@mui/material";
 import { SnackbarContent, SnackbarProvider } from "notistack";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -16,23 +16,33 @@ function App() {
           <SnackbarProvider
             maxSnack={3}
             autoHideDuration={2500}
+            // Use Components prop correctly
+            Components={{
+              success: function SuccessSnackbar(props) {
+                return (
+                  <SnackbarContent
+                    {...props}
+                    style={{
+                      backgroundColor: '#4caf50',
+                      fontSize: '1rem'
+                    }}
+                  />
+                );
+              },
+              error: function ErrorSnackbar(props) {
+                return (
+                  <SnackbarContent
+                    {...props}
+                    style={{
+                      backgroundColor: '#f44336'
+                    }}
+                  />
+                );
+              }
+            }}
             anchorOrigin={{
               vertical: 'bottom',
               horizontal: 'right',
-            }}
-            Components={{
-              success: styled(SnackbarContent)(({ theme }) => ({
-                backgroundColor: theme.palette.success.main,
-                fontSize: '2rem',
-                '&.large-message': {
-                  fontSize: '2.5rem',
-                  padding: '50px',
-                  fontWeight: 'bold'
-                }
-              })),
-              error: styled(SnackbarContent)(({ theme }) => ({
-                backgroundColor: theme.palette.error.main,
-              })),
             }}
           >
             <CssBaseline />

@@ -42,7 +42,8 @@ import {
 import Sidebar from "../../components/Sidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCustomTheme } from "../../context/ThemeContext";
-import { type User, statusOptions, genderOptions, gradeOptions, mediumOptions, classOptions, subjectOptions } from "../../types/userManagementTypes";
+import { type User, statusOptions, genderOptions, userRoleOptions, userTypeOptions, gradeOptions, mediumOptions, classOptions, subjectOptions } from "../../types/userManagementTypes";
+import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 import {
   fetchUsers,
   createUser,
@@ -82,6 +83,7 @@ const UserManagement: React.FC = () => {
     medium: "",
     subject: "",
     profession: "",
+    parentContact: "",
     studentAdmissionNo: "",
     // Additional form fields
     studentClass: "",
@@ -210,15 +212,77 @@ const UserManagement: React.FC = () => {
       return;
     }
 
-    const userData = {
-      ...form,
-      userType: activeTab
+    // Create a base user object that matches the User type
+    const baseUserData: Omit<User, 'id'> = {
+      name: form.name,
+      username: form.username,
+      email: form.email,
+      password: form.password,
+      userType: activeTab,
+      userRole: getUserRole(activeTab),
+      status: form.status,
+      contact: form.contact || '',
+      address: form.address || '',
+      birthDay: form.birthDay || '',
+      gender: form.gender || '',
+      location: form.location || '',
+      photo: form.photo || '',
+      parentContact: ""
     };
 
+    let userData: User;
+
+    switch (activeTab) {
+      case 'Teacher':
+        userData = {
+          ...baseUserData,
+          grade: form.grade || '',
+          class: form.class || '',
+          subject: form.subject || '',
+          medium: form.medium || '',
+          staffNo: form.staffNo || '',
+          // Add teacher-specific fields that match the User type
+          teacherGrade: form.grade || '',
+          teacherClass: Array.isArray(form.class) ? form.class : [form.class || ''],
+          // Ensure these are arrays as per the TeacherData type
+          subjects: form.subject ? [form.subject] : [],
+          teacherGrades: form.grade ? [form.grade] : []
+        };
+        break;
+
+      case 'Student':
+        userData = {
+          ...baseUserData,
+          grade: form.grade || '',
+          class: form.class || '',
+          medium: form.medium || '',
+          studentAdmissionNo: form.studentAdmissionNo || '',
+          // Add student-specific fields that match the User type
+          studentGrade: form.grade || '',
+          studentClass: form.class as string || ''
+        };
+        break;
+
+      case 'Parent':
+        userData = {
+          ...baseUserData,
+          profession: form.profession || '',
+          studentAdmissionNo: form.studentAdmissionNo || '',
+          relation: 'Guardian',
+          parentContact: form.parentContact || '',
+        };
+        break;
+
+      default:
+        userData = baseUserData;
+    }
+
+    // Add id if we're editing
     if (editId !== null) {
-      updateUserMutation.mutate({ ...userData, id: editId });
+      userData = { ...userData, id: editId };
+      updateUserMutation.mutate(userData);
     } else {
-      createUserMutation.mutate(userData as User);
+      createUserMutation.mutate(userData);
     }
   };
 
@@ -242,6 +306,7 @@ const UserManagement: React.FC = () => {
       grade: "",
       class: "",
       medium: "",
+      parentContact: "",
       subject: "",
       profession: "",
       studentAdmissionNo: "",
@@ -258,27 +323,13 @@ const UserManagement: React.FC = () => {
   const handleEdit = (id: number) => {
     const userToEdit = (searchTerm ? apiSearchResults : users).find(user => user.id === id);
     if (userToEdit) {
-      setForm({ name: userToEdit.name || "",
-      username: userToEdit.username || "",
-      email: userToEdit.email || "",
-      userType: userToEdit.userType,
-      userRole: getUserRole(userToEdit.userType),
-      status: userToEdit.status,
-      password: "",
-      contact: userToEdit.contact || "",
-      address: userToEdit.address || "",
-      birthDay: userToEdit.birthDay || "",
-      gender: userToEdit.gender || "",
-      location: userToEdit.location || "",
-      photo: userToEdit.photo || "",
-      // Only include fields that actually exist for this user type
-      grade: userToEdit.grade || "",
-      class: userToEdit.class || "",
-      medium: userToEdit.medium || "",
-      subject: userToEdit.subject || "",
-      profession: userToEdit.profession || "",
-      studentAdmissionNo: userToEdit.studentAdmissionNo || "",
-      staffNo: userToEdit.staffNo || "",
+      setForm({
+        ...userToEdit,
+        photo: userToEdit.photo || '',
+        // Only include location if it exists and is not empty
+        ...(userToEdit.location ? { location: userToEdit.location } : {}),
+        password: "", // Always reset password
+        userRole: getUserRole(userToEdit.userType),
       });
       setEditId(id);
     }
@@ -301,69 +352,68 @@ const UserManagement: React.FC = () => {
     }
   };
 
-const handleExportPDF = () => {
-  const doc = new jsPDF();
-  const dataToExport = searchTerm ? apiSearchResults : users;
-  
-  const tableData = dataToExport.map(user => [
-    user.name,
-    user.username,
-    user.email,
-    user.address || '-',
-    user.birthDay || '-',
-    user.contact || '-', // Changed from gender to contact (phone number)
-    user.gender || '-',
-    activeTab === 'Student' ? user.grade || '-' : 
-      activeTab === 'Teacher' ? user.class || '-' : user.profession || '-',
-    activeTab === 'Student' ? user.medium || '-' : 
-      activeTab === 'Teacher' ? user.subject || '-' : (user as any).parentNo || '-', // Safe access for parentNo
-    user.status ? 'Active' : 'Inactive'
-  ]);
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const dataToExport = searchTerm ? apiSearchResults : users;
 
-  const headers = [
-    'Name', 'Username', 'Email', 'Address', 'Birthday', 'Phone No', 'Gender',
-    activeTab === 'Student' ? 'Grade' : activeTab === 'Teacher' ? 'Class' : 'Profession',
-    activeTab === 'Student' ? 'Medium' : activeTab === 'Teacher' ? 'Subject' : 'Parent No',
-    'Status'
-  ];
+    const tableData = dataToExport.map(user => [
+      user.name,
+      user.username,
+      user.email,
+      user.address || '-',
+      user.birthDay || '-',
+      user.contact || '-', // Changed from gender to contact (phone number)
+      user.gender || '-',
+      activeTab === 'Student' ? user.grade || '-' :
+        activeTab === 'Teacher' ? user.class || '-' : user.profession || '-',
+      activeTab === 'Student' ? user.medium || '-' :
+        activeTab === 'Teacher' ? user.subject || '-' : (user as any).parentContact || '-',
+    ]);
 
-  doc.text(`${activeTab} Management Report`, 14, 16);
-  autoTable(doc, {
-    head: [headers],
-    body: tableData,
-    startY: 20,
-    styles: {
-      cellPadding: 3,
-      fontSize: 8,
-      valign: 'middle',
-      halign: 'center',
-    },
-    headStyles: {
-      fillColor: [25, 118, 210],
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245]
-    }
-  });
+    const headers = [
+      'Name', 'Username', 'Email', 'Address', 'Birthday', 'Phone No', 'Gender',
+      activeTab === 'Student' ? 'Grade' : activeTab === 'Teacher' ? 'Class' : 'Profession',
+      activeTab === 'Student' ? 'Medium' : activeTab === 'Teacher' ? 'Subject' : 'Parent No',
+      'Status'
+    ];
 
-  doc.save(`${activeTab.toLowerCase()}-management-report.pdf`);
-};
+    doc.text(`${activeTab} Management Report`, 14, 16);
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: 20,
+      styles: {
+        cellPadding: 3,
+        fontSize: 8,
+        valign: 'middle',
+        halign: 'center',
+      },
+      headStyles: {
+        fillColor: [25, 118, 210],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      }
+    });
+
+    doc.save(`${activeTab.toLowerCase()}-management-report.pdf`);
+  };
 
   const handleClearSearch = () => {
     setSearchTerm("");
   };
 
-const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) => {
-  setActiveTab(newValue);
-  setForm(prev => ({
-    ...prev,
-    userType: newValue,
-    userRole: getUserRole(newValue)
-  }));
-  setSearchTerm("");
-};
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) => {
+    setActiveTab(newValue);
+    setForm(prev => ({
+      ...prev,
+      userType: newValue,
+      userRole: getUserRole(newValue)
+    }));
+    setSearchTerm("");
+  };
 
   const debouncedSearch = useRef(
     debounce((term: string) => {
@@ -470,7 +520,7 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
         return [
           ...commonColumns,
           { field: 'profession', headerName: 'Profession', width: 120, flex: 1 },
-          { field: 'parentNo', headerName: 'Parent No', width: 120, flex: 1 },
+          { field: 'parentContact', headerName: 'Parent No', width: 120, flex: 1 }, // Changed from parentNo
           { field: 'studentAdmissionNo', headerName: 'Student Admission No', width: 150, flex: 1 },
           statusColumn,
           actionColumn
@@ -556,6 +606,14 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
           size="small"
         />
         <TextField
+          label="Location"
+          name="location"
+          value={form.location || ''}
+          onChange={handleChange}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        />
+        <TextField
           label="Birthday"
           type="date"
           name="birthDay"
@@ -573,6 +631,76 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
           sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
           size="small"
         />
+
+        <TextField
+          type="file"
+          label="Upload Photo"
+          name="photo"
+          onChange={async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+              try {
+                const processedImage = await processImage(file);
+                setForm(prev => ({
+                  ...prev,
+                  photo: processedImage || ''
+                }));
+              } catch (error: any) {
+                showSnackbar(error.message, "error");
+              }
+            }
+          }}
+          InputLabelProps={{ shrink: true }}
+          sx={{
+            flex: '1 1 calc(33.33% - 16px)',
+            minWidth: 120
+          }}
+          size="small"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <IconButton
+                  color="primary"
+                  aria-label="upload photo"
+                  component="span"
+                  size="small"
+                >
+                  <CloudUploadIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
+          select
+          label="User Role"
+          name="userRole"
+          value={form.userRole || ''}
+          onChange={(e) => handleSelectChange(e, "userRole")}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        >
+          {userRoleOptions.map((userRole: string) => (
+            <MenuItem key={userRole} value={userRole}>
+              {userRole}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="User Type"
+          name="userType"
+          value={form.userType || ''}
+          onChange={(e) => handleSelectChange(e, "userType")}
+          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+          size="small"
+        >
+          {userTypeOptions.map((userType: string) => (
+            <MenuItem key={userType} value={userType}>
+              {userType}
+            </MenuItem>
+          ))}
+        </TextField>
         <TextField
           select
           label="Gender"
@@ -588,6 +716,7 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
             </MenuItem>
           ))}
         </TextField>
+
         {editId === null && (
           <TextField
             label="Password*"
@@ -652,7 +781,7 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
                 </MenuItem>
               ))}
             </TextField>
-             <TextField
+            <TextField
               select
               label="Class"
               name="class"
@@ -667,6 +796,32 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              label="Student Admission No"
+              name="studentAdmissionNo"
+              value={form.studentAdmissionNo || ''}
+              onChange={(e) => handleSelectChange(e, "studentAdmissionNo")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+            <TextField
+              label="Parent Profession"
+              name="profession"
+              value={form.profession || ''}
+              onChange={(e) => handleSelectChange(e, "profession")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+            <TextField
+              label="Parent No"
+              name="parentContact"
+              value={form.parentContact || ''}
+              onChange={(e) => handleSelectChange(e, "parentContact")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+
+
           </Box>
         );
       case 'Teacher':
@@ -718,7 +873,7 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
                 </MenuItem>
               ))}
             </TextField>
-              <TextField
+            <TextField
               select
               label="Grade"
               name="grade"
@@ -733,6 +888,14 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              label="Staff No"
+              name="staffNo"
+              value={form.staffNo || ''}
+              onChange={(e) => handleSelectChange(e, "staffNo")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
           </Box>
         );
       case 'Parent':
@@ -748,14 +911,34 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
               size="small"
             />
             <TextField
-              label="Parent No"
-              name="parentNo"
-              value={form.parentNo || ''}
+              label="Relation"
+              name="relation"
+              value={form.relation || ''}
               onChange={handleChange}
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             />
+            <TextField
+              label="Parent Contact"
+              name="parentContact"
+              value={form.parentContact || ''}
+              onChange={handleChange}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+            <TextField
+              label="Student Admission No"
+              name="studentAdmissionNo"
+              value={form.studentAdmissionNo || ''}
+              onChange={handleChange}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
+
+
+
           </Box>
+
         );
       default:
         return commonFields;
@@ -819,15 +1002,15 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
           </Paper>
 
           <Paper sx={{ p: 2, borderRadius: 2, height: 720 }}>
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              mb: 2 
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2
             }}>
               <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                <Tabs 
-                  value={activeTab} 
+                <Tabs
+                  value={activeTab}
                   onChange={handleTabChange}
                   variant="fullWidth"
                 >
@@ -843,7 +1026,7 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
                   size="small"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  sx={{ 
+                  sx={{
                     width: 300,
                     '& .MuiOutlinedInput-root': {
                       pr: 1,
@@ -923,5 +1106,69 @@ const handleTabChange = (_event: React.SyntheticEvent, newValue: UserCategory) =
 };
 
 export default UserManagement;
+
+// Add this utility function at the top of your file
+const processImage = async (file: File): Promise<string | null> => {
+  if (!file) return null;
+
+  // Check file type
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Please upload an image file');
+  }
+
+  // Check file size (before compression)
+  if (file.size > 5 * 1024 * 1024) { // 5MB
+    throw new Error('Image size should be less than 5MB');
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Maximum dimensions
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 with reduced quality
+        const base64String = canvas.toDataURL('image/jpeg', 0.7);
+
+        // Check if the base64 string is not too long
+        if (base64String.length > 250000) { // Roughly 250KB
+          reject(new Error('Image is too large. Please choose a smaller image.'));
+          return;
+        }
+
+        resolve(base64String);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 
