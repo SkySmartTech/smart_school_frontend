@@ -89,12 +89,11 @@ interface FormData {
   // Role-specific optional properties
   grade?: string;
   studentGrade?: string;
-  studentClass?: string;            // <-- added
+  studentClass?: string;        
   subject?: string;
   class?: string;
-  profession?: string;              // <-- added (for Parent)
-  parentContact?: string;
-  parentNo?: string;                // <-- added (standardized name)
+  profession?: string;            
+  parentContact?: string;             
   parentProfession?: string;
   staffId?: string;
   teacherStaffId?: string;
@@ -103,8 +102,8 @@ interface FormData {
   teacherClass: string[];
   subjects: string[];
   staffNo?: string;
-  medium?: string | string[];       // <-- allow string for student, array for teacher
-  relation?: string;                // <-- added (for Parent)
+  medium?: string | string[];      
+  relation?: string;             
 }
 
 // Add this alias so RegisterFormValues is defined and matches the form shape
@@ -120,7 +119,7 @@ type TeacherAssignment = {
   subjects: string[];
   classes: string[];
   medium: string[];
-  id: string; // for grid row identification
+  id: string; 
 };
 
 const steps = ['Basic Information', 'Role Details'];
@@ -278,10 +277,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         isValid = await trigger(["teacherGrades", "subjects", "teacherClass", "staffNo", "medium"]);
       } else if (selectedRole === "Student") {
         // validate student fields
-        isValid = await trigger(["studentGrade", "studentAdmissionNo", "studentClass"]);
+        isValid = await trigger(["studentGrade", "studentAdmissionNo", "studentClass", "medium", "parentProfession", "parentContact"]);
       } else if (selectedRole === "Parent") {
         // validate parent fields
-        isValid = await trigger(["profession", "parentNo"]);
+        isValid = await trigger(["profession", "parentContact", "studentAdmissionNo", "relation"]);
       }
     }
 
@@ -355,6 +354,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         studentClass: data.studentClass ?? "",
         medium: (Array.isArray(data.medium) ? (data.medium[0] ?? "") : (data.medium ?? "")),
         studentAdmissionNo: data.studentAdmissionNo ?? "",
+        parentProfession: data.parentProfession ?? "",
+        parentContact: data.parentContact ?? null,
         userId: registeredUser.userId,
         userType: registeredUser.userType
       }];
@@ -366,7 +367,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         studentAdmissionNo: data.studentAdmissionNo ?? "",
         profession: data.profession ?? "",
         relation: data.relation ?? "",
-        parentNo: data.parentNo ?? null,
+        parentContact: data.parentContact ?? null,
         userId: registeredUser.userId,
         userType: registeredUser.userType
       }];
@@ -1203,10 +1204,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               <>
                 <Stack direction="row" spacing={2}>
                   <TextField
-                    label="Child Admission Number"
+                    label="Student Admission Number"
                     fullWidth
                     variant="outlined"
-                    {...register("studentAdmissionNo", { required: "Child admission number is required" })}
+                    {...register("studentAdmissionNo", { required: "Student admission number is required" })}
                     error={!!errors.studentAdmissionNo}
                     helperText={errors.studentAdmissionNo?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
@@ -1215,13 +1216,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     label="Contact Number"
                     fullWidth
                     variant="outlined"
-                    {...register("parentNo", {
+                    {...register("parentContact", {
                       required: "Contact number is required",
                       minLength: { value: 10, message: "Phone must be at least 10 digits" },
                       maxLength: { value: 15, message: "Phone must be at most 15 digits" },
                     })}
-                    error={!!errors.parentNo}
-                    helperText={errors.parentNo?.message}
+                    error={!!errors.parentContact}
+                    helperText={errors.parentContact?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
                   />
                 </Stack>

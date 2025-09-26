@@ -1,28 +1,47 @@
-import { Navigate } from 'react-router-dom';
-import { usePermissions } from '../hooks/usePermissions';
-import type { PermissionKey } from '../api/userAccessmanagementApi';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { validateUser, validatePermissions } from '../services/authService';
 import PageLoader from './PageLoader';
-import { useCurrentUser } from '../hooks/useCurrentUser';
 
 interface ProtectedRouteProps {
-  permission: PermissionKey;
   children: React.ReactNode;
+  permission?: string;
+  requiredPermissions?: string[];
 }
 
-const ProtectedRoute = ({ permission, children }: ProtectedRouteProps) => {
-  const { hasPermission } = usePermissions();
-  const { isAuthenticated, isLoading } = useCurrentUser();
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+  const [isValidating, setIsValidating] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
 
-  if (isLoading) {
+  useEffect(() => {
+    const validate = async () => {
+      try {
+        const user = await validateUser();
+        const hasValidPermissions = await validatePermissions();
+
+        if (user && hasValidPermissions) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Authentication validation error:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsValidating(false);
+      }
+    };
+
+    validate();
+  }, [location.pathname]);
+
+  if (isValidating) {
     return <PageLoader />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!hasPermission(permission)) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

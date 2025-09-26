@@ -28,7 +28,7 @@ export const userSchema = z.object({
     photo: z.instanceof(File).optional(),
 
     gender: z.string().optional(),
-    location: z.string().min(1, "Location is required"),
+    location: z.string().optional(),
     userRole: z.string().min(1, "User role is required"),
 
     // Teacher specific fields
@@ -47,7 +47,7 @@ export const userSchema = z.object({
     studentGrade: z.string().min(1, "Student grade is required"),
     studentClass: z.string().min(1, "Student class is required"),
     studentAdmissionNo: z.string().min(1, "Admission number is required"),
-    parentNo: z
+    parentContact: z
       .string()
       .min(10, "Parent phone must be at least 10 digits")
       .max(15, "Parent phone must be at most 15 digits"),
@@ -172,7 +172,7 @@ export async function registerParent(parentData: FormData) {
           studentAdmissionNo: parentData.get('studentAdmissionNo'),
           profession: parentData.get('profession'),
           relation: parentData.get('relation'),
-          parentNo: parentData.get('parentNo'),
+          parentContact: parentData.get('parentContact'),
           userId: parentData.get('userId'),
           userType: parentData.get('userType'),
         }
@@ -184,7 +184,7 @@ export async function registerParent(parentData: FormData) {
         studentAdmissionNo: item.studentAdmissionNo,
         profession: item.profession,
         relation: item.relation,
-        parentNo: item.parentNo ?? null,
+        parentContact: item.parentContact ?? null,
         userId: parentData.get('userId'),
         userType: parentData.get('userType'),
       }))

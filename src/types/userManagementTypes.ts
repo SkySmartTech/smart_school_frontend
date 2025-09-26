@@ -1,3 +1,13 @@
+export interface TeacherAssignment {
+  id?: string;
+  teacherGrade: string;
+  teacherClass: string;
+  subject: string;
+  medium: string;
+  staffNo?: string;
+  modifiedBy?: string;
+}
+
 export interface BaseUser {
   id?: number;
   name: string;
@@ -11,68 +21,43 @@ export interface BaseUser {
   birthDay?: string;
   contact?: string;
   gender?: string;
-  photo?: string;
+photo?: string | null;
   location?: string;
-}
-
-export interface StudentData {
-  id?: number;
-  studentGrade: string;
-  studentClass: string;
-  medium: string;
-  studentAdmissionNo?: string;
-  teacherGrades?: string[];
-
-}
-
-export interface TeacherData {
-  id?: number;
-  teacherGrade: string;
-  teacherClass: string[];
-  subject?: string[];
-  medium: string[];
-  staffNo?: string;
-  teacherGrades?: string[];
-}
-
-export interface ParentData {
-  id?: number;
-  parentContact: string;
-  profession: string;
-  parentNo: string;
-  studentAdmissionNo: string;
-  location?: string;
-  relation?: string;
-  teacherGrades?: string[];
 }
 
 export interface User extends BaseUser {
-  parentContact: string;
-  location: string;
-  // API nested objects
-  student?: StudentData;
-  teacher?: TeacherData | TeacherData[];
-  parent?: ParentData;
-  subjects?: string[];
-  relation?: string;
-
-  // Flattened fields
+  // Common fields that might be used across different user types
   grade?: string;
-  studentGrade?: string;
-  teacherGrade?: string;
-  teacherGrades?: string[];
-  studentAdmissionNo?: string;
-  class?: string | string[];
-  medium?: string | string[];
+  class?: string;
+  medium?: string;
   subject?: string;
-  profession?: string;
-  parentNo?: string;
   staffNo?: string;
-  photo?: string;
-
-  // Additional fields for form handling
+  
+  // Teacher specific fields
+  teacherData?: TeacherAssignment[];
+  teacherAssignments?: TeacherAssignment[]; // Add this field
+  
+  // Student specific fields
+  studentGrade?: string;
   studentClass?: string;
-  teacherClass?: string[];
+  studentData?: {
+    studentGrade: string;
+    studentClass: string;
+    medium: string;
+    studentAdmissionNo?: string;
+  };
+  
+  // Parent specific fields
+  profession?: string;
+  parentContact?: string;
+  studentAdmissionNo?: string;
+  relation?: string;
+  parentData?: {
+    profession: string;
+    parentContact: string;
+    studentAdmissionNo: string;
+    relation: string;
+  };
 }
 
 export interface UserListResponse {

@@ -17,7 +17,13 @@ import {
   Tooltip,
   InputAdornment,
   Tabs,
-  Tab
+  Tab,
+  Table as MuiTable,  
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from "@mui/material";
 import {
   DataGrid,
@@ -37,12 +43,14 @@ import {
   Edit as EditIcon,
   Refresh as RefreshIcon,
   Search as SearchIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  Add,
+  Delete
 } from "@mui/icons-material";
 import Sidebar from "../../components/Sidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCustomTheme } from "../../context/ThemeContext";
-import { type User, statusOptions, genderOptions, userRoleOptions, userTypeOptions, gradeOptions, mediumOptions, classOptions, subjectOptions } from "../../types/userManagementTypes";
+import { type User, statusOptions, genderOptions, userRoleOptions, userTypeOptions, gradeOptions, mediumOptions, classOptions, subjectOptions, type TeacherAssignment } from "../../types/userManagementTypes";
 import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 import {
   fetchUsers,
@@ -62,7 +70,16 @@ import debounce from "lodash/debounce";
 type UserCategory = 'Student' | 'Teacher' | 'Parent';
 
 const UserManagement: React.FC = () => {
-  const [form, setForm] = useState<Omit<User, 'id'> & { id?: number }>({
+  interface FormState extends Omit<User, 'id'> {
+    id?: number;
+    teacherClass: string[];
+    teacherGrade: string;
+    teacherGrades: string[];
+    studentClass?: string;
+    studentGrade?: string;
+  }
+
+  const [form, setForm] = useState<FormState>({
     name: "",
     username: "",
     email: "",
@@ -71,13 +88,11 @@ const UserManagement: React.FC = () => {
     status: true,
     password: "",
     contact: "",
-    // Optional fields with empty strings
     address: "",
     birthDay: "",
     gender: "",
     location: "",
-    photo: "",
-    // Role-specific fields
+    photo: "", // Initialize photo field
     grade: "",
     class: "",
     medium: "",
@@ -85,7 +100,6 @@ const UserManagement: React.FC = () => {
     profession: "",
     parentContact: "",
     studentAdmissionNo: "",
-    // Additional form fields
     studentClass: "",
     teacherClass: [],
     studentGrade: "",
@@ -102,6 +116,7 @@ const UserManagement: React.FC = () => {
   const [rowSelectionModel, setRowSelectionModel] = useState<GridRowId[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<UserCategory>('Student');
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
   const theme = useTheme();
   const dataGridRef = useRef<any>(null);
   useCustomTheme();
@@ -206,6 +221,33 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  const handleAddAssignment = () => {
+    if (!form.grade || !form.class || !form.subject || !form.medium) {
+      showSnackbar("Please fill all required fields for teacher assignment", "error");
+      return;
+    }
+
+    const newAssignment: TeacherAssignment = {
+      id: Math.random().toString(36).substr(2, 9),
+      teacherGrade: form.grade,
+      teacherClass: form.class,
+      subject: form.subject,
+      medium: form.medium,
+      staffNo: form.staffNo
+    };
+
+    setTeacherAssignments(prev => [...prev, newAssignment]);
+
+    // Clear the fields after adding
+    setForm(prev => ({
+      ...prev,
+      grade: "",
+      class: "",
+      subject: "",
+      medium: ""
+    }));
+  };
+
   const handleSave = () => {
     if (!form.name || !form.username || !form.email || (editId === null && !form.password)) {
       showSnackbar("Please fill all required fields!", "error");
@@ -226,7 +268,7 @@ const UserManagement: React.FC = () => {
       birthDay: form.birthDay || '',
       gender: form.gender || '',
       location: form.location || '',
-      photo: form.photo || '',
+      photo: form.photo || null,
       parentContact: ""
     };
 
@@ -236,18 +278,16 @@ const UserManagement: React.FC = () => {
       case 'Teacher':
         userData = {
           ...baseUserData,
-          grade: form.grade || '',
-          class: form.class || '',
-          subject: form.subject || '',
-          medium: form.medium || '',
+          photo: form.photo || null, 
           staffNo: form.staffNo || '',
-          // Add teacher-specific fields that match the User type
-          teacherGrade: form.grade || '',
-          teacherClass: Array.isArray(form.class) ? form.class : [form.class || ''],
-          // Ensure these are arrays as per the TeacherData type
-          subjects: form.subject ? [form.subject] : [],
-          teacherGrades: form.grade ? [form.grade] : []
-        };
+          teacherData: teacherAssignments.map(assignment => ({
+            teacherGrade: assignment.teacherGrade,
+            teacherClass: assignment.teacherClass,
+            subject: assignment.subject,
+            medium: assignment.medium,
+            staffNo: form.staffNo || '',
+          }))
+        } as User;
         break;
 
       case 'Student':
@@ -301,7 +341,7 @@ const UserManagement: React.FC = () => {
       birthDay: "",
       gender: "",
       location: "",
-      photo: "",
+      photo: "", // Reset photo field
       // Role-specific fields
       grade: "",
       class: "",
@@ -317,6 +357,7 @@ const UserManagement: React.FC = () => {
       teacherGrade: "",
       teacherGrades: [],
     });
+    setTeacherAssignments([]); // Clear teacher assignments
     setEditId(null);
   };
 
@@ -330,8 +371,19 @@ const UserManagement: React.FC = () => {
         ...(userToEdit.location ? { location: userToEdit.location } : {}),
         password: "", // Always reset password
         userRole: getUserRole(userToEdit.userType),
+        // Add required teacher-specific fields with default values
+        teacherClass: userToEdit.teacherData?.map(td => td.teacherClass) || [],
+        teacherGrade: userToEdit.teacherData?.[0]?.teacherGrade || '',
+        teacherGrades: userToEdit.teacherData?.map(td => td.teacherGrade) || [],
       });
       setEditId(id);
+      // Update teacher assignments if user is a teacher
+      if (userToEdit.userType === 'Teacher' && userToEdit.teacherData) {
+        setTeacherAssignments(userToEdit.teacherData.map(td => ({
+          id: Math.random().toString(36).substr(2, 9),
+          ...td
+        })));
+      }
     }
   };
 
@@ -430,6 +482,7 @@ const UserManagement: React.FC = () => {
     }
     return () => debouncedSearch.cancel();
   }, [searchTerm, debouncedSearch]);
+  
 
   const isMutating = createUserMutation.isPending ||
     updateUserMutation.isPending ||
@@ -826,77 +879,124 @@ const UserManagement: React.FC = () => {
         );
       case 'Teacher':
         return (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+          <>
             {commonFields}
-            <TextField
-              select
-              label="Class"
-              name="class"
-              value={form.class || ''}
-              onChange={(e) => handleSelectChange(e, "class")}
-              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-              size="small"
-            >
-              {classOptions.map((cls: string) => (
-                <MenuItem key={cls} value={cls}>
-                  {cls}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Subject"
-              name="subject"
-              value={form.subject || ''}
-              onChange={(e) => handleSelectChange(e, "subject")}
-              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-              size="small"
-            >
-              {subjectOptions.map((subject: string) => (
-                <MenuItem key={subject} value={subject}>
-                  {subject}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Medium"
-              name="medium"
-              value={form.medium || ''}
-              onChange={(e) => handleSelectChange(e, "medium")}
-              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-              size="small"
-            >
-              {mediumOptions.map((medium: string) => (
-                <MenuItem key={medium} value={medium}>
-                  {medium}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Grade"
-              name="grade"
-              value={form.grade || ''}
-              onChange={(e) => handleSelectChange(e, "grade")}
-              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-              size="small"
-            >
-              {gradeOptions.map((grade: string) => (
-                <MenuItem key={grade} value={grade}>
-                  {grade}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Staff No"
-              name="staffNo"
-              value={form.staffNo || ''}
-              onChange={(e) => handleSelectChange(e, "staffNo")}
-              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-              size="small"
-            />
-          </Box>
+            <Stack spacing={2}>
+              {/* Add existing teacher fields */}
+              <TextField
+                label="Staff Number"
+                name="staffNo"
+                value={form.staffNo || ''}
+                onChange={handleChange}
+                sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+                size="small"
+              />
+
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  select
+                  label="Grade"
+                  name="grade"
+                  value={form.grade || ''}
+                  onChange={(e) => handleSelectChange(e, "grade")}
+                  sx={{ flex: '1 1 calc(25% - 16px)', minWidth: 120 }}
+                  size="small"
+                >
+                  {gradeOptions.map(grade => (
+                    <MenuItem key={grade} value={grade}>{grade}</MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  select
+                  label="Class"
+                  name="class"
+                  value={form.class || ''}
+                  onChange={(e) => handleSelectChange(e, "class")}
+                  sx={{ flex: '1 1 calc(25% - 16px)', minWidth: 120 }}
+                  size="small"
+                >
+                  {classOptions.map(cls => (
+                    <MenuItem key={cls} value={cls}>{cls}</MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  select
+                  label="Subject"
+                  name="subject"
+                  value={form.subject || ''}
+                  onChange={(e) => handleSelectChange(e, "subject")}
+                  sx={{ flex: '1 1 calc(25% - 16px)', minWidth: 120 }}
+                  size="small"
+                >
+                  {subjectOptions.map(subj => (
+                    <MenuItem key={subj} value={subj}>{subj}</MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  select
+                  label="Medium"
+                  name="medium"
+                  value={form.medium || ''}
+                  onChange={(e) => handleSelectChange(e, "medium")}
+                  sx={{ flex: '1 1 calc(25% - 16px)', minWidth: 120 }}
+                  size="small"
+                >
+                  {mediumOptions.map(med => (
+                    <MenuItem key={med} value={med}>{med}</MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+
+              <Button
+                variant="contained"
+                onClick={handleAddAssignment}
+                startIcon={<Add />}
+              >
+                Add Assignment
+              </Button>
+
+              {/* Assignments Table */}
+              {teacherAssignments.length > 0 && (
+                <TableContainer component={Paper}>
+                  <MuiTable>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Grade</TableCell>
+                        <TableCell>Class</TableCell>
+                        <TableCell>Subject</TableCell>
+                        <TableCell>Medium</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {teacherAssignments.map((assignment) => (
+                        <TableRow key={assignment.id}>
+                          <TableCell>{assignment.teacherGrade}</TableCell>
+                          <TableCell>{assignment.teacherClass}</TableCell>
+                          <TableCell>{assignment.subject}</TableCell>
+                          <TableCell>{assignment.medium}</TableCell>
+                          <TableCell>
+                            <IconButton
+                              onClick={() => {
+                                setTeacherAssignments(prev => 
+                                  prev.filter(a => a.id !== assignment.id)
+                                );
+                              }}
+                            >
+                              <Delete />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </MuiTable>
+                </TableContainer>
+              )}
+            </Stack>
+          </>
         );
       case 'Parent':
         return (
