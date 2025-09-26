@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { PermissionKey } from '../api/userAccessmanagementApi';
 
 export const usePermissions = () => {
   const [permissions, setPermissions] = useState<PermissionKey[]>([]);
+
+  // First, call all hooks at the top level
+  const permissionsSet = useMemo(() => new Set(permissions), [permissions]);
 
   useEffect(() => {
     const loadPermissions = () => {
@@ -11,17 +14,16 @@ export const usePermissions = () => {
         if (permissionsStr) {
           const permissionsArray = JSON.parse(permissionsStr);
           setPermissions(permissionsArray);
-          console.log('Loaded permissions:', permissionsArray); // Debug log
-        } else {
-          const userData = localStorage.getItem('userData');
-          if (userData) {
-            const user = JSON.parse(userData);
-            if (user.access && user.access.length > 0) {
-              const permissionsArray = JSON.parse(user.access[0]);
-              setPermissions(permissionsArray);
-              localStorage.setItem('userPermissions', JSON.stringify(permissionsArray));
-              console.log('Loaded permissions from user data:', permissionsArray); // Debug log
-            }
+          return;
+        }
+
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user.access && user.access.length > 0) {
+            const permissionsArray = JSON.parse(user.access[0]);
+            setPermissions(permissionsArray);
+            localStorage.setItem('userPermissions', JSON.stringify(permissionsArray));
           }
         }
       } catch (error) {
@@ -33,11 +35,13 @@ export const usePermissions = () => {
     loadPermissions();
   }, []);
 
+  // Define hasPermission as a regular function since we already have permissionsSet memoized
   const hasPermission = (permission: PermissionKey): boolean => {
-    const result = permissions.includes(permission);
-    console.log(`Checking permission ${permission}:`, result); // Debug log
-    return result;
+    return permissionsSet.has(permission);
   };
 
-  return { hasPermission, permissions };
+  return {
+    hasPermission,
+    permissions
+  };
 };

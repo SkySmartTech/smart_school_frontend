@@ -40,6 +40,9 @@ interface UserProfile {
 
 const getAuthHeader = () => {
   const token = localStorage.getItem('authToken') || localStorage.getItem('token') || localStorage.getItem('access_token');
+  if (!token) {
+    return null;
+  }
   return {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -50,8 +53,13 @@ const getAuthHeader = () => {
 };
 
 const fetchTeacherProfile = async (): Promise<UserProfile> => {
+  const headers = getAuthHeader();
+  if (!headers) {
+    throw new Error('No authentication token found');
+  }
+
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
+    const response = await axios.get(`${API_BASE_URL}/api/user`, headers);
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
@@ -62,11 +70,14 @@ const fetchTeacherProfile = async (): Promise<UserProfile> => {
 };
 
 export const useTeacherProfile = () => {
+  const authHeader = getAuthHeader();
+  
   return useQuery<UserProfile, Error>({
     queryKey: ['teacherProfile'],
     queryFn: fetchTeacherProfile,
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     retry: 2,
+    enabled: !!authHeader, // Only run the query if we have an auth token
   });
 };
 

@@ -99,6 +99,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       href: "/addmarks",
       permission: "addMarks"
     },
+    { type: "item",
+      title: "Add Class Teacher",
+      icon: <NoteAddIcon fontSize="small" />,
+      href: "/addClassTeacher",
+      permission: "addClassTeacher"
+    },
     { type: "divider" },
     { type: "headline", text: "Configuration" },
     {
