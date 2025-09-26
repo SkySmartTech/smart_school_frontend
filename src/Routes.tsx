@@ -5,10 +5,11 @@ import PageLoader from "./components/PageLoader";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UnauthorizedPage from "./views/UnauthorizedPage";
 import CommonDashboard from "./views/Dashboard/CommonDashboard";
-import TeacherDashboard from "./views/Dashboard/AddMarks";
+import TeacherDashboard from "./views/Dashboard/TeacherDashboard";
 import UserAccessManagementSystem from "./views/UserAccessManagementSystem";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
 import ClassTeacherReport from "./views/Reports/ClassTeacherReport";
+import AddClassTeacher from "./views/AddClassTeacher";
 
 // Public pages
 const LoginPage = React.lazy(() => import("./views/LoginPage/Login"));
@@ -55,7 +56,7 @@ function AppRoutes() {
         />
 
         <Route
-          path="/studentdashboard"  // Changed from student-dashboard to match Sidebar
+          path="/studentdashboard"
           element={
             <ProtectedRoute permission="studentDashboard">
               <Suspense fallback={<PageLoader />}>
@@ -66,7 +67,7 @@ function AppRoutes() {
         />
 
         <Route
-          path="/teacherdashboard"  // Changed from teacher-dashboard to match Sidebar
+          path="/teacherdashboard"
           element={
             <ProtectedRoute permission="teacherDashboard">
               <Suspense fallback={<PageLoader />}>
@@ -77,7 +78,7 @@ function AppRoutes() {
         />
 
         <Route
-          path="/userprofile"  // Changed from user-profile to match Sidebar
+          path="/userprofile"
           element={
             <ProtectedRoute permission="userProfile">
               <Suspense fallback={<PageLoader />}>
@@ -93,6 +94,17 @@ function AppRoutes() {
             <ProtectedRoute permission="addMarks">
               <Suspense fallback={<PageLoader />}>
                 <AddMarks />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/addClassTeacher"
+          element={
+            <ProtectedRoute permission="addClassTeacher">
+              <Suspense fallback={<PageLoader />}>
+                <AddClassTeacher />
               </Suspense>
             </ProtectedRoute>
           }
@@ -177,11 +189,11 @@ function AppRoutes() {
       </Route>
 
       {/* Redirect root to dashboard if authenticated */}
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
           <Navigate to="/dashboard" replace />
-        } 
+        }
       />
       <Route path="*" element={<Navigate to="/unauthorized" replace />} />
     </Routes>

@@ -29,7 +29,7 @@ export interface TeacherData {
   id?: number;
   teacherGrade: string;
   teacherClass: string[];
-    subject?: string[]; 
+  subject?: string[];
   medium: string[];
   staffNo?: string;
   teacherGrades?: string[];
@@ -37,21 +37,23 @@ export interface TeacherData {
 
 export interface ParentData {
   id?: number;
+  parentContact: string;
   profession: string;
   parentNo: string;
   studentAdmissionNo: string;
   location?: string;
-    relation?: string;
+  relation?: string;
   teacherGrades?: string[];
 }
 
 export interface User extends BaseUser {
+  parentContact: string;
   location: string;
   // API nested objects
   student?: StudentData;
   teacher?: TeacherData | TeacherData[];
   parent?: ParentData;
-    subjects?: string[];
+  subjects?: string[];
   relation?: string;
 
   // Flattened fields
@@ -115,9 +117,20 @@ export const classOptions: string[] = [
 ];
 
 export const mediumOptions: string[] = [
-  'Sinhala',
-  'English',
-  'Tamil'
+  'sinhala',
+  'english',
+  'tamil'
+];
+
+export const userRoleOptions: string[] = [
+  'user',
+  'admin'
+];
+
+export const userTypeOptions: string[] = [
+  'Student',
+  'Teacher',
+  'Parent'
 ];
 
 export const subjectOptions: string[] = [

@@ -79,7 +79,7 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["current-user"] });
       
-      if (rememberMe) {
+      if (rememberMe && data.username) {
         localStorage.setItem("rememberedUsername", data.username);
       } else {
         localStorage.removeItem("rememberedUsername");
@@ -89,13 +89,32 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
       if (data) {
         localStorage.setItem('userData', JSON.stringify(data));
         
-        // Check if access permissions exist and store them
-        if (data.access && data.access.length > 0) {
+        // Improved permission handling
+        if (data.access && Array.isArray(data.access) && data.access.length > 0) {
           try {
-            const userPermissions = JSON.parse(data.access[0]);
+            // Handle both string and parsed JSON cases
+            let userPermissions;
+            const accessData = data.access[0];
+            
+            if (typeof accessData === 'string') {
+              try {
+                userPermissions = JSON.parse(accessData);
+              } catch {
+                // If not valid JSON, treat as direct permission string
+                userPermissions = [accessData];
+              }
+            } else {
+              userPermissions = accessData;
+            }
+
+            // Ensure permissions is always an array
+            if (!Array.isArray(userPermissions)) {
+              userPermissions = [userPermissions];
+            }
+
             localStorage.setItem('userPermissions', JSON.stringify(userPermissions));
 
-            // Navigate based on permissions
+            // Navigation based on permissions with fallback
             if (userPermissions.includes('teacherDashboard')) {
               navigate('/teacher-dashboard');
             } else if (userPermissions.includes('studentDashboard')) {
@@ -104,16 +123,24 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
               navigate('/dashboard');
             }
           } catch (error) {
-            console.error('Error parsing permissions:', error);
-            navigate('/dashboard'); // Default fallback
+            console.error('Error handling permissions:', error);
+            // Fallback navigation if permission handling fails
+            navigate('/dashboard');
           }
         } else {
-          console.warn('No permissions found in user data');
-          navigate('/dashboard'); // Default fallback
+          // Handle case when no permissions are present
+          console.warn('No permissions found in user data, using default route');
+          navigate('/dashboard');
         }
       }
 
-      enqueueSnackbar("Welcome Back!", { variant: "success" });
+      enqueueSnackbar("Welcome Back!", {
+        variant: "success",
+        anchorOrigin: {
+          vertical: 'bottom',
+          horizontal: 'right',
+        }
+      });
     },
     onError: (error: any) => {
       console.log("Login error:", error);
