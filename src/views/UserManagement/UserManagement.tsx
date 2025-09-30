@@ -254,6 +254,14 @@ const UserManagement: React.FC = () => {
       return;
     }
 
+    // Add validation for teacher-specific fields
+    if (activeTab === 'Teacher') {
+      if ((!form.grade || !form.class || !form.subject || !form.medium) && teacherAssignments.length === 0) {
+        showSnackbar("Please fill all required teacher fields (Grade, Class, Subject, and Medium)!", "error");
+        return;
+      }
+    }
+
     // Create a base user object that matches the User type
     const baseUserData: Omit<User, 'id'> = {
       name: form.name,
@@ -278,15 +286,16 @@ const UserManagement: React.FC = () => {
       case 'Teacher':
         userData = {
           ...baseUserData,
-          photo: form.photo || null, 
+          photo: form.photo || null,
           staffNo: form.staffNo || '',
-          teacherData: teacherAssignments.map(assignment => ({
-            teacherGrade: assignment.teacherGrade,
-            teacherClass: assignment.teacherClass,
-            subject: assignment.subject,
-            medium: assignment.medium,
+          // Make sure we have at least one assignment
+          teacherData: teacherAssignments.length > 0 ? teacherAssignments : [{
+            teacherGrade: form.grade || '',
+            teacherClass: form.class || '',
+            subject: form.subject || '',
+            medium: form.medium || '',
             staffNo: form.staffNo || '',
-          }))
+          }]
         } as User;
         break;
 
@@ -341,7 +350,7 @@ const UserManagement: React.FC = () => {
       birthDay: "",
       gender: "",
       location: "",
-      photo: "", // Reset photo field
+      photo: "", 
       // Role-specific fields
       grade: "",
       class: "",
@@ -357,7 +366,7 @@ const UserManagement: React.FC = () => {
       teacherGrade: "",
       teacherGrades: [],
     });
-    setTeacherAssignments([]); // Clear teacher assignments
+    setTeacherAssignments([]); 
     setEditId(null);
   };
 
@@ -369,7 +378,7 @@ const UserManagement: React.FC = () => {
         photo: userToEdit.photo || '',
         // Only include location if it exists and is not empty
         ...(userToEdit.location ? { location: userToEdit.location } : {}),
-        password: "", // Always reset password
+        password: "", 
         userRole: getUserRole(userToEdit.userType),
         // Add required teacher-specific fields with default values
         teacherClass: userToEdit.teacherData?.map(td => td.teacherClass) || [],
@@ -573,7 +582,7 @@ const UserManagement: React.FC = () => {
         return [
           ...commonColumns,
           { field: 'profession', headerName: 'Profession', width: 120, flex: 1 },
-          { field: 'parentContact', headerName: 'Parent No', width: 120, flex: 1 }, // Changed from parentNo
+          { field: 'parentContact', headerName: 'Parent No', width: 120, flex: 1 }, 
           { field: 'studentAdmissionNo', headerName: 'Student Admission No', width: 150, flex: 1 },
           statusColumn,
           actionColumn

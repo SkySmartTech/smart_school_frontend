@@ -15,7 +15,7 @@ export interface BaseUser {
   email: string;
   userType: "Student" | "Teacher" | "Parent";
   status: boolean;
-  userRole?: "user" | "admin";
+  userRole?: "user" | "admin" | "managementStaff" | "userStudent" | "userParent" | "userTeacher" | "userClassTeacher";
   password?: string;
   address?: string;
   birthDay?: string;
@@ -109,7 +109,12 @@ export const mediumOptions: string[] = [
 
 export const userRoleOptions: string[] = [
   'user',
-  'admin'
+  'admin',
+  'managementStaff',
+  'userStudent',
+  'userParent',
+  'userTeacher',
+  'userClassTeacher'
 ];
 
 export const userTypeOptions: string[] = [

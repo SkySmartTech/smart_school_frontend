@@ -327,69 +327,65 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  const onSubmit = (data: RegisterFormValues) => {
-    if (!registeredUser) return;
+const onSubmit = (data: RegisterFormValues) => {
+  if (!registeredUser) return;
 
-    const formData = new FormData();
+  const formData = new FormData();
+  formData.append('userId', registeredUser.userId.toString());
+  formData.append('userType', registeredUser.userType);
 
-    formData.append('userId', registeredUser.userId.toString());
-    formData.append('userType', registeredUser.userType);
+  const role = (registeredUser.userType || '').toLowerCase();
 
-    const role = (registeredUser.userType || '').toLowerCase();
+  if (role === "teacher") {
+    formData.append('staffNo', data.staffNo || '');
+    formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
+      teacherGrade: assignment.grades[0],
+      teacherClass: assignment.classes[0],
+      subject: assignment.subjects[0],
+      medium: assignment.medium[0],
+      staffNo: data.staffNo,
+      userId: registeredUser.userId,
+      userType: registeredUser.userType
+    }))));
+  } 
+  else if (role === "parent") {
+    // Create a parent assignment array with ALL the form data
+    const parentAssignments = [{
+      studentAdmissionNo: data.studentAdmissionNo,
+      profession: data.profession,
+      relation: data.relation,
+      parentContact: data.parentContact,
+      userId: registeredUser.userId,
+      userType: registeredUser.userType,
+      status: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }];
 
-    if (role === "teacher") {
-      formData.append('staffNo', data.staffNo || '');
-      formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
-        teacherGrade: assignment.grades[0],
-        teacherClass: assignment.classes[0],
-        subject: assignment.subjects[0],
-        medium: assignment.medium[0],
-        staffNo: data.staffNo,
-        userId: registeredUser.userId,
-        userType: registeredUser.userType
-      }))));
-    } else if (role === "student") {
-      const studentPayload = [{
-        studentGrade: data.studentGrade ?? "",
-        studentClass: data.studentClass ?? "",
-        medium: (Array.isArray(data.medium) ? (data.medium[0] ?? "") : (data.medium ?? "")),
-        studentAdmissionNo: data.studentAdmissionNo ?? "",
-        parentProfession: data.parentProfession ?? "",
-        parentContact: data.parentContact ?? null,
-        userId: registeredUser.userId,
-        userType: registeredUser.userType
-      }];
+    // Send the parent data properly
+    formData.append('parentData', JSON.stringify(parentAssignments));
+  }
+  else if (role === "student") {
+    // Handle student data similarly
+    const studentAssignments = [{
+      studentGrade: data.studentGrade,
+      studentClass: data.studentClass,
+      medium: data.medium,
+      studentAdmissionNo: data.studentAdmissionNo,
+      parentContact: data.parentContact,
+      parentProfession: data.parentProfession,
+      userId: registeredUser.userId,
+      userType: registeredUser.userType
+    }];
+    
+    formData.append('studentData', JSON.stringify(studentAssignments));
+  }
 
-      // append JSON string under 'studentData' key
-      formData.append('studentData', JSON.stringify(studentPayload));
-    } else if (role === "parent") {
-      const parentPayload = [{
-        studentAdmissionNo: data.studentAdmissionNo ?? "",
-        profession: data.profession ?? "",
-        relation: data.relation ?? "",
-        parentContact: data.parentContact ?? null,
-        userId: registeredUser.userId,
-        userType: registeredUser.userType
-      }];
-
-      formData.append('parentData', JSON.stringify(parentPayload));
-    } else {
-      // fallback — append non-array fields
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key)) {
-          if (key === 'photo' && value instanceof FileList && value.length > 0) {
-            formData.append(key, value[0]);
-          } else if (typeof value === 'string' || value instanceof Blob) {
-            formData.append(key, value);
-          }
-        }
-      });
-    }
-
-    if (role === "student") registerStudentData(formData);
-    else if (role === "teacher") registerTeacherData(formData);
-    else if (role === "parent") registerParentData(formData);
-  };
+  // Call the appropriate registration function
+  if (role === "student") registerStudentData(formData);
+  else if (role === "teacher") registerTeacherData(formData);
+  else if (role === "parent") registerParentData(formData);
+};
 
   // const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
   //   if (event.target.files && event.target.files.length > 0) {
