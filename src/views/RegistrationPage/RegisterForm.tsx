@@ -89,12 +89,11 @@ interface FormData {
   // Role-specific optional properties
   grade?: string;
   studentGrade?: string;
-  studentClass?: string;            // <-- added
+  studentClass?: string;        
   subject?: string;
   class?: string;
-  profession?: string;              // <-- added (for Parent)
-  parentContact?: string;
-  parentNo?: string;                // <-- added (standardized name)
+  profession?: string;            
+  parentContact?: string;             
   parentProfession?: string;
   staffId?: string;
   teacherStaffId?: string;
@@ -103,8 +102,8 @@ interface FormData {
   teacherClass: string[];
   subjects: string[];
   staffNo?: string;
-  medium?: string | string[];       // <-- allow string for student, array for teacher
-  relation?: string;                // <-- added (for Parent)
+  medium?: string | string[];      
+  relation?: string;             
 }
 
 // Add this alias so RegisterFormValues is defined and matches the form shape
@@ -120,7 +119,7 @@ type TeacherAssignment = {
   subjects: string[];
   classes: string[];
   medium: string[];
-  id: string; // for grid row identification
+  id: string; 
 };
 
 const steps = ['Basic Information', 'Role Details'];
@@ -278,10 +277,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         isValid = await trigger(["teacherGrades", "subjects", "teacherClass", "staffNo", "medium"]);
       } else if (selectedRole === "Student") {
         // validate student fields
-        isValid = await trigger(["studentGrade", "studentAdmissionNo", "studentClass"]);
+        isValid = await trigger(["studentGrade", "studentAdmissionNo", "studentClass", "medium", "parentProfession", "parentContact"]);
       } else if (selectedRole === "Parent") {
         // validate parent fields
-        isValid = await trigger(["profession", "parentNo"]);
+        isValid = await trigger(["profession", "parentContact", "studentAdmissionNo", "relation"]);
       }
     }
 
@@ -328,67 +327,65 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  const onSubmit = (data: RegisterFormValues) => {
-    if (!registeredUser) return;
+const onSubmit = (data: RegisterFormValues) => {
+  if (!registeredUser) return;
 
-    const formData = new FormData();
+  const formData = new FormData();
+  formData.append('userId', registeredUser.userId.toString());
+  formData.append('userType', registeredUser.userType);
 
-    formData.append('userId', registeredUser.userId.toString());
-    formData.append('userType', registeredUser.userType);
+  const role = (registeredUser.userType || '').toLowerCase();
 
-    const role = (registeredUser.userType || '').toLowerCase();
+  if (role === "teacher") {
+    formData.append('staffNo', data.staffNo || '');
+    formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
+      teacherGrade: assignment.grades[0],
+      teacherClass: assignment.classes[0],
+      subject: assignment.subjects[0],
+      medium: assignment.medium[0],
+      staffNo: data.staffNo,
+      userId: registeredUser.userId,
+      userType: registeredUser.userType
+    }))));
+  } 
+  else if (role === "parent") {
+    // Create a parent assignment array with ALL the form data
+    const parentAssignments = [{
+      studentAdmissionNo: data.studentAdmissionNo,
+      profession: data.profession,
+      relation: data.relation,
+      parentContact: data.parentContact,
+      userId: registeredUser.userId,
+      userType: registeredUser.userType,
+      status: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }];
 
-    if (role === "teacher") {
-      formData.append('staffNo', data.staffNo || '');
-      formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
-        teacherGrade: assignment.grades[0],
-        teacherClass: assignment.classes[0],
-        subject: assignment.subjects[0],
-        medium: assignment.medium[0],
-        staffNo: data.staffNo,
-        userId: registeredUser.userId,
-        userType: registeredUser.userType
-      }))));
-    } else if (role === "student") {
-      const studentPayload = [{
-        studentGrade: data.studentGrade ?? "",
-        studentClass: data.studentClass ?? "",
-        medium: (Array.isArray(data.medium) ? (data.medium[0] ?? "") : (data.medium ?? "")),
-        studentAdmissionNo: data.studentAdmissionNo ?? "",
-        userId: registeredUser.userId,
-        userType: registeredUser.userType
-      }];
+    // Send the parent data properly
+    formData.append('parentData', JSON.stringify(parentAssignments));
+  }
+  else if (role === "student") {
+    // Handle student data similarly
+    const studentAssignments = [{
+      studentGrade: data.studentGrade,
+      studentClass: data.studentClass,
+      medium: data.medium,
+      studentAdmissionNo: data.studentAdmissionNo,
+      parentContact: data.parentContact,
+      parentProfession: data.parentProfession,
+      userId: registeredUser.userId,
+      userType: registeredUser.userType
+    }];
+    
+    formData.append('studentData', JSON.stringify(studentAssignments));
+  }
 
-      // append JSON string under 'studentData' key
-      formData.append('studentData', JSON.stringify(studentPayload));
-    } else if (role === "parent") {
-      const parentPayload = [{
-        studentAdmissionNo: data.studentAdmissionNo ?? "",
-        profession: data.profession ?? "",
-        relation: data.relation ?? "",
-        parentNo: data.parentNo ?? null,
-        userId: registeredUser.userId,
-        userType: registeredUser.userType
-      }];
-
-      formData.append('parentData', JSON.stringify(parentPayload));
-    } else {
-      // fallback — append non-array fields
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key)) {
-          if (key === 'photo' && value instanceof FileList && value.length > 0) {
-            formData.append(key, value[0]);
-          } else if (typeof value === 'string' || value instanceof Blob) {
-            formData.append(key, value);
-          }
-        }
-      });
-    }
-
-    if (role === "student") registerStudentData(formData);
-    else if (role === "teacher") registerTeacherData(formData);
-    else if (role === "parent") registerParentData(formData);
-  };
+  // Call the appropriate registration function
+  if (role === "student") registerStudentData(formData);
+  else if (role === "teacher") registerTeacherData(formData);
+  else if (role === "parent") registerParentData(formData);
+};
 
   // const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
   //   if (event.target.files && event.target.files.length > 0) {
@@ -1203,10 +1200,10 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
               <>
                 <Stack direction="row" spacing={2}>
                   <TextField
-                    label="Child Admission Number"
+                    label="Student Admission Number"
                     fullWidth
                     variant="outlined"
-                    {...register("studentAdmissionNo", { required: "Child admission number is required" })}
+                    {...register("studentAdmissionNo", { required: "Student admission number is required" })}
                     error={!!errors.studentAdmissionNo}
                     helperText={errors.studentAdmissionNo?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
@@ -1215,13 +1212,13 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
                     label="Contact Number"
                     fullWidth
                     variant="outlined"
-                    {...register("parentNo", {
+                    {...register("parentContact", {
                       required: "Contact number is required",
                       minLength: { value: 10, message: "Phone must be at least 10 digits" },
                       maxLength: { value: 15, message: "Phone must be at most 15 digits" },
                     })}
-                    error={!!errors.parentNo}
-                    helperText={errors.parentNo?.message}
+                    error={!!errors.parentContact}
+                    helperText={errors.parentContact?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
                   />
                 </Stack>

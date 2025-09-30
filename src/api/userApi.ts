@@ -28,7 +28,7 @@ export const userSchema = z.object({
     photo: z.instanceof(File).optional(),
 
     gender: z.string().optional(),
-    location: z.string().min(1, "Location is required"),
+    location: z.string().optional(),
     userRole: z.string().min(1, "User role is required"),
 
     // Teacher specific fields
@@ -47,7 +47,7 @@ export const userSchema = z.object({
     studentGrade: z.string().min(1, "Student grade is required"),
     studentClass: z.string().min(1, "Student class is required"),
     studentAdmissionNo: z.string().min(1, "Admission number is required"),
-    parentNo: z
+    parentContact: z
       .string()
       .min(10, "Parent phone must be at least 10 digits")
       .max(15, "Parent phone must be at most 15 digits"),
@@ -139,7 +139,7 @@ export async function registerTeacher(teacherData: FormData) {
         teacherClass: assignment.teacherClass,
         subject: assignment.subject,
         medium: assignment.medium,
-        staffNo: staffNo, // Use the staffNo from FormData
+        staffNo: staffNo, 
         userId: teacherData.get('userId'),
         userType: teacherData.get('userType')
       }))
@@ -161,40 +161,54 @@ export async function registerTeacher(teacherData: FormData) {
 
 export async function registerParent(parentData: FormData) {
   try {
-    const raw = parentData.get('parentData');
-    let parentArr: any[] = [];
-
-    if (raw) {
-      parentArr = JSON.parse(raw as string);
-    } else {
-      parentArr = [
-        {
-          studentAdmissionNo: parentData.get('studentAdmissionNo'),
-          profession: parentData.get('profession'),
-          relation: parentData.get('relation'),
-          parentNo: parentData.get('parentNo'),
-          userId: parentData.get('userId'),
-          userType: parentData.get('userType'),
-        }
-      ];
+    // Parse parent data array from FormData
+    const rawParentData = parentData.get('parentData');
+    
+    if (!rawParentData) {
+      throw new Error("Parent data is required");
     }
 
+    const parentAssignments = JSON.parse(rawParentData as string);
+    
+    if (!parentAssignments || !parentAssignments.length) {
+      throw new Error("Parent data is required");
+    }
+
+    // Validate that all required fields are present
+    const requiredFields = ['studentAdmissionNo', 'profession', 'relation', 'parentContact'];
+    const firstAssignment = parentAssignments[0];
+    
+    for (const field of requiredFields) {
+      if (!firstAssignment[field]) {
+        throw new Error(`${field} is required`);
+      }
+    }
+
+    // Create the request body in the expected format
     const requestBody = {
-      parentData: parentArr.map((item: any) => ({
-        studentAdmissionNo: item.studentAdmissionNo,
-        profession: item.profession,
-        relation: item.relation,
-        parentNo: item.parentNo ?? null,
-        userId: parentData.get('userId'),
-        userType: parentData.get('userType'),
+      parentData: parentAssignments.map((assignment: any) => ({
+        studentAdmissionNo: assignment.studentAdmissionNo,
+        profession: assignment.profession,
+        relation: assignment.relation,
+        parentContact: assignment.parentContact,
+        userId: assignment.userId,
+        userType: assignment.userType,
+        status: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }))
     };
 
+    console.log('Sending parent data:', JSON.stringify(requestBody, null, 2)); 
+
     const response = await API.post("/api/user-parent-register", requestBody, {
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     return response.data;
   } catch (error) {
+    console.error('Parent registration error:', error); 
     if (axios.isAxiosError(error)) {
       throw new Error(error.response?.data?.message || "Parent registration failed");
     }

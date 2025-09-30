@@ -89,8 +89,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
       // Parent specific
       case "profession":
         return user.profession || "-";
-      case "parent no":
-        return user.parentNo || "-";
+      case "parent contact":
+        return user.parentContact || "-";
       case "student admission no":
         return user.studentAdmissionNo || "-";
       case "status":

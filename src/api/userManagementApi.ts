@@ -170,15 +170,15 @@ export const createUser = async (userData: User): Promise<User> => {
     username: userData.username,
     email: userData.email,
     password: userData.password,
-    address: userData.address,
-    birthDay: userData.birthDay,
-    contact: userData.contact,
-    gender: userData.gender,
+    address: userData.address || '',
+    birthDay: userData.birthDay || '',
+    contact: userData.contact || '',
+    gender: userData.gender || '',
     status: userData.status,
     location: userData.location || '',
     userType: userData.userType,
     userRole: getUserRole(userData.userType),
-    photo: userData.photo || '',
+    photo: userData.photo || null, // Always include photo field, even if null
   };
 
   let formattedData: any = { ...baseData };
@@ -195,20 +195,45 @@ export const createUser = async (userData: User): Promise<User> => {
       break;
 
     case "Teacher":
-      formattedData.teacherData = {
-        teacherGrade: userData.grade || '',
-        teacherClass: userData.class || '',
-        subject: userData.subject || '',
-        medium: userData.medium || '',
+      // Format the teacherData array
+      const teacherAssignments = userData.teacherAssignments?.map(assignment => ({
+        teacherGrade: assignment.teacherGrade || '',
+        teacherClass: assignment.teacherClass || '',
+        subject: assignment.subject || '',
+        medium: assignment.medium || '',
         staffNo: userData.staffNo || '',
-      };
+        modifiedBy: localStorage.getItem('userName') || 'System'
+      })) || [];
+
+      if (teacherAssignments.length === 0) {
+        // If no assignments, create one from the form data
+        teacherAssignments.push({
+          teacherGrade: userData.grade || '',
+          teacherClass: userData.class || '',
+          subject: userData.subject || '',
+          medium: userData.medium || '',
+          staffNo: userData.staffNo || '',
+          modifiedBy: localStorage.getItem('userName') || 'System'
+        });
+      }
+
+      formattedData.teacherData = teacherAssignments;
       break;
 
     case "Parent":
       formattedData.parentData = {
-        profession: userData.profession || '',
-        parentContact: userData.parentContact || '',
         studentAdmissionNo: userData.studentAdmissionNo || '',
+        parentContact: userData.contact || userData.parentContact || '', // Use contact or parentContact
+        profession: userData.profession || '',
+        relation: 'Guardian', // Always include relation
+      };
+      
+      // Also include these fields at the root level for the User model
+      formattedData = {
+        ...formattedData,
+        studentAdmissionNo: userData.studentAdmissionNo || '',
+        parentContact: userData.contact || userData.parentContact || '',
+        profession: userData.profession || '',
         relation: 'Guardian',
       };
       break;
@@ -261,7 +286,8 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
   const baseData: Record<string, any> = {
     userType: userData.userType,
     userRole: getUserRole(userData.userType),
-    modifiedBy: currentUser
+    modifiedBy: currentUser,
+    photo: userData.photo || null, // Always include photo, even if null
   };
 
   // Helper function to safely handle string or string array
@@ -299,37 +325,26 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
     baseData.status = userData.status;
   }
 
-  // Handle photo separately - only include if it exists and is not empty
-  if (userData.photo) {
-    const photoValue = safeString(userData.photo);
-    if (photoValue) {
-      // Store only the filename or a truncated version of base64
-      if (photoValue.startsWith('data:image')) {
-        // For base64 images, store a truncated version
-        baseData.photo = photoValue.substring(0, 255);
-      } else {
-        baseData.photo = photoValue;
-      }
-    }
-  }
-
   let formattedData: Record<string, any> = { ...baseData };
 
   switch (userData.userType) {
     case "Teacher":
-      const teacherData: Record<string, any> = {};
-      
-      const grade = safeString(userData.grade);
-      const teacherClass = safeString(userData.class);
-      const subject = safeString(userData.subject);
-      const medium = safeString(userData.medium);
-      const staffNo = safeString(userData.staffNo);
+      const teacherData: Record<string, any> = {
+        teacherGrade: safeString(userData.grade),
+        teacherClass: safeString(userData.class),
+        subject: safeString(userData.subject),
+        medium: safeString(userData.medium),
+        staffNo: safeString(userData.staffNo),
+        modifiedBy: currentUser
+      };
 
-      if (grade) teacherData.teacherGrade = grade;
-      if (teacherClass) teacherData.teacherClass = teacherClass;
-      if (subject) teacherData.subject = subject;
-      if (medium) teacherData.medium = medium;
-      if (staffNo) teacherData.staffNo = staffNo;
+      // Remove empty values
+      Object.keys(teacherData).forEach(key => {
+        if (typeof teacherData[key as keyof typeof teacherData] === 'undefined' || 
+            teacherData[key as keyof typeof teacherData] === null) {
+          delete teacherData[key as keyof typeof teacherData];
+        }
+      });
 
       if (Object.keys(teacherData).length > 0) {
         formattedData.teacherData = teacherData;
@@ -339,26 +354,27 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
     case "Parent":
       // Create parentData object with all required fields
       const parentData: Record<string, any> = {
-        relation: 'Guardian',
+        userType: userData.userType,
         studentAdmissionNo: userData.studentAdmissionNo || '',
+        parentContact: userData.contact || userData.parentContact || '',
         profession: userData.profession || '',
-        contact: userData.parentContact || '' // Change parentContact to contact
+        relation: 'Guardian',
+        modifiedBy: currentUser
       };
 
-      // Clean up undefined or null values from parentData
+      // Clean up undefined or null values
       Object.keys(parentData).forEach(key => {
         if (!parentData[key]) {
           delete parentData[key];
         }
       });
 
-      // Add parentData to formatted data
-      formattedData.parentData = parentData;
-      
-      // Also include at root level
-      formattedData.studentAdmissionNo = userData.studentAdmissionNo || '';
-      formattedData.profession = userData.profession || '';
-      formattedData.contact = userData.parentContact || ''; // Change parentContact to contact here too
+      // Include both in parentData and root level to match backend expectations
+      formattedData = {
+        ...formattedData,
+        ...parentData,
+        parentData: parentData
+      };
       break;
 
     case "Student":

@@ -89,22 +89,29 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
       if (data) {
         localStorage.setItem('userData', JSON.stringify(data));
         
-        // Improved permission handling
-        if (data.access && Array.isArray(data.access) && data.access.length > 0) {
+        // Improved permission handling with better error handling
+        if (data.access) {
           try {
-            // Handle both string and parsed JSON cases
-            let userPermissions;
-            const accessData = data.access[0];
+            let userPermissions = [];
             
-            if (typeof accessData === 'string') {
+            // Handle array of permissions
+            if (Array.isArray(data.access)) {
+              // Try to parse the first element if it's a JSON string
               try {
-                userPermissions = JSON.parse(accessData);
-              } catch {
-                // If not valid JSON, treat as direct permission string
-                userPermissions = [accessData];
+                userPermissions = typeof data.access[0] === 'string' 
+                  ? JSON.parse(data.access[0])
+                  : data.access[0];
+              } catch (e) {
+                // If parsing fails, use the raw access array
+                userPermissions = data.access;
               }
-            } else {
-              userPermissions = accessData;
+            } else if (typeof data.access === 'string') {
+              // If access is a single string, try to parse it
+              try {
+                userPermissions = JSON.parse(data.access);
+              } catch (e) {
+                userPermissions = [data.access];
+              }
             }
 
             // Ensure permissions is always an array
@@ -112,9 +119,19 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
               userPermissions = [userPermissions];
             }
 
+            // Store permissions
             localStorage.setItem('userPermissions', JSON.stringify(userPermissions));
 
-            // Navigation based on permissions with fallback
+            // Navigate based on permissions
+            if (userPermissions.length === 0) {
+              enqueueSnackbar("No permissions assigned to your account. Please contact administrator.", {
+                variant: "warning"
+              });
+              navigate('/unauthorized');
+              return;
+            }
+
+            // Navigation based on permissions
             if (userPermissions.includes('teacherDashboard')) {
               navigate('/teacher-dashboard');
             } else if (userPermissions.includes('studentDashboard')) {
@@ -124,13 +141,20 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
             }
           } catch (error) {
             console.error('Error handling permissions:', error);
-            // Fallback navigation if permission handling fails
-            navigate('/dashboard');
+            enqueueSnackbar("Error processing permissions. Please try logging in again.", {
+              variant: "error"
+            });
+            // Clear stored data on error
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('userPermissions');
+            navigate('/login');
           }
         } else {
-          // Handle case when no permissions are present
-          console.warn('No permissions found in user data, using default route');
-          navigate('/dashboard');
+          enqueueSnackbar("No permissions found in user data. Please contact administrator.", {
+            variant: "warning"
+          });
+          navigate('/unauthorized');
         }
       }
 

@@ -115,7 +115,24 @@ export async function logout() {
   }
 }
 
-// Validate user session
+// Add this function to validate permissions after token validation
+export async function validatePermissions() {
+  const token = localStorage.getItem('token');
+  const userPermissions = localStorage.getItem('userPermissions');
+  
+  if (!token || !userPermissions) {
+    return false;
+  }
+
+  try {
+    const permissions = JSON.parse(userPermissions);
+    return Array.isArray(permissions) && permissions.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Modify the existing validateUser function
 export async function validateUser() {
   const token = localStorage.getItem('token');
   if (!token) return null;
@@ -131,24 +148,41 @@ export async function validateUser() {
       const userData = response.data;
       localStorage.setItem('userData', JSON.stringify(userData));
 
-      if (userData.access && userData.access.length > 0) {
+      // Enhanced permission handling
+      if (userData.access) {
+        let userPermissions = [];
         try {
-          const permissionsArray = JSON.parse(userData.access[0]);
-          localStorage.setItem('userPermissions', JSON.stringify(permissionsArray));
+          if (Array.isArray(userData.access)) {
+            userPermissions = typeof userData.access[0] === 'string'
+              ? JSON.parse(userData.access[0])
+              : userData.access[0];
+          } else {
+            userPermissions = JSON.parse(userData.access);
+          }
+
+          if (!Array.isArray(userPermissions)) {
+            userPermissions = [userPermissions];
+          }
+
+          localStorage.setItem('userPermissions', JSON.stringify(userPermissions));
         } catch (error) {
           console.error('Error parsing permissions:', error);
+          localStorage.setItem('userPermissions', '[]');
+          return null;
         }
+      } else {
+        localStorage.setItem('userPermissions', '[]');
+        return null;
       }
 
       return userData;
     }
     return null;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('userPermissions');
-    }
+    // Clear all auth data on validation error
+    localStorage.removeItem('token');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('userPermissions');
     console.error("User validation failed:", error);
     return null;
   }
