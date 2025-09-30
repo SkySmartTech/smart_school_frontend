@@ -135,7 +135,7 @@ export const subjectOptions: string[] = [
   'Art',
   'Music',
   'Dancing',
-  'Physical Education',
+  'Physical education',
   'Buddhism',
   'Christianity',
   'Islam',
