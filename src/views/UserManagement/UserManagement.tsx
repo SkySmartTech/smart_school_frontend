@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import jsPDF from 'jspdf';
 import {
   Box,
   Button,
@@ -18,13 +19,12 @@ import {
   InputAdornment,
   Tabs,
   Tab,
-  Table as MuiTable,  
+  Table as MuiTable,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
-} from "@mui/material";
+  TableRow} from "@mui/material";
 import {
   DataGrid,
   GridToolbarContainer,
@@ -45,46 +45,36 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   Add,
-  Delete
+  Delete,
+  CloudUpload as CloudUploadIcon
 } from "@mui/icons-material";
 import Sidebar from "../../components/Sidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCustomTheme } from "../../context/ThemeContext";
-import { type User, statusOptions, genderOptions, userRoleOptions, userTypeOptions, gradeOptions, mediumOptions, classOptions, subjectOptions, type TeacherAssignment } from "../../types/userManagementTypes";
-import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
-import {
-  fetchUsers,
-  createUser,
-  updateUser,
-  deactivateUser,
-  searchUsers,
-  bulkDeactivateUsers,
-  getUserRole
-} from "../../api/userManagementApi";
+import { type User, type UserRole, statusOptions, genderOptions, userRoleOptions, userTypeOptions, gradeOptions, mediumOptions, classOptions, subjectOptions, type TeacherAssignment } from "../../types/userManagementTypes";
+import { bulkDeactivateUsers, createUser, deactivateUser, fetchUsers, getUserRole, searchUsers, updateUser } from "../../api/userManagementApi";
 import Navbar from "../../components/Navbar";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import debounce from "lodash/debounce";
+import { debounce } from 'lodash';
 
-// Update UserCategory type
 type UserCategory = 'Student' | 'Teacher' | 'Parent';
 
-const UserManagement: React.FC = () => {
-  interface FormState extends Omit<User, 'id'> {
-    id?: number;
-    teacherClass: string[];
-    teacherGrade: string;
-    teacherGrades: string[];
-    studentClass?: string;
-    studentGrade?: string;
-  }
+interface FormState extends Omit<User, 'id'> {
+  id?: number;
+  teacherClass: string[];
+  teacherGrade: string;
+  teacherGrades: string[];
+  studentClass?: string;
+  studentGrade?: string;
+  userRole: UserRole;
+}
 
+const UserManagement: React.FC = () => {
   const [form, setForm] = useState<FormState>({
     name: "",
     username: "",
     email: "",
     userType: "Student",
-    userRole: getUserRole("Student"),
+    userRole: "user",
     status: true,
     password: "",
     contact: "",
@@ -92,7 +82,7 @@ const UserManagement: React.FC = () => {
     birthDay: "",
     gender: "",
     location: "",
-    photo: "", // Initialize photo field
+    photo: null, // Changed from empty string to null
     grade: "",
     class: "",
     medium: "",
@@ -146,10 +136,15 @@ const UserManagement: React.FC = () => {
       handleClear();
     },
     onError: (error: any) => {
+      console.error('Create user error:', error);
+      console.error('Error response:', error.response);
       const errorMessage = error.response?.data?.message || "Failed to create user";
       const errors = error.response?.data?.errors;
       if (errors) {
-        showSnackbar(Object.values(errors).flat().join(", "), "error");
+        const errorMsg = typeof errors === 'object' 
+          ? Object.values(errors).flat().join(", ")
+          : String(errors);
+        showSnackbar(errorMsg, "error");
       } else {
         showSnackbar(errorMessage, "error");
       }
@@ -248,6 +243,7 @@ const UserManagement: React.FC = () => {
     }));
   };
 
+  // Fix handleSave function
   const handleSave = () => {
     if (!form.name || !form.username || !form.email || (editId === null && !form.password)) {
       showSnackbar("Please fill all required fields!", "error");
@@ -276,26 +272,33 @@ const UserManagement: React.FC = () => {
       birthDay: form.birthDay || '',
       gender: form.gender || '',
       location: form.location || '',
-      photo: form.photo || null,
-      parentContact: ""
+      photo: form.photo || null, // Changed this line to handle undefined case
+      parentContact: form.parentContact || ''
     };
 
     let userData: User;
 
     switch (activeTab) {
       case 'Teacher':
+        const teacherAssignment = {
+          teacherGrade: form.grade || '',
+          teacherClass: form.class || '',
+          subject: form.subject || '',
+          medium: form.medium || '',
+          staffNo: form.staffNo || ''
+        };
+
         userData = {
           ...baseUserData,
-          photo: form.photo || null,
+          photo: form.photo === "" ? null : form.photo,
           staffNo: form.staffNo || '',
-          // Make sure we have at least one assignment
-          teacherData: teacherAssignments.length > 0 ? teacherAssignments : [{
-            teacherGrade: form.grade || '',
-            teacherClass: form.class || '',
-            subject: form.subject || '',
-            medium: form.medium || '',
-            staffNo: form.staffNo || '',
-          }]
+          grade: form.grade || '',
+          class: form.class || '',
+          subject: form.subject || '',
+          medium: form.medium || '',
+          // Ensure assignments are always arrays
+          teacherAssignments: teacherAssignments.length > 0 ? teacherAssignments : [teacherAssignment],
+          teacherData: teacherAssignments.length > 0 ? teacherAssignments : [teacherAssignment]
         } as User;
         break;
 
@@ -306,9 +309,14 @@ const UserManagement: React.FC = () => {
           class: form.class || '',
           medium: form.medium || '',
           studentAdmissionNo: form.studentAdmissionNo || '',
-          // Add student-specific fields that match the User type
-          studentGrade: form.grade || '',
-          studentClass: form.class as string || ''
+          studentGrade: form.grade || '', // Make sure this is set
+          studentClass: form.class || '', // Make sure this is set
+          studentData: {
+            studentGrade: form.grade || '',
+            studentClass: form.class || '',
+            medium: form.medium || '',
+            studentAdmissionNo: form.studentAdmissionNo || ''
+          }
         };
         break;
 
@@ -317,7 +325,7 @@ const UserManagement: React.FC = () => {
           ...baseUserData,
           profession: form.profession || '',
           studentAdmissionNo: form.studentAdmissionNo || '',
-          relation: 'Guardian',
+          relation: form.relation || '',
           parentContact: form.parentContact || '',
         };
         break;
@@ -350,7 +358,7 @@ const UserManagement: React.FC = () => {
       birthDay: "",
       gender: "",
       location: "",
-      photo: "", 
+      photo: null,
       // Role-specific fields
       grade: "",
       class: "",
@@ -366,21 +374,21 @@ const UserManagement: React.FC = () => {
       teacherGrade: "",
       teacherGrades: [],
     });
-    setTeacherAssignments([]); 
+    setTeacherAssignments([]);
     setEditId(null);
   };
 
+  // Fix handleEdit function
   const handleEdit = (id: number) => {
     const userToEdit = (searchTerm ? apiSearchResults : users).find(user => user.id === id);
     if (userToEdit) {
       setForm({
         ...userToEdit,
         photo: userToEdit.photo || '',
-        // Only include location if it exists and is not empty
         ...(userToEdit.location ? { location: userToEdit.location } : {}),
-        password: "", 
-        userRole: getUserRole(userToEdit.userType),
-        // Add required teacher-specific fields with default values
+        password: "",
+        // Use existing userRole or get it from userType
+        userRole: userToEdit.userRole || getUserRole(userToEdit.userType),
         teacherClass: userToEdit.teacherData?.map(td => td.teacherClass) || [],
         teacherGrade: userToEdit.teacherData?.[0]?.teacherGrade || '',
         teacherGrades: userToEdit.teacherData?.map(td => td.teacherGrade) || [],
@@ -423,7 +431,7 @@ const UserManagement: React.FC = () => {
       user.email,
       user.address || '-',
       user.birthDay || '-',
-      user.contact || '-', // Changed from gender to contact (phone number)
+      user.contact || '-', 
       user.gender || '-',
       activeTab === 'Student' ? user.grade || '-' :
         activeTab === 'Teacher' ? user.class || '-' : user.profession || '-',
@@ -491,7 +499,7 @@ const UserManagement: React.FC = () => {
     }
     return () => debouncedSearch.cancel();
   }, [searchTerm, debouncedSearch]);
-  
+
 
   const isMutating = createUserMutation.isPending ||
     updateUserMutation.isPending ||
@@ -582,7 +590,7 @@ const UserManagement: React.FC = () => {
         return [
           ...commonColumns,
           { field: 'profession', headerName: 'Profession', width: 120, flex: 1 },
-          { field: 'parentContact', headerName: 'Parent No', width: 120, flex: 1 }, 
+          { field: 'parentContact', headerName: 'Parent No', width: 120, flex: 1 },
           { field: 'studentAdmissionNo', headerName: 'Student Admission No', width: 150, flex: 1 },
           statusColumn,
           actionColumn
@@ -866,7 +874,7 @@ const UserManagement: React.FC = () => {
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
             />
-            <TextField
+            {/* <TextField
               label="Parent Profession"
               name="profession"
               value={form.profession || ''}
@@ -881,7 +889,7 @@ const UserManagement: React.FC = () => {
               onChange={(e) => handleSelectChange(e, "parentContact")}
               sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
               size="small"
-            />
+            /> */}
 
 
           </Box>
@@ -990,7 +998,7 @@ const UserManagement: React.FC = () => {
                           <TableCell>
                             <IconButton
                               onClick={() => {
-                                setTeacherAssignments(prev => 
+                                setTeacherAssignments(prev =>
                                   prev.filter(a => a.id !== assignment.id)
                                 );
                               }}
@@ -1110,7 +1118,7 @@ const UserManagement: React.FC = () => {
             </Stack>
           </Paper>
 
-          <Paper sx={{ p: 2, borderRadius: 2, height: 720 }}>
+          <Paper sx={{ p: 2, borderRadius: 2, height: 720, minWidth: '300', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -1177,6 +1185,7 @@ const UserManagement: React.FC = () => {
               }}
               sx={{
                 border: 'none',
+                height: '100%',
                 '& .MuiDataGrid-cell': {
                   borderBottom: `1px solid ${theme.palette.divider}`,
                 },
@@ -1187,6 +1196,24 @@ const UserManagement: React.FC = () => {
                 '& .MuiDataGrid-toolbarContainer': {
                   padding: theme.spacing(1),
                   borderBottom: `1px solid ${theme.palette.divider}`,
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  overflow: 'auto',
+                  '&::-webkit-scrollbar': {
+                    width: '8px',
+                    height: '8px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: '#f1f1f1',
+                    borderRadius: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: '#888',
+                    borderRadius: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb:hover': {
+                    background: '#666',
+                  },
                 },
               }}
               ref={dataGridRef}
@@ -1280,4 +1307,8 @@ const processImage = async (file: File): Promise<string | null> => {
   });
 };
 
+
+function autoTable(_doc: any, _arg1: { head: string[][]; body: any[][]; startY: number; styles: { cellPadding: number; fontSize: number; valign: string; halign: string; }; headStyles: { fillColor: number[]; textColor: number; fontStyle: string; }; alternateRowStyles: { fillColor: number[]; }; }) {
+  throw new Error("Function not implemented.");
+}
 

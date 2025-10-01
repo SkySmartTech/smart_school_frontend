@@ -110,7 +110,7 @@ export const fetchClassTeacherReport = async (
 
     // Build base URL with required parameters
     const apiUrl = `${API_BASE_URL}/api/teacher-report-data/${formatDate(startDate)}/${formatDate(endDate)}/${grade}/${className}/${exam}/${monthParam}`
-      .replace(/([^:]\/)\/+/g, "$1") // Remove any double slashes (except after http/https)
+      .replace(/([^:]\/)\/+/g, "$1") 
       .trim();
 
     console.log('API URL:', apiUrl);

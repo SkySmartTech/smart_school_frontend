@@ -1,3 +1,5 @@
+export type UserRole = "user" | "admin" | "managementStaff" | "userStudent" | "userParent" | "userTeacher" | "userClassTeacher";
+
 export interface TeacherAssignment {
   id?: string;
   teacherGrade: string;
@@ -15,7 +17,7 @@ export interface BaseUser {
   email: string;
   userType: "Student" | "Teacher" | "Parent";
   status: boolean;
-  userRole?: "user" | "admin" | "managementStaff" | "userStudent" | "userParent" | "userTeacher" | "userClassTeacher";
+  userRole?: UserRole;
   password?: string;
   address?: string;
   birthDay?: string;
@@ -35,7 +37,7 @@ export interface User extends BaseUser {
   
   // Teacher specific fields
   teacherData?: TeacherAssignment[];
-  teacherAssignments?: TeacherAssignment[]; // Add this field
+  teacherAssignments?: TeacherAssignment[]; 
   
   // Student specific fields
   studentGrade?: string;
@@ -107,7 +109,7 @@ export const mediumOptions: string[] = [
   'tamil'
 ];
 
-export const userRoleOptions: string[] = [
+export const userRoleOptions: UserRole[] = [
   'user',
   'admin',
   'managementStaff',

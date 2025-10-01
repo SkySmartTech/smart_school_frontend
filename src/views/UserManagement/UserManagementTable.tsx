@@ -44,6 +44,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
       "Birthday",
       "Phone No",
       "Gender",
+      "User Role",
       "Status",
       "Action"
     ];
