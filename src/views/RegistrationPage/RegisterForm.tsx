@@ -78,7 +78,7 @@ interface FormData {
   userType: string;
   username: string;
   password: string;
-  location: string; 
+  location: string;
   userRole: string;
   gender: string;
 
@@ -89,11 +89,11 @@ interface FormData {
   // Role-specific optional properties
   grade?: string;
   studentGrade?: string;
-  studentClass?: string;        
+  studentClass?: string;
   subject?: string;
   class?: string;
-  profession?: string;            
-  parentContact?: string;             
+  profession?: string;
+  parentContact?: string;
   parentProfession?: string;
   staffId?: string;
   teacherStaffId?: string;
@@ -102,8 +102,8 @@ interface FormData {
   teacherClass: string[];
   subjects: string[];
   staffNo?: string;
-  medium?: string | string[];      
-  relation?: string;             
+  medium?: string | string[];
+  relation?: string;
 }
 
 // Add this alias so RegisterFormValues is defined and matches the form shape
@@ -119,7 +119,7 @@ type TeacherAssignment = {
   subjects: string[];
   classes: string[];
   medium: string[];
-  id: string; 
+  id: string;
 };
 
 const steps = ['Basic Information', 'Role Details'];
@@ -156,8 +156,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       teacherClass: [],
       subjects: [],
       medium: [],
-      location: "", 
-      userRole: "user", 
+      location: "",
+      userRole: "user",
     }
   });
 
@@ -327,65 +327,65 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-const onSubmit = (data: RegisterFormValues) => {
-  if (!registeredUser) return;
+  const onSubmit = (data: RegisterFormValues) => {
+    if (!registeredUser) return;
 
-  const formData = new FormData();
-  formData.append('userId', registeredUser.userId.toString());
-  formData.append('userType', registeredUser.userType);
+    const formData = new FormData();
+    formData.append('userId', registeredUser.userId.toString());
+    formData.append('userType', registeredUser.userType);
 
-  const role = (registeredUser.userType || '').toLowerCase();
+    const role = (registeredUser.userType || '').toLowerCase();
 
-  if (role === "teacher") {
-    formData.append('staffNo', data.staffNo || '');
-    formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
-      teacherGrade: assignment.grades[0],
-      teacherClass: assignment.classes[0],
-      subject: assignment.subjects[0],
-      medium: assignment.medium[0],
-      staffNo: data.staffNo,
-      userId: registeredUser.userId,
-      userType: registeredUser.userType
-    }))));
-  } 
-  else if (role === "parent") {
-    // Create a parent assignment array with ALL the form data
-    const parentAssignments = [{
-      studentAdmissionNo: data.studentAdmissionNo,
-      profession: data.profession,
-      relation: data.relation,
-      parentContact: data.parentContact,
-      userId: registeredUser.userId,
-      userType: registeredUser.userType,
-      status: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }];
+    if (role === "teacher") {
+      formData.append('staffNo', data.staffNo || '');
+      formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
+        teacherGrade: assignment.grades[0],
+        teacherClass: assignment.classes[0],
+        subject: assignment.subjects[0],
+        medium: assignment.medium[0],
+        staffNo: data.staffNo,
+        userId: registeredUser.userId,
+        userType: registeredUser.userType
+      }))));
+    }
+    else if (role === "parent") {
+      // Create a parent assignment array with ALL the form data
+      const parentAssignments = [{
+        studentAdmissionNo: data.studentAdmissionNo,
+        profession: data.profession,
+        relation: data.relation,
+        parentContact: data.parentContact,
+        userId: registeredUser.userId,
+        userType: registeredUser.userType,
+        status: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }];
 
-    // Send the parent data properly
-    formData.append('parentData', JSON.stringify(parentAssignments));
-  }
-  else if (role === "student") {
-    // Handle student data similarly
-    const studentAssignments = [{
-      studentGrade: data.studentGrade,
-      studentClass: data.studentClass,
-      medium: data.medium,
-      studentAdmissionNo: data.studentAdmissionNo,
-      parentContact: data.parentContact,
-      parentProfession: data.parentProfession,
-      userId: registeredUser.userId,
-      userType: registeredUser.userType
-    }];
-    
-    formData.append('studentData', JSON.stringify(studentAssignments));
-  }
+      // Send the parent data properly
+      formData.append('parentData', JSON.stringify(parentAssignments));
+    }
+    else if (role === "student") {
+      // Handle student data similarly
+      const studentAssignments = [{
+        studentGrade: data.studentGrade,
+        studentClass: data.studentClass,
+        medium: data.medium,
+        studentAdmissionNo: data.studentAdmissionNo,
+        parentContact: data.parentContact,
+        parentProfession: data.parentProfession,
+        userId: registeredUser.userId,
+        userType: registeredUser.userType
+      }];
 
-  // Call the appropriate registration function
-  if (role === "student") registerStudentData(formData);
-  else if (role === "teacher") registerTeacherData(formData);
-  else if (role === "parent") registerParentData(formData);
-};
+      formData.append('studentData', JSON.stringify(studentAssignments));
+    }
+
+    // Call the appropriate registration function
+    if (role === "student") registerStudentData(formData);
+    else if (role === "teacher") registerTeacherData(formData);
+    else if (role === "parent") registerParentData(formData);
+  };
 
   // const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
   //   if (event.target.files && event.target.files.length > 0) {
@@ -932,7 +932,7 @@ const onSubmit = (data: RegisterFormValues) => {
                     label="Subjects"
                     fullWidth
                     variant="outlined"
-                    SelectProps={{                      
+                    SelectProps={{
                       value: watch("subjects") || [],
                       onChange: (e) => {
                         const value = Array.isArray(e.target.value) ? e.target.value : [e.target.value];
@@ -1154,35 +1154,6 @@ const onSubmit = (data: RegisterFormValues) => {
                   >
                     {grades.map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}
                   </TextField>
-
-                  <TextField
-                    select
-                    label="Class"
-                    fullWidth
-                    variant="outlined"
-                    {...register("studentClass", { required: "Class is required" })}
-                    error={!!errors.studentClass}
-                    helperText={errors.studentClass?.message}
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
-                  >
-                    {classes.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                  </TextField>
-                </Stack>
-
-                <Stack direction="row" spacing={2}>
-                  <TextField
-                    select
-                    label="Medium"
-                    fullWidth
-                    variant="outlined"
-                    {...register("medium", { required: "Medium is required" })}
-                    error={!!errors.medium}
-                    helperText={errors.medium?.message}
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
-                  >
-                    {mediumOptions.map((m) => <MenuItem key={m} value={m.toLowerCase()}>{m}</MenuItem>)}
-                  </TextField>
-
                   <TextField
                     label="Admission Number"
                     fullWidth

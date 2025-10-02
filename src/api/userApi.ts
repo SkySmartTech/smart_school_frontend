@@ -79,12 +79,18 @@ export async function registerUser(userData: FormData) {
 // Role-specific registration functions
 export async function registerStudent(studentData: FormData) {
   try {
-    // Try reading a JSON string payload first (preferred)
+    // Read JSON string (preferred) or fallback to individual fields
     const raw = studentData.get('studentData');
     let studentArr: any[] = [];
 
     if (raw) {
-      studentArr = JSON.parse(raw as string);
+      // raw may be a JSON string (as created in RegisterForm)
+      if (typeof raw === 'string') {
+        studentArr = JSON.parse(raw);
+      } else {
+        // If it's not a string, attempt to use it directly
+        studentArr = raw as unknown as any[];
+      }
     } else {
       // fallback: convert individual fields into a single-item array
       studentArr = [
@@ -99,20 +105,31 @@ export async function registerStudent(studentData: FormData) {
       ];
     }
 
+    // Grab userId and userType from FormData so we can send them as headers
+    const userIdHeader = String(studentData.get('userId') ?? '');
+    const userTypeHeader = String(studentData.get('userType') ?? '');
+
     const requestBody = {
       studentData: studentArr.map((item: any) => ({
         studentGrade: item.studentGrade,
         studentClass: item.studentClass,
         medium: item.medium,
         studentAdmissionNo: item.studentAdmissionNo,
-        userId: studentData.get('userId'),
-        userType: studentData.get('userType'),
+        // ensure each entry has userId/userType; backend's store() expects them from headers,
+        // but keeping them here doesn't hurt; headers are primary for your controller.store()
+        userId: item.userId ?? userIdHeader,
+        userType: item.userType ?? userTypeHeader,
       })),
     };
 
     const response = await API.post("/api/user-student-register", requestBody, {
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        "Content-Type": "application/json",
+        "userId": userIdHeader,
+        "userType": userTypeHeader,
+      },
     });
+
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -163,21 +180,25 @@ export async function registerParent(parentData: FormData) {
   try {
     // Parse parent data array from FormData
     const rawParentData = parentData.get('parentData');
-    
+
     if (!rawParentData) {
       throw new Error("Parent data is required");
     }
 
-    const parentAssignments = JSON.parse(rawParentData as string);
-    
+    const parentAssignments = typeof rawParentData === 'string' ? JSON.parse(rawParentData) : (rawParentData as unknown as any[]);
+
     if (!parentAssignments || !parentAssignments.length) {
       throw new Error("Parent data is required");
     }
 
-    // Validate that all required fields are present
+    // Grab headers
+    const userIdHeader = String(parentData.get('userId') ?? '');
+    const userTypeHeader = String(parentData.get('userType') ?? '');
+
+    // Validate that all required fields are present on the first item
     const requiredFields = ['studentAdmissionNo', 'profession', 'relation', 'parentContact'];
     const firstAssignment = parentAssignments[0];
-    
+
     for (const field of requiredFields) {
       if (!firstAssignment[field]) {
         throw new Error(`${field} is required`);
@@ -191,24 +212,26 @@ export async function registerParent(parentData: FormData) {
         profession: assignment.profession,
         relation: assignment.relation,
         parentContact: assignment.parentContact,
-        userId: assignment.userId,
-        userType: assignment.userType,
-        status: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        userId: assignment.userId ?? userIdHeader,
+        userType: assignment.userType ?? userTypeHeader,
+        status: assignment.status ?? true,
+        created_at: assignment.created_at ?? new Date().toISOString(),
+        updated_at: assignment.updated_at ?? new Date().toISOString()
       }))
     };
 
-    console.log('Sending parent data:', JSON.stringify(requestBody, null, 2)); 
+    console.log('Sending parent data:', JSON.stringify(requestBody, null, 2));
 
     const response = await API.post("/api/user-parent-register", requestBody, {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'userId': userIdHeader,
+        'userType': userTypeHeader
       }
     });
     return response.data;
   } catch (error) {
-    console.error('Parent registration error:', error); 
+    console.error('Parent registration error:', error);
     if (axios.isAxiosError(error)) {
       throw new Error(error.response?.data?.message || "Parent registration failed");
     }
