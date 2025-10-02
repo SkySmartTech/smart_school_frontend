@@ -37,22 +37,21 @@ import {
 import Sidebar from "../components/Sidebar";
 import { useCustomTheme } from '../context/ThemeContext';
 import {
-  fetchSchools,
   fetchGrades,
   fetchSubjects,
   fetchClasses,
   fetchCommonSettings,
-  createSchool,
+  createSchool, 
   createGrade,
   createSubject,
   createClass,
   createCommonSetting,
-  updateSchool,
+  updateSchool, 
   updateGrade,
   updateSubject,
   updateClass,
   updateCommonSetting,
-  deleteSchool,
+  deleteSchool, 
   deleteGrade,
   deleteSubject,
   deleteClass,
@@ -61,7 +60,8 @@ import {
 import Navbar from '../components/Navbar';
 
 const SystemManagement = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  // Start at Tab 0 (Grades)
+  const [activeTab, setActiveTab] = useState(0); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hovered] = useState(false);
   const [loading, setLoading] = useState({
@@ -80,7 +80,6 @@ const SystemManagement = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Data states
-  const [schools, setSchools] = useState<any[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -96,24 +95,21 @@ const SystemManagement = () => {
     const fetchData = async () => {
       try {
         setLoading(prev => ({ ...prev, table: true }));
+        // Tab indexes are now 0, 1, 2, 3
         switch (activeTab) {
-          case 0:
-            const schoolsData = await fetchSchools();
-            setSchools(schoolsData);
-            break;
-          case 1:
+          case 0: // Grades
             const gradesData = await fetchGrades();
             setGrades(gradesData);
             break;
-          case 2:
+          case 1: // Subjects
             const subjectsData = await fetchSubjects();
             setSubjects(subjectsData);
             break;
-          case 3:
+          case 2: // Classes
             const classesData = await fetchClasses();
             setClasses(classesData);
             break;
-          case 4:
+          case 3: // Common Settings
             const commonSettingsData = await fetchCommonSettings();
             setCommonSettings(commonSettingsData);
             break;
@@ -138,7 +134,7 @@ const SystemManagement = () => {
   };
 
   const handleAddClick = () => {
-    // Reset formData including gradeId for 'Add New Item' form
+    // Reset formData
     setFormData({});
     setFieldErrors({});
     setEditId(null);
@@ -146,8 +142,8 @@ const SystemManagement = () => {
   };
 
   const handleEditClick = (item: any) => {
-    // Initialize formData.gradeId with item.id for the grade form
-    setFormData({ ...item, gradeId: item.id }); 
+    // Copy item data for editing. Since Grade ID is API-specific, we don't need it on the form.
+    setFormData({ ...item }); 
     setFieldErrors({});
     setEditId(item.id);
     setOpenForm(true);
@@ -156,22 +152,22 @@ const SystemManagement = () => {
   const handleDeleteClick = async (id: number) => {
     try {
       setLoading(prev => ({ ...prev, delete: true }));
+      // NOTE: Tab indexes are 0, 1, 2, 3
       switch (activeTab) {
-        case 0: await deleteSchool(id); break;
-        case 1: await deleteGrade(id); break;
-        case 2: await deleteSubject(id); break;
-        case 3: await deleteClass(id); break;
-        case 4: await deleteCommonSetting(id); break;
+        case 0: await deleteGrade(id); break; 
+        case 1: await deleteSubject(id); break; 
+        case 2: await deleteClass(id); break; 
+        case 3: await deleteCommonSetting(id); break; 
+        default: await deleteSchool(id); break; // Fallback
       }
       showSnackbar('Item deleted successfully', 'success');
 
       // Refresh data
       switch (activeTab) {
-        case 0: setSchools(await fetchSchools()); break;
-        case 1: setGrades(await fetchGrades()); break;
-        case 2: setSubjects(await fetchSubjects()); break;
-        case 3: setClasses(await fetchClasses()); break;
-        case 4: setCommonSettings(await fetchCommonSettings()); break;
+        case 0: setGrades(await fetchGrades()); break;
+        case 1: setSubjects(await fetchSubjects()); break;
+        case 2: setClasses(await fetchClasses()); break;
+        case 3: setCommonSettings(await fetchCommonSettings()); break;
       }
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -188,21 +184,30 @@ const SystemManagement = () => {
 
       if (editId) {
         // Update existing item
+        // NOTE: Tab indexes are 0, 1, 2, 3
         switch (activeTab) {
-          case 0: await updateSchool(editId, formData); break;
-          case 1: await updateGrade(editId, formData); break;
-          case 2: await updateSubject(editId, formData); break;
-          case 3: await updateClass(editId, formData); break;
-          case 4: await updateCommonSetting(editId, formData); break;
+          case 0: await updateGrade(editId, formData); break; 
+          case 1: await updateSubject(editId, formData); break; 
+          case 2: await updateClass(editId, formData); break; 
+          case 3: await updateCommonSetting(editId, formData); break; 
+          default: await updateSchool(editId, formData); break; // Fallback
         }
       } else {
         // Create new item
+        // NOTE: The createGrade API endpoint requires both 'grade' and 'gradeId'. 
+        // We ensure formData contains both if we are creating.
         switch (activeTab) {
-          case 0: await createSchool(formData); break;
-          case 1: await createGrade(formData); break;
-          case 2: await createSubject(formData); break;
-          case 3: await createClass(formData); break;
-          case 4: await createCommonSetting(formData); break;
+          case 0: 
+                if (!formData.gradeId) {
+                    setFieldErrors(prev => ({ ...prev, gradeId: "Grade ID is required for new grades." }));
+                    throw new Error("Validation Failed");
+                }
+                await createGrade(formData); 
+                break; 
+          case 1: await createSubject(formData); break; 
+          case 2: await createClass(formData); break; 
+          case 3: await createCommonSetting(formData); break; 
+          default: await createSchool(formData); break; // Fallback
         }
       }
 
@@ -211,16 +216,17 @@ const SystemManagement = () => {
 
       // Refresh data
       switch (activeTab) {
-        case 0: setSchools(await fetchSchools()); break;
-        case 1: setGrades(await fetchGrades()); break;
-        case 2: setSubjects(await fetchSubjects()); break;
-        case 3: setClasses(await fetchClasses()); break;
-        case 4: setCommonSettings(await fetchCommonSettings()); break;
+        case 0: setGrades(await fetchGrades()); break;
+        case 1: setSubjects(await fetchSubjects()); break;
+        case 2: setClasses(await fetchClasses()); break;
+        case 3: setCommonSettings(await fetchCommonSettings()); break;
       }
     } catch (error: any) {
       console.error('Error saving data:', error);
 
-      if (error.response && error.response.data) {
+      if (error.message === "Validation Failed") {
+            showSnackbar('Please fill out all required fields.', 'error');
+      } else if (error.response && error.response.data) {
         if (error.response.data.errors) {
           setFieldErrors(error.response.data.errors);
         } else if (error.response.data.message) {
@@ -261,45 +267,15 @@ const SystemManagement = () => {
   };
 
   const renderTable = () => {
+    // NOTE: Tab indexes start at 0 (Grades)
     switch (activeTab) {
-      case 0: // Manage School
+      case 0: // Grades
         return (
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>School Name</TableCell>
-                  <TableCell>Updated At</TableCell>
-                  <TableCell>Created At</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {schools.map((school) => (
-                  <TableRow key={school.id}>
-                    <TableCell>{school.schoolName || school.school}</TableCell> 
-                    <TableCell>{school.updated_at}</TableCell>
-                    <TableCell>{school.created_at}</TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => handleEditClick(school)}>
-                        <EditIcon color="primary" />
-                      </IconButton>
-                      <IconButton onClick={() => handleDeleteClick(school.id)}>
-                        <DeleteIcon color="error" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        );
-      case 1: // Grades
-        return (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
+                  {/* REMOVED GRADE ID COLUMN FROM TABLE */}
                   <TableCell>Grade Name</TableCell>
                   <TableCell>Updated At</TableCell>
                   <TableCell>Created At</TableCell>
@@ -309,6 +285,7 @@ const SystemManagement = () => {
               <TableBody>
                 {grades.map((grade) => (
                   <TableRow key={grade.id}>
+                    {/* REMOVED GRADE ID CELL */}
                     <TableCell>{grade.grade}</TableCell> 
                     <TableCell>{grade.updated_at}</TableCell>
                     <TableCell>{grade.created_at}</TableCell>
@@ -326,13 +303,14 @@ const SystemManagement = () => {
             </Table>
           </TableContainer>
         );
-      case 2: // Subjects
+      case 1: // Subjects
         return (
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Subject Name</TableCell>
+                  <TableCell>Medium</TableCell>
                   <TableCell>Updated At</TableCell>
                   <TableCell>Created At</TableCell>
                   <TableCell>Actions</TableCell>
@@ -342,6 +320,7 @@ const SystemManagement = () => {
                 {subjects.map((subject) => (
                   <TableRow key={subject.id}>
                     <TableCell>{subject.subjectName}</TableCell>
+                    <TableCell>{subject.medium}</TableCell>
                     <TableCell>{subject.updated_at}</TableCell>
                     <TableCell>{subject.created_at}</TableCell>
                     <TableCell>
@@ -358,13 +337,14 @@ const SystemManagement = () => {
             </Table>
           </TableContainer>
         );
-      case 3: // Classes
+      case 2: // Classes
         return (
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Class Name</TableCell>
+                  <TableCell>Grade</TableCell>
                   <TableCell>Updated At</TableCell>
                   <TableCell>Created At</TableCell>
                   <TableCell>Actions</TableCell>
@@ -374,6 +354,7 @@ const SystemManagement = () => {
                 {classes.map((cls) => (
                   <TableRow key={cls.id}>
                     <TableCell>{cls.class}</TableCell> 
+                    <TableCell>{cls.grade}</TableCell> 
                     <TableCell>{cls.updated_at}</TableCell>
                     <TableCell>{cls.created_at}</TableCell>
                     <TableCell>
@@ -385,12 +366,12 @@ const SystemManagement = () => {
                       </IconButton>
                     </TableCell>
                   </TableRow>
-                ))}
+))}
               </TableBody>
             </Table>
           </TableContainer>
         );
-      case 4: // Common Setting
+      case 3: // Common Setting
         return (
           <TableContainer component={Paper}>
             <Table>
@@ -419,7 +400,7 @@ const SystemManagement = () => {
                       </IconButton>
                     </TableCell>
                   </TableRow>
-                ))}
+))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -427,38 +408,28 @@ const SystemManagement = () => {
       default:
         return null;
     }
-  }; // <-- CORRECTLY CLOSES renderTable function
+  };
 
   const renderForm = () => {
+    // NOTE: Tab indexes start at 0 (Grades)
     switch (activeTab) {
-      case 0: // Schools
-        return (
-          <TextField
-            fullWidth
-            label="School Name"
-            name="schoolName"
-            value={formData.schoolName || ''}
-            onChange={handleFormChange}
-            margin="normal"
-            error={!!fieldErrors.schoolName}
-            helperText={fieldErrors.schoolName}
-          />
-        );
-      case 1: // Grades
+      case 0: // Grades
         return (
           <>
-              {/* Grade ID field for backend validation */}
-              <TextField
-              fullWidth
-              label="Grade ID"
-              name="gradeId" 
-              value={formData.gradeId || ''}
-              onChange={handleFormChange}
-              margin="normal"
-                disabled={!!editId} 
-              error={!!fieldErrors.gradeId}
-              helperText={editId ? "Grade ID cannot be changed" : fieldErrors.gradeId}
-            />
+              {/* Conditional Grade ID field: Visible only for ADD (editId is null) */}
+              {!editId && (
+                <TextField
+                  fullWidth
+                  label="Grade ID (Required for creation)"
+                  name="gradeId" 
+                  value={formData.gradeId || ''}
+                  onChange={handleFormChange}
+                  margin="normal"
+                  error={!!fieldErrors.gradeId}
+                  helperText={fieldErrors.gradeId}
+                />
+              )}
+              
             <TextField
               fullWidth
               label="Grade Name"
@@ -471,7 +442,7 @@ const SystemManagement = () => {
             />
           </>
         );
-      case 2: // Subjects
+      case 1: // Subjects
         return (
           <>
               <TextField
@@ -497,20 +468,20 @@ const SystemManagement = () => {
             />
           </>
         );
-      case 3: // Classes
+      case 2: // Classes
         return (
           <>
             <TextField
               fullWidth
               label="Class Name"
-              name="class" // Corrected name from className to class
+              name="class"
               value={formData.class || ''}
               onChange={handleFormChange}
               margin="normal"
               error={!!fieldErrors.class}
               helperText={fieldErrors.class}
             />
-            {/* Dropdown for grades - Assuming a separate API call for grade options */}
+            {/* Dropdown for grades */}
             <FormControl fullWidth margin="normal" error={!!fieldErrors.grade}>
               <InputLabel>Grade</InputLabel>
               <Select
@@ -528,7 +499,7 @@ const SystemManagement = () => {
             </FormControl>
           </>
         );
-      case 4: // Common Settings
+      case 3: // Common Settings
         return (
           <>
             <TextField
@@ -585,7 +556,6 @@ const SystemManagement = () => {
         <Box sx={{ p: 3, flexGrow: 1, overflow: "auto" }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
             <Tabs value={activeTab} onChange={handleTabChange} aria-label="system management tabs">
-              <Tab label="Manage School" />
               <Tab label="Grades" />
               <Tab label="Subjects" />
               <Tab label="Classes" />
