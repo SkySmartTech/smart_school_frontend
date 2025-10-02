@@ -359,7 +359,7 @@ const ClassTeacherReport: React.FC = () => {
                                 <Typography fontWeight={600} mb={2}>
                                     Subject Wise Marks
                                 </Typography>
-                                <ResponsiveContainer width="100%" height={350}>
+                                <ResponsiveContainer width="90%" height={350}>
                                     {isLoading ? (
                                         <Box
                                             sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 250 }}
