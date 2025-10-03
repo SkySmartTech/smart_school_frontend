@@ -10,6 +10,7 @@ import UserAccessManagementSystem from "./views/UserAccessManagementSystem";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
 import ClassTeacherReport from "./views/Reports/ClassTeacherReport";
 import AddClassTeacher from "./views/AddClassTeacher";
+import AddStudent from "./views/AddStudent";
 
 // Public pages
 const LoginPage = React.lazy(() => import("./views/LoginPage/Login"));
@@ -105,6 +106,16 @@ function AppRoutes() {
             <ProtectedRoute permission="addClassTeacher">
               <Suspense fallback={<PageLoader />}>
                 <AddClassTeacher />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/addStudent"
+          element={
+            <ProtectedRoute permission="addStudent">
+              <Suspense fallback={<PageLoader />}>
+                <AddStudent />
               </Suspense>
             </ProtectedRoute>
           }

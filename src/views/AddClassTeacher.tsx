@@ -482,8 +482,11 @@ const AddClassTeacher = () => {
                   onChange={(e) => onGradeChange(e.target.value as string)}
                 >
                   <MenuItem value="">All Grades</MenuItem>
-                  {gradeOptions.map(grade => (
-                    <MenuItem key={grade} value={grade}>{grade}</MenuItem>
+                  {/* Grade select: use index fallback for key */}
+                  {gradeOptions.map((grade, gIdx) => (
+                    <MenuItem key={grade || `grade-${gIdx}`} value={grade}>
+                      {grade}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -496,8 +499,11 @@ const AddClassTeacher = () => {
                   onChange={(e) => setPopupFormData(prev => ({ ...prev, selectedClass: e.target.value as string }))}
                 >
                   <MenuItem value="">All Classes</MenuItem>
-                  {getClassesForGrade(popupFormData.selectedGrade).map(cls => (
-                    <MenuItem key={cls} value={cls}>{cls}</MenuItem>
+                  {/* Class select inside popup: use index fallback for key */}
+                  {getClassesForGrade(popupFormData.selectedGrade).map((cls, cIdx) => (
+                    <MenuItem key={cls || `class-${cIdx}`} value={cls}>
+                      {cls}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -524,19 +530,17 @@ const AddClassTeacher = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {popupFormData.teachers.map((teacher) => (
+                  {popupFormData.teachers.map((teacher, tIdx) => (
                     <TableRow 
-                      key={teacher.id}
+                      key={teacher.id || `teacher-${tIdx}`}
                       onClick={() => setSelectedTeacher(teacher)}
                       sx={{ 
                         cursor: 'pointer',
                         backgroundColor: selectedTeacher?.id === teacher.id ? theme.palette.action.selected : 'inherit',
-                        '&:hover': {
-                          backgroundColor: theme.palette.action.hover
-                        }
+                        '&:hover': { backgroundColor: theme.palette.action.hover }
                       }}
                     >
-                      <TableCell>{teacher.staffNo}</TableCell>
+                      <TableCell>{teacher.staffNo  || 'Not assigned'}</TableCell>
                       <TableCell>{teacher.name}</TableCell>
                       <TableCell>{teacher.grade || 'Not assigned'}</TableCell>
                       <TableCell>{teacher.class || 'Not assigned'}</TableCell>

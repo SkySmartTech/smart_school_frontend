@@ -37,6 +37,7 @@ export interface SearchTeachersParams {
 interface ApiClassTeacher {
   teacherClass: any;
   teacherGrade: any;
+  staffNo: string;
   name: string;
   id: number;
   grade: string;
@@ -46,22 +47,6 @@ interface ApiClassTeacher {
   updated_at?: string;
 }
 
-// Teacher-by-grade-and-class raw shapes
-interface ApiTeacherUser {
-  id: number | string;
-  name?: string;
-  teacher?: Array<{
-    id?: number | string;
-    teacherGrade?: string;
-    teacherClass?: string;
-    staffNo?: string;
-    userId?: string | number;
-    subject?: string;
-    medium?: string;
-    created_at?: string;
-    updated_at?: string;
-  }>;
-}
 
 // Auth header function
 const getAuthHeader = () => {
@@ -106,27 +91,42 @@ export async function fetchTeachersByGradeAndClass(grade: string, className: str
       getAuthHeader()
     );
 
-    const raw = Array.isArray(res.data) ? res.data as ApiTeacherUser[] : [];
+    const raw = Array.isArray(res.data) ? res.data as any[] : [];
 
-    const mapped: Teacher[] = raw.flatMap(user => {
-      if (!Array.isArray(user.teacher) || user.teacher.length === 0) {
+
+    const mapped: Teacher[] = raw.flatMap((item, idx) => {
+
+      if (item && (item.staffNo || item.teacherGrade || item.teacherClass) && !Array.isArray(item.teacher)) {
+        const idCandidate = item.userId ?? item.id ?? `${item.staffNo ?? 't'}-${idx}`;
         return [{
-          id: String(user.id ?? ""),
-          staffNo: "",
-          name: user.name ?? "",
-          grade: "",
-          class: ""
+          id: String(idCandidate),
+          staffNo: item.staffNo ?? "",
+          name: item.name ?? item.displayName ?? "",
+          grade: item.teacherGrade ?? "",
+          class: item.teacherClass ?? ""
         }];
       }
 
-      return user.teacher.map(t => ({
-        // prefer inner teacher id if present, fall back to userId or parent user id
-        id: String(t.id ?? t.userId ?? user.id ?? ""),
-        staffNo: t.staffNo ?? "",
-        name: user.name ?? "",
-        grade: t.teacherGrade ?? "",
-        class: t.teacherClass ?? ""
-      }));
+      
+      if (Array.isArray(item.teacher) && item.teacher.length > 0) {
+        return item.teacher.map((t: any, tIdx: number) => ({
+          
+          id: String(t.id ?? t.userId ?? item.id ?? `u-${idx}-t-${tIdx}`),
+          staffNo: t.staffNo ?? "",
+          name: item.name ?? "",
+          grade: t.teacherGrade ?? "",
+          class: t.teacherClass ?? ""
+        }));
+      }
+
+
+      return [{
+        id: String(item.id ?? `unknown-${idx}`),
+        staffNo: item.staffNo ?? "",
+        name: item.name ?? "",
+        grade: item.teacherGrade ?? item.teacher?.[0]?.teacherGrade ?? "",
+        class: item.teacherClass ?? item.teacher?.[0]?.teacherClass ?? ""
+      }];
     });
 
     return mapped;
@@ -145,6 +145,7 @@ export async function fetchClassTeachersByGrade(grade: string): Promise<ClassTea
       id: item.id,
       grade: item.teacherGrade,
       className: item.teacherClass,
+      staffNo: item.staffNo,
       teacherName: item.name || "Not assigned"
     }));
   } catch (error) {
@@ -205,6 +206,7 @@ export async function getAllClassTeachers(): Promise<ClassTeacher[]> {
       id: item.id,
       grade: item.teacherGrade,
       className: item.teacherClass,
+      staffNo: item.staffNo,
       teacherName: item.name || "Not assigned"
     }));
   } catch (error) {
