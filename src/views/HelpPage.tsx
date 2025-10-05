@@ -89,7 +89,7 @@ const HelpPage = () => {
           mt: 4
         }}>
           <Typography variant="h6" fontWeight="bold" mb={2} color="text.primary">
-            How can we help you..?
+            How can we help you....?
           </Typography>
           <TextField
             fullWidth
