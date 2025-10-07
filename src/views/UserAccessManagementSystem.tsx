@@ -49,6 +49,8 @@ const defaultPermissions: Record<PermissionKey, boolean> = {
 
     // User Profile
     userProfile: false,
+    help: false,
+    
 
     // Other Settings
     autoRefresh: false,
@@ -386,6 +388,7 @@ const UserAccessManagementSystem = () => {
 
                                         {renderCheckbox("systemManagement", "System Management", true)}
                                         {renderCheckbox("userProfile", "User profile", true)}
+                                        {renderCheckbox("help", "Help", true)}
                                     </>
                                 ))}
 

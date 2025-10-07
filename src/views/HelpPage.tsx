@@ -1,203 +1,242 @@
-import { useState } from "react";
+import React, { useState } from 'react';
 import {
-  Box,
-  Button,
-  InputAdornment,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  TextField,
-  Typography,
-  AppBar,
-  Paper,
-  CssBaseline,
-  useTheme,
-  Stack,
-} from "@mui/material";
+    Box,
+    Typography,
+    Paper,
+    Divider,
+    Button,
+    InputBase,
+    Link as MuiLink,
+    Stack,
+    CssBaseline,
+    useTheme,
+    AppBar
+} from '@mui/material';
 import {
-  Search,
-  AccountCircle,
-  RocketLaunch,
-  Update,
-  Settings,
-  HelpOutline,
-  Lock
-} from "@mui/icons-material";
-import Sidebar from "../components/Sidebar";
-import { useNavigate } from "react-router-dom";
-import { useCustomTheme } from "../context/ThemeContext";
-import Navbar from "../components/Navbar";
+    Search as SearchIcon,
+    MenuBook as MenuBookIcon,
+    ArrowForwardIos as ArrowForwardIosIcon,
+    RocketLaunch as RocketLaunchIcon,
+    AccountCircle as AccountCircleIcon,
+    Update as UpdateIcon,
+    Settings as SettingsIcon,
+    HelpOutline as HelpOutlineIcon,
+    Lock as LockIcon,
+    School as SchoolIcon,
+    Group as GroupIcon,
+    People as PeopleIcon
+} from '@mui/icons-material';
 
-const HelpPage = () => {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hovered] = useState(false);
-  const theme = useTheme();
-  useCustomTheme();
+// Assume these components are imported from your existing structure
+import Sidebar from "../components/Sidebar"; // Adjust path as necessary
+import Navbar from "../components/Navbar";   // Adjust path as necessary
+import { useCustomTheme } from '../context/ThemeContext'; // Assuming you have this context
 
+// --- Helper Components for the Slots ---
 
-  // Help topics with navigation routes
-  const helpTopics = [
-    { icon: <RocketLaunch />, text: "Getting Started", route: "/getting-started" },
-    { icon: <AccountCircle />, text: "My Account", route: "/UserProfile" },
-    { icon: <Update />, text: "System Updates", route: "/system-updates" },
-    { icon: <Settings />, text: "Settings & Preferences", route: "/settings" },
-    { icon: <HelpOutline />, text: "FAQs & Troubleshooting", route: "/faqs" },
-    { icon: <Lock />, text: "Security & Privacy", route: "/security" },
-  ];
+interface HelpSlotProps {
+    icon: React.ReactNode;
+    title: string;
+    onClick?: () => void;
+    isManual?: boolean;
+}
 
-  // Simulated system-wide search results (sidebar + help topics)
-  const allItems = [...helpTopics.map(topic => topic.text), "Dashboard", "Orders", "Reports", "Users", "Settings"];
-  const filteredItems = searchTerm ? allItems.filter(item => item.toLowerCase().includes(searchTerm.toLowerCase())) : [];
+const HelpSlot: React.FC<HelpSlotProps> = ({ icon, title, onClick, isManual = false }) => {
+    const theme = useTheme();
 
-  return (
-    <Box sx={{ display: "flex", width: "100vw", height: "100vh", minHeight: "100vh", bgcolor: theme.palette.background.default }}>
-      <CssBaseline />
-      <Sidebar
-        open={sidebarOpen || hovered}
-        setOpen={setSidebarOpen}
+    // Use a lighter gray for manuals, slightly darker for general topics
+    const bgColor = isManual ? theme.palette.action.hover : theme.palette.background.default;
 
-      />
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        <AppBar
-          position="static"
-          sx={{
-            bgcolor: 'background.paper',
-            boxShadow: 'none',
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            zIndex: theme.zIndex.drawer + 1,
-            color: theme.palette.text.primary
-          }}
-        >
-          <Navbar
-            title="Help"
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        </AppBar>
-
-        {/* Search Box */}
-        <Box sx={{
-          textAlign: "center",
-          height: "200px",
-          bgcolor: theme.palette.background.paper,
-          p: 4,
-          borderRadius: 5,
-          mb: 3,
-          mt: 4
-        }}>
-          <Typography variant="h6" fontWeight="bold" mb={2} color="text.primary">
-            How can we help you....?
-          </Typography>
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search color="action" />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <Button variant="outlined" onClick={() => console.log("Search clicked")}>
-                  Search
-                </Button>
-              ),
-              sx: { borderRadius: 50 }
+    return (
+        <MuiLink
+            component="button"
+            onClick={onClick}
+            sx={{
+                flex: 1,
+                minWidth: { xs: '100%', sm: isManual ? '30%' : '30%' }, // Allows 3 manuals per row, 3 topics per row
+                p: 2,
+                borderRadius: theme.shape.borderRadius,
+                backgroundColor: isManual ? theme.palette.grey[100] : theme.palette.grey[50], // Light gray background
+                border: `1px solid ${theme.palette.divider}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                transition: 'background-color 0.2s, transform 0.1s',
+                '&:hover': {
+                    backgroundColor: isManual ? theme.palette.grey[200] : theme.palette.action.hover,
+                    transform: 'translateY(-2px)',
+                    boxShadow: theme.shadows[1],
+                    textDecoration: 'none',
+                },
+                // Ensures color matches the mode regardless of parent link
+                color: theme.palette.text.primary,
             }}
-            sx={{ maxWidth: 500, bgcolor: theme.palette.background.paper }}
-          />
-        </Box>
+            underline="none"
+        >
+            <Stack direction="row" spacing={2} alignItems="center">
+                <Box sx={{ color: theme.palette.primary.main }}>
+                    {icon}
+                </Box>
+                <Typography variant="body1" fontWeight={500} sx={{ color: theme.palette.text.primary }}>
+                    {title}
+                </Typography>
+            </Stack>
+            {isManual && <ArrowForwardIosIcon sx={{ ml: 'auto', fontSize: 'small', color: theme.palette.text.secondary }} />}
+        </MuiLink>
+    );
+};
 
-        {/* Search Results */}
-        {searchTerm && filteredItems.length > 0 && (
-          <Box sx={{
-            bgcolor: theme.palette.background.paper,
-            p: 2,
-            borderRadius: 2,
-            mb: 2
-          }}>
-            <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
-              Search Results:
-            </Typography>
-            <List>
-              {filteredItems.map((item, index) => (
-                <ListItemButton
-                  key={index}
-                  onClick={() => console.log("Navigate to", item)}
-                  sx={{
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover
-                    }
-                  }}
-                >
-                  <ListItemText
-                    primary={item}
-                    primaryTypographyProps={{ color: 'text.primary' }}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
-          </Box>
-        )}
+// --- Main Component ---
 
-        {/* Help Topics - Now horizontal */}
-        <Box sx={{
-          bgcolor: theme.palette.background.paper,
-          p: 3,
-          borderRadius: 2
-        }}>
-          <Typography variant="h6" fontWeight="bold" mb={2} color="text.primary">
-            Help Topics
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={2}
-            flexWrap="wrap"
-            useFlexGap
-          >
-            {helpTopics.map((topic, index) => (
-              <Box
-                key={index}
-                sx={{
-                  width: { xs: '100%', sm: '48%', md: '31%' }, // Mimic Grid: 12, 6, 4
-                  mb: 2,
-                }}
-              >
-                <Paper
-                  elevation={2}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    bgcolor: theme.palette.background.default,
-                    "&:hover": {
-                      bgcolor: theme.palette.action.hover
-                    }
-                  }}
-                  onClick={() => navigate(topic.route)}
+const HelpPage: React.FC = () => {
+    const theme = useTheme();
+    useCustomTheme(); 
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const handleSearch = () => {
+        alert("Searching for help topics...");
+    };
+
+    const handleManualClick = (manualType: string) => {
+        console.log(`Opening ${manualType} Manual...`);
+        alert(`Simulating opening ${manualType} Manual.`);
+    };
+
+    const helpTopics = [
+        { icon: <RocketLaunchIcon />, title: "Getting Started" },
+        { icon: <AccountCircleIcon />, title: "My Account" },
+        { icon: <UpdateIcon />, title: "System Updates" },
+        { icon: <SettingsIcon />, title: "Settings & Preferences" },
+        { icon: <HelpOutlineIcon />, title: "FAQs & Troubleshooting" },
+        { icon: <LockIcon />, title: "Security & Privacy" },
+    ];
+
+    const manualSlots = [
+        { icon: <PeopleIcon />, title: "Parent's Manual", handler: () => handleManualClick("Parent") },
+        { icon: <SchoolIcon />, title: "Student's Manual", handler: () => handleManualClick("Student") },
+        { icon: <MenuBookIcon />, title: "Teacher's Manual", handler: () => handleManualClick("Teacher") },
+    ];
+
+    return (
+        <Box sx={{ display: "flex", width: "100vw", height: "100vh", minHeight: "100vh" }}>
+            <CssBaseline />
+            <Sidebar
+                open={sidebarOpen}
+                setOpen={setSidebarOpen}
+            />
+            <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+                <AppBar
+                    position="static"
+                    sx={{
+                        bgcolor: 'background.paper',
+                        boxShadow: 'none',
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        zIndex: theme.zIndex.drawer + 1,
+                        color: theme.palette.text.primary
+                    }}
                 >
-                  <Box display="flex" alignItems="center">
-                    <ListItemIcon sx={{ minWidth: 36, color: theme.palette.text.primary }}>
-                      {topic.icon}
-                    </ListItemIcon>
-                    <Typography variant="body1" color="text.primary">
-                      {topic.text}
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Box>
-            ))}
-          </Stack>
+                    <Navbar
+                        title="Help Center"
+                        sidebarOpen={sidebarOpen}
+                        setSidebarOpen={setSidebarOpen}
+                    />
+                </AppBar>
+
+                {/* Main Content Area */}
+                <Box
+                    sx={{
+                        p: 3,
+                        flexGrow: 1,
+                        overflow: "auto",
+                        backgroundColor: theme.palette.background.default,
+                    }}
+                >
+                    <Box 
+                        sx={{ 
+                            maxWidth: 900, 
+                            margin: '0 auto', 
+                            py: 2 
+                        }}
+                    >
+                        {/* Search Bar Section (Matching the screenshot style) */}
+                        <Box sx={{ textAlign: 'center', mb: 4 }}>
+                            <Typography variant="h5" fontWeight={600} mb={2} color="text.primary">
+                                How can we help you...?
+                            </Typography>
+                            <Paper
+                                elevation={1}
+                                sx={{
+                                    p: 0.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    maxWidth: 600,
+                                    margin: '0 auto',
+                                    borderRadius: theme.shape.borderRadius,
+                                }}
+                            >
+                                <SearchIcon color="action" sx={{ ml: 1, mr: 1 }} />
+                                <InputBase
+                                    placeholder="Search"
+                                    sx={{ ml: 1, flex: 1 }}
+                                />
+                                <Button 
+                                    onClick={handleSearch} 
+                                    variant="contained" 
+                                    sx={{ height: 40, borderRadius: theme.shape.borderRadius }}
+                                >
+                                    SEARCH
+                                </Button>
+                            </Paper>
+                        </Box>
+
+                        {/* --- User Manuals Section --- */}
+                        <Typography variant="h6" fontWeight={700} mb={2} color="text.primary">
+                            User Manuals
+                        </Typography>
+                        <Stack 
+                            direction={{ xs: 'column', sm: 'row' }} 
+                            spacing={2} 
+                            mb={4} 
+                            flexWrap="wrap"
+                        >
+                            {manualSlots.map((manual) => (
+                                <HelpSlot 
+                                    key={manual.title} 
+                                    icon={manual.icon} 
+                                    title={manual.title} 
+                                    onClick={manual.handler} 
+                                    isManual={true}
+                                />
+                            ))}
+                        </Stack>
+                        
+                        <Divider sx={{ mb: 4 }} />
+
+                        {/* Help Topics Section (Matching the screenshot style) */}
+                        <Typography variant="h6" fontWeight={700} mb={2} color="text.primary">
+                            Help Topics
+                        </Typography>
+                        <Stack 
+                            direction={{ xs: 'column', sm: 'row' }} 
+                            spacing={2} 
+                            flexWrap="wrap"
+                            useFlexGap // Enables spacing even with flexWrap
+                        >
+                            {helpTopics.map((topic) => (
+                                <HelpSlot 
+                                    key={topic.title} 
+                                    icon={topic.icon} 
+                                    title={topic.title} 
+                                    // onClick handler omitted or set to generic for placeholders
+                                />
+                            ))}
+                        </Stack>
+                    </Box>
+                </Box>
+            </Box>
         </Box>
-      </Box>
-    </Box>
-  );
+    );
 };
 
 export default HelpPage;
