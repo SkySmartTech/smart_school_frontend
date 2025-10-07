@@ -201,7 +201,7 @@ const UserProfile: React.FC = () => {
       updateUserProfileDetails(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      showSnackbar("Profile details updated successfully!", "success");
+      showSnackbar("Profile details updated successfully!!", "success");
       // after successful save, stop editing
       setEditingTeacher(false);
       setEditingParent(false);
