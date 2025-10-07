@@ -10,7 +10,7 @@ import UserAccessManagementSystem from "./views/UserAccessManagementSystem";
 import ManagementStaff from "./views/Reports/ManagementStaffReport";
 import ClassTeacherReport from "./views/Reports/ClassTeacherReport";
 import AddClassTeacher from "./views/AddClassTeacher";
-import AddStudent from "./views/AddStudent";
+import HelpPage from "./views/HelpPage";
 
 // Public pages
 const LoginPage = React.lazy(() => import("./views/LoginPage/Login"));
@@ -110,16 +110,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/addStudent"
-          element={
-            <ProtectedRoute permission="addStudent">
-              <Suspense fallback={<PageLoader />}>
-                <AddStudent />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
 
         <Route
           path="/userManagement"
@@ -186,6 +176,16 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+         <Route
+          path="/help"
+          element={
+            <ProtectedRoute permission="help">
+              <Suspense fallback={<PageLoader />}>
+                <HelpPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/userProfile"
@@ -198,6 +198,10 @@ function AppRoutes() {
           }
         />
       </Route>
+      
+      
+
+
 
       {/* Redirect root to dashboard if authenticated */}
       <Route

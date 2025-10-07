@@ -33,7 +33,6 @@ const defaultPermissions: Record<PermissionKey, boolean> = {
     //Add marks 
     addMarks: false,
     addClassTeacher: false,
-    addStudent: false,
     //Reports
     reports: false,
     managementStaffReport: false,
@@ -50,6 +49,8 @@ const defaultPermissions: Record<PermissionKey, boolean> = {
 
     // User Profile
     userProfile: false,
+    help: false,
+    
 
     // Other Settings
     autoRefresh: false,
@@ -371,8 +372,6 @@ const UserAccessManagementSystem = () => {
 
                                         {renderCheckbox("addClassTeacher", "Add Class Teacher", true)}
 
-                                        {renderCheckbox("addStudent", "Add Student", true)}
-
                                         {renderParentCheckbox(
                                             "userManagement",
                                             "User Management",
@@ -389,6 +388,7 @@ const UserAccessManagementSystem = () => {
 
                                         {renderCheckbox("systemManagement", "System Management", true)}
                                         {renderCheckbox("userProfile", "User profile", true)}
+                                        {renderCheckbox("help", "Help", true)}
                                     </>
                                 ))}
 
