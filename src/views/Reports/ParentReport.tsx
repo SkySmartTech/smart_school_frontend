@@ -508,7 +508,7 @@ const ParentReport: React.FC = () => {
                     </Stack>
                     <Footer />
                 </Box>
-                <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+                <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
                     <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
                         {snackbar.message}
                     </Alert>

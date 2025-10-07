@@ -5,7 +5,6 @@ import {
     Paper,
     Divider,
     Button,
-    InputBase,
     Link as MuiLink,
     Stack,
     CssBaseline,
@@ -13,18 +12,9 @@ import {
     AppBar
 } from '@mui/material';
 import {
-    Search as SearchIcon,
     MenuBook as MenuBookIcon,
     ArrowForwardIos as ArrowForwardIosIcon,
-    RocketLaunch as RocketLaunchIcon,
-    AccountCircle as AccountCircleIcon,
-    Update as UpdateIcon,
-    Settings as SettingsIcon,
-    HelpOutline as HelpOutlineIcon,
-    Lock as LockIcon,
-    School as SchoolIcon,
-    Group as GroupIcon,
-    People as PeopleIcon
+    HelpOutline as HelpOutlineIcon
 } from '@mui/icons-material';
 
 // Assume these components are imported from your existing structure
@@ -32,89 +22,84 @@ import Sidebar from "../components/Sidebar"; // Adjust path as necessary
 import Navbar from "../components/Navbar";   // Adjust path as necessary
 import { useCustomTheme } from '../context/ThemeContext'; // Assuming you have this context
 
-// --- Helper Components for the Slots ---
-
-interface HelpSlotProps {
-    icon: React.ReactNode;
+// Define the structure for a single manual link
+interface ManualLinkProps {
     title: string;
-    onClick?: () => void;
-    isManual?: boolean;
+    description: string;
+    onClick: () => void; // Function to handle navigation/opening PDF
 }
 
-const HelpSlot: React.FC<HelpSlotProps> = ({ icon, title, onClick, isManual = false }) => {
+// Helper component for a single manual link, designed to be clickable
+const ManualLink: React.FC<ManualLinkProps> = ({ title, description, onClick }) => {
     const theme = useTheme();
-
-    // Use a lighter gray for manuals, slightly darker for general topics
-    const bgColor = isManual ? theme.palette.action.hover : theme.palette.background.default;
 
     return (
         <MuiLink
             component="button"
             onClick={onClick}
             sx={{
-                flex: 1,
-                minWidth: { xs: '100%', sm: isManual ? '30%' : '30%' }, // Allows 3 manuals per row, 3 topics per row
+                width: '100%',
+                textAlign: 'left',
                 p: 2,
                 borderRadius: theme.shape.borderRadius,
-                backgroundColor: isManual ? theme.palette.grey[100] : theme.palette.grey[50], // Light gray background
-                border: `1px solid ${theme.palette.divider}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                transition: 'background-color 0.2s, transform 0.1s',
                 '&:hover': {
-                    backgroundColor: isManual ? theme.palette.grey[200] : theme.palette.action.hover,
-                    transform: 'translateY(-2px)',
-                    boxShadow: theme.shadows[1],
+                    backgroundColor: theme.palette.action.hover,
                     textDecoration: 'none',
                 },
-                // Ensures color matches the mode regardless of parent linkf
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 color: theme.palette.text.primary,
+                transition: 'background-color 0.2s',
             }}
             underline="none"
         >
             <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ color: theme.palette.primary.main }}>
-                    {icon}
+                <MenuBookIcon color="primary" />
+                <Box>
+                    <Typography variant="body1" fontWeight={600} color="text.primary">
+                        {title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {description}
+                    </Typography>
                 </Box>
-                <Typography variant="body1" fontWeight={500} sx={{ color: theme.palette.text.primary }}>
-                    {title}
-                </Typography>
             </Stack>
-            {isManual && <ArrowForwardIosIcon sx={{ ml: 'auto', fontSize: 'small', color: theme.palette.text.secondary }} />}
+            <ArrowForwardIosIcon sx={{ fontSize: 'small', color: theme.palette.text.secondary }} />
         </MuiLink>
     );
 };
 
-// --- Main Component ---
-
 const HelpPage: React.FC = () => {
     const theme = useTheme();
-    useCustomTheme(); 
+    useCustomTheme(); // Initialize custom theme/mode logic
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    const handleSearch = () => {
-        alert("Searching for help topics...");
-    };
-
+    // --- Manual Handlers (Placeholders) ---
     const handleManualClick = (manualType: string) => {
+        // In a real application, this would navigate to a specific route 
+        // or open a PDF/external link for the manual.
         console.log(`Opening ${manualType} Manual...`);
         alert(`Simulating opening ${manualType} Manual.`);
     };
+    // -------------------------------------
 
-    const helpTopics = [
-        { icon: <RocketLaunchIcon />, title: "Getting Started" },
-        { icon: <AccountCircleIcon />, title: "My Account" },
-        { icon: <UpdateIcon />, title: "System Updates" },
-        { icon: <SettingsIcon />, title: "Settings & Preferences" },
-        { icon: <HelpOutlineIcon />, title: "FAQs & Troubleshooting" },
-        { icon: <LockIcon />, title: "Security & Privacy" },
-    ];
-
-    const manualSlots = [
-        { icon: <PeopleIcon />, title: "Parent's Manual", handler: () => handleManualClick("Parent") },
-        { icon: <SchoolIcon />, title: "Student's Manual", handler: () => handleManualClick("Student") },
-        { icon: <MenuBookIcon />, title: "Teacher's Manual", handler: () => handleManualClick("Teacher") },
+    const manuals = [
+        { 
+            title: "Parent's Manual", 
+            description: "Guide for parents on viewing reports and interacting with the system.",
+            handler: () => handleManualClick("Parent") 
+        },
+        { 
+            title: "Student's Manual", 
+            description: "Instructions for students on accessing lessons and checking homework.",
+            handler: () => handleManualClick("Student") 
+        },
+        { 
+            title: "Teacher's Manual", 
+            description: "Detailed guide for teachers on grading, attendance, and content management.",
+            handler: () => handleManualClick("Teacher") 
+        },
     ];
 
     return (
@@ -136,7 +121,7 @@ const HelpPage: React.FC = () => {
                     }}
                 >
                     <Navbar
-                        title="Help Center"
+                        title="Help & Manuals"
                         sidebarOpen={sidebarOpen}
                         setSidebarOpen={setSidebarOpen}
                     />
@@ -148,91 +133,55 @@ const HelpPage: React.FC = () => {
                         p: 3,
                         flexGrow: 1,
                         overflow: "auto",
-                        backgroundColor: theme.palette.background.default,
+                        display: 'flex',
+                        justifyContent: 'center', // Center card horizontally
+                        alignItems: 'flex-start', // Align card to the top
+                        backgroundColor: theme.palette.background.default, // Match overall background
                     }}
                 >
-                    <Box 
-                        sx={{ 
-                            maxWidth: 900, 
-                            margin: '0 auto', 
-                            py: 2 
+                    {/* The minimalist Card based on User Profile screenshot */}
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            p: 4,
+                            width: { xs: '95%', sm: 600, md: 700 }, // Max width for minimalist look
+                            borderRadius: 2,
                         }}
                     >
-                        {/* Search Bar Section (Matching the screenshot style) */}
-                        <Box sx={{ textAlign: 'center', mb: 4 }}>
-                            <Typography variant="h5" fontWeight={600} mb={2} color="text.primary">
-                                How can we help you...?
+                        <Stack direction="row" spacing={2} alignItems="center" mb={3}>
+                            <HelpOutlineIcon sx={{ fontSize: 32, color: theme.palette.primary.main }} />
+                            <Typography variant="h5" fontWeight={700}>
+                                System Manuals
                             </Typography>
-                            <Paper
-                                elevation={1}
-                                sx={{
-                                    p: 0.5,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    width: '100%',
-                                    maxWidth: 600,
-                                    margin: '0 auto',
-                                    borderRadius: theme.shape.borderRadius,
-                                }}
-                            >
-                                <SearchIcon color="action" sx={{ ml: 1, mr: 1 }} />
-                                <InputBase
-                                    placeholder="Search"
-                                    sx={{ ml: 1, flex: 1 }}
-                                />
-                                <Button 
-                                    onClick={handleSearch} 
-                                    variant="contained" 
-                                    sx={{ height: 40, borderRadius: theme.shape.borderRadius }}
-                                >
-                                    SEARCH
-                                </Button>
-                            </Paper>
-                        </Box>
-
-                        {/* --- User Manuals Section --- */}
-                        <Typography variant="h6" fontWeight={700} mb={2} color="text.primary">
-                            User Manuals
-                        </Typography>
-                        <Stack 
-                            direction={{ xs: 'column', sm: 'row' }} 
-                            spacing={2} 
-                            mb={4} 
-                            flexWrap="wrap"
-                        >
-                            {manualSlots.map((manual) => (
-                                <HelpSlot 
-                                    key={manual.title} 
-                                    icon={manual.icon} 
-                                    title={manual.title} 
-                                    onClick={manual.handler} 
-                                    isManual={true}
-                                />
-                            ))}
                         </Stack>
                         
-                        <Divider sx={{ mb: 4 }} />
+                        <Divider sx={{ mb: 3 }} />
 
-                        {/* Help Topics Section (Matching the screenshot style) */}
-                        <Typography variant="h6" fontWeight={700} mb={2} color="text.primary">
-                            Help Topics
-                        </Typography>
-                        <Stack 
-                            direction={{ xs: 'column', sm: 'row' }} 
-                            spacing={2} 
-                            flexWrap="wrap"
-                            useFlexGap // Enables spacing even with flexWrap
-                        >
-                            {helpTopics.map((topic) => (
-                                <HelpSlot 
-                                    key={topic.title} 
-                                    icon={topic.icon} 
-                                    title={topic.title} 
-                                    // onClick handler omitted or set to generic for placeholders
-                                />
+                        {/* Manual Links Section */}
+                        <Stack spacing={1}>
+                            {manuals.map((manual, index) => (
+                                <React.Fragment key={manual.title}>
+                                    <ManualLink
+                                        title={manual.title}
+                                        description={manual.description}
+                                        onClick={manual.handler}
+                                    />
+                                    {/* Add divider between items, but not after the last one */}
+                                    {index < manuals.length - 1 && <Divider component="li" />}
+                                </React.Fragment>
                             ))}
                         </Stack>
-                    </Box>
+
+                        <Divider sx={{ mt: 3, mb: 2 }} />
+
+                        <Box sx={{ textAlign: 'right' }}>
+                            {/* Optional button for further help/contact */}
+                            <Button variant="outlined" color="primary">
+                                Contact Support
+                            </Button>
+                        </Box>
+
+                    </Paper>
                 </Box>
             </Box>
         </Box>

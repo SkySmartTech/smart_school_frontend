@@ -127,6 +127,10 @@ export const fetchUserProfile = async (): Promise<User> => {
       subject: response.data.subject || "",
       class: response.data.class || "",
       epf: response.data.epf || "",
+      // <-- ADDED: include nested profile data the UI expects
+      teacher_data: response.data.teacher_data ?? [], 
+      parent_data: response.data.parent_data ?? null, 
+      student_data: response.data.student_data ?? null,
     };
   } catch (error) {
     console.error('Error fetching user profile:', error);
@@ -168,7 +172,7 @@ export const updateUserProfile = async (
     
     // Use the enhanced auth header function
     const authConfig = getAuthHeader();
-    await api.put(`/api/user/${id}`, userData, authConfig);
+    await api.post(`/api/user/${id}/profile-update`, userData, authConfig);
     
     console.log('User profile updated successfully');
   } catch (error) {
@@ -279,6 +283,58 @@ export const uploadUserPhoto = async (file: File): Promise<string> => {
     }
     
     throw new Error('Network error occurred while uploading photo');
+  }
+};
+
+/**
+ * Update other profile details for a user (teacher/parent/student nested data)
+ * Endpoint: POST /api/user/{id}/profile-update
+ *
+ * payload: any - shape depends on backend (teacher_data / parent_data / student_data)
+ */
+export const updateUserProfileDetails = async (
+  id: number,
+  payload: Record<string, any>
+): Promise<void> => {
+  try {
+    if (!id || id <= 0) {
+      throw new Error("Invalid user ID");
+    }
+
+    console.log("Updating other profile details for user:", id, payload);
+
+    const authConfig = getAuthHeader();
+
+    // Use POST to /api/user/{id}/profile-update with JSON body
+    await api.post(`/api/user/${id}/profile-update`, payload, authConfig);
+
+    console.log("Other profile details updated successfully for user:", id);
+  } catch (error) {
+    console.error("Error updating other profile details:", error);
+
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 401) {
+        throw new Error("Session expired. Please login again.");
+      } else if (status === 403) {
+        throw new Error("Access denied. You do not have permission to update this profile.");
+      } else if (status === 422) {
+        throw new Error(
+          error.response?.data?.message ||
+          "Validation error. Please check the provided data."
+        );
+      } else {
+        throw new Error(
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Failed to update other profile details"
+        );
+      }
+    } else if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error("Network error occurred while updating other profile details");
   }
 };
 
