@@ -30,9 +30,11 @@ import { Search, Close } from "@mui/icons-material";
 import Sidebar from "../components/Sidebar";
 import { useCustomTheme } from "../context/ThemeContext";
 import Navbar from "../components/Navbar";
-import { fetchTeachers, fetchTeachersByGradeAndClass, assignClassTeacher, deleteClassTeacher, getAllClassTeachers, type Teacher } from "../api/teacherApi";
+import { fetchTeachers, assignClassTeacher, type Teacher } from "../api/teacherApi";
 
-// Note: removed import of global `classOptions` — we'll compute class list per grade from API data
+// Hardcoded class names for each grade
+const CLASS_NAMES = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
+const GRADES = Array.from({ length: 12 }, (_, i) => `Grade ${i + 1}`);
 
 interface ClassTeacherData {
   grade: string;
@@ -42,14 +44,12 @@ interface ClassTeacherData {
     teacherName: string;
     staffNo: string;
     isEditing: boolean;
-    assignmentId?: number | string; // track backend record id for delete
   }[];
 }
 
 interface PopupFormData {
   searchTerm: string;
   selectedGrade: string;
-  selectedClass: string;
   teachers: Teacher[];
 }
 
@@ -68,83 +68,42 @@ const AddClassTeacher = () => {
   const [popupFormData, setPopupFormData] = useState<PopupFormData>({
     searchTerm: "",
     selectedGrade: "",
-    selectedClass: "",
     teachers: []
   });
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false); // loading flag for delete action
 
   const theme = useTheme();
   useCustomTheme();
 
-  // Refresh helper to (re)load assignments from server and update state
-  const refreshClassTeachers = async () => {
-    try {
-      setLoading(true);
-      const assignments = await getAllClassTeachers();
-      const grouped = assignments.reduce<Record<string, ClassTeacherData["classes"]>>((acc, item) => {
-        const grade = item.grade || "Unknown";
-        if (!acc[grade]) acc[grade] = [];
-        acc[grade].push({
-          className: item.className,
-          teacherId: item.teacherId || "",
-          teacherName: item.teacherName || "Not assigned",
-          staffNo: item.staffNo || "",
-          isEditing: false,
-          assignmentId: item.id
-        });
-        return acc;
-      }, {});
-
-      const initialData: ClassTeacherData[] = Object.keys(grouped).map(grade => ({
-        grade,
-        classes: grouped[grade]
-      }));
-
-      setClassTeachers(initialData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load class teachers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load assignments on mount
+  // Initialize class teachers data
   useEffect(() => {
-    void refreshClassTeachers();
+    const initializeClassTeachers = () => {
+      const initialData: ClassTeacherData[] = GRADES.map(grade => ({
+        grade,
+        classes: CLASS_NAMES.map(className => ({
+          className,
+          teacherId: "",
+          teacherName: "Not assigned",
+          staffNo: "",
+          isEditing: false
+        }))
+      }));
+      setClassTeachers(initialData);
+      setLoading(false);
+    };
+
+    initializeClassTeachers();
   }, []);
 
-  // Get classes for a grade (derived from fetched classTeachers)
-  const getClassesForGrade = (grade: string) => {
-    const gd = classTeachers.find(g => g.grade === grade);
-    return gd ? gd.classes.map(c => c.className) : [];
-  };
-
-  // Make handleOpenPopup async so we can prefetch teachers for the selected grade+class
-  const handleOpenPopup = async (grade: string, className: string, teacherId: string) => {
+  const handleOpenPopup = (grade: string, className: string, teacherId: string) => {
     setCurrentClass({ grade, className, teacherId });
     setPopupFormData({
       searchTerm: "",
-      selectedGrade: grade, 
-      selectedClass: className,
+      selectedGrade: grade.replace("Grade ", ""),
       teachers: []
     });
     setSelectedTeacher(null);
     setPopupOpen(true);
-
-    // Pre-fetch teachers for this grade+class so table shows only relevant teachers by default
-    try {
-      setPopupLoading(true);
-      const searchedTeachers = await fetchTeachersByGradeAndClass(grade, className);
-      setPopupFormData(prev => ({
-        ...prev,
-        teachers: searchedTeachers
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to search teachers");
-    } finally {
-      setPopupLoading(false);
-    }
   };
 
   const handleClosePopup = () => {
@@ -153,7 +112,6 @@ const AddClassTeacher = () => {
     setPopupFormData({
       searchTerm: "",
       selectedGrade: "",
-      selectedClass: "",
       teachers: []
     });
     setSelectedTeacher(null);
@@ -162,19 +120,10 @@ const AddClassTeacher = () => {
   const handleSearch = async () => {
     try {
       setPopupLoading(true);
-
-      let searchedTeachers: Teacher[] = [];
-      if (popupFormData.selectedGrade && popupFormData.selectedClass) {
-        // call specific endpoint
-        searchedTeachers = await fetchTeachersByGradeAndClass(popupFormData.selectedGrade, popupFormData.selectedClass);
-      } else {
-        // fallback to general teacher search endpoint with optional grade filter
-        searchedTeachers = await fetchTeachers({
-          search: popupFormData.searchTerm,
-          grade: popupFormData.selectedGrade || undefined
-        });
-      }
-
+      const searchedTeachers = await fetchTeachers({
+        search: popupFormData.searchTerm,
+        grade: popupFormData.selectedGrade
+      });
       setPopupFormData(prev => ({
         ...prev,
         teachers: searchedTeachers
@@ -183,32 +132,6 @@ const AddClassTeacher = () => {
       setError(err instanceof Error ? err.message : "Failed to search teachers");
     } finally {
       setPopupLoading(false);
-    }
-  };
-
-  // auto-select first class when grade changes (auto-fill Class)
-  const onGradeChange = (newGrade: string) => {
-    const classes = getClassesForGrade(newGrade);
-    setPopupFormData(prev => ({
-      ...prev,
-      selectedGrade: newGrade,
-      selectedClass: classes.length > 0 ? classes[0] : ""
-    }));
-
-    if (classes.length > 0) {
-      void (async () => {
-        try {
-          setPopupLoading(true);
-          const t = await fetchTeachersByGradeAndClass(newGrade, classes[0]);
-          setPopupFormData(prev => ({ ...prev, teachers: t }));
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to fetch teachers for selected grade/class");
-        } finally {
-          setPopupLoading(false);
-        }
-      })();
-    } else {
-      setPopupFormData(prev => ({ ...prev, teachers: [] }));
     }
   };
 
@@ -222,24 +145,38 @@ const AddClassTeacher = () => {
       setPopupLoading(true);
       
       const assignment = {
-        // keep the original fields the backend may expect
-        grade: currentClass.grade,                // e.g. "Grade 10"
-        class: currentClass.className,            // e.g. "Olu"
-        teacherId: selectedTeacher.id,            // mapped id (prefer inner teacher id)
+        grade: currentClass.grade.replace("Grade ", ""),
+        class: currentClass.className,
+        teacherId: selectedTeacher.id,
         staffNo: selectedTeacher.staffNo,
-        teacherName: selectedTeacher.name,
-
-        // add validation fields your backend requires:
-        teacherGrade: selectedTeacher.grade || currentClass.grade,
-        teacherClass: selectedTeacher.class || currentClass.className,
-        name: selectedTeacher.name
+        teacherName: selectedTeacher.name
       };
 
       const result = await assignClassTeacher(assignment);
       
       if (result.success) {
-        // refresh full assignments list from server so UI stays consistent and assignmentIds appear
-        await refreshClassTeachers();
+        // Update local state
+        setClassTeachers(prev => prev.map(gradeData => {
+          if (gradeData.grade === currentClass.grade) {
+            return {
+              ...gradeData,
+              classes: gradeData.classes.map(classData => {
+                if (classData.className === currentClass.className) {
+                  return {
+                    ...classData,
+                    teacherId: selectedTeacher.id,
+                    teacherName: selectedTeacher.name,
+                    staffNo: selectedTeacher.staffNo,
+                    isEditing: false
+                  };
+                }
+                return classData;
+              })
+            };
+          }
+          return gradeData;
+        }));
+
         setSuccess(result.message);
         handleClosePopup();
       } else {
@@ -252,8 +189,8 @@ const AddClassTeacher = () => {
     }
   };
 
-  const handleSave = async (grade: string, className: string) => {
-    // This local save just toggles editing; ensure we refresh so other changes are reflected
+  const handleSave = (grade: string, className: string) => {
+    // Find the current assignment
     const gradeData = classTeachers.find(g => g.grade === grade);
     const classData = gradeData?.classes.find(c => c.className === className);
     
@@ -262,6 +199,7 @@ const AddClassTeacher = () => {
       return;
     }
 
+    // Update the state to mark as not editing
     setClassTeachers(prev => prev.map(g => {
       if (g.grade === grade) {
         return {
@@ -277,8 +215,6 @@ const AddClassTeacher = () => {
       return g;
     }));
 
-    // refresh to reflect any server-side state changes
-    await refreshClassTeachers();
     setSuccess(`Teacher assigned to ${className} successfully`);
   };
 
@@ -287,36 +223,10 @@ const AddClassTeacher = () => {
     const classData = gradeData?.classes.find(c => c.className === className);
     
     if (classData) {
-      void handleOpenPopup(grade, className, classData.teacherId);
+      handleOpenPopup(grade, className, classData.teacherId);
     }
   };
 
-  // Delete handler
-  const handleDelete = async (grade: string, className: string, assignmentId?: number | string) => {
-    if (!assignmentId) {
-      setError("No assignment ID available to delete.");
-      return;
-    }
-
-    const confirmed = window.confirm(`Delete class teacher assignment for ${grade} / ${className}?`);
-    if (!confirmed) return;
-
-    try {
-      setDeleteLoading(true);
-      const result = await deleteClassTeacher(assignmentId);
-      if (result.success) {
-        // refresh assignments so UI stays in sync
-        await refreshClassTeachers();
-        setSuccess(result.message);
-      } else {
-        setError(result.message || "Failed to delete assignment");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete assignment");
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -328,9 +238,6 @@ const AddClassTeacher = () => {
       </Box>
     );
   }
-
-  // Compose grade options from the fetched data
-  const gradeOptions = classTeachers.map(g => g.grade);
 
   return (
     <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh", bgcolor: theme.palette.background.default }}>
@@ -376,7 +283,7 @@ const AddClassTeacher = () => {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 'bold', bgcolor: theme.palette.action.hover }}>Grade</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', bgcolor: theme.palette.action.hover }}>Class</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', bgcolor: theme.palette.action.hover }}>Class Teacher | Staff No</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', bgcolor: theme.palette.action.hover }}>Class Teacher</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', bgcolor: theme.palette.action.hover }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -395,7 +302,7 @@ const AddClassTeacher = () => {
                       <TableCell>
                         <Typography>
                           {classData.teacherName}
-                          {classData.staffNo &&  ` (${classData.staffNo})`}
+                          {classData.staffNo && ` (${classData.staffNo})`}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -410,22 +317,10 @@ const AddClassTeacher = () => {
                           <Button
                             variant="contained"
                             size="small"
-                            onClick={() => void handleSave(gradeData.grade, classData.className)}
+                            onClick={() => handleSave(gradeData.grade, classData.className)}
                             disabled={!classData.teacherId}
                           >
                             Save
-                          </Button>
-
-                          {/* Delete button: enabled only if we have an assignmentId */}
-                          <Button
-                            variant="outlined"
-                            color="error"
-                            size="small"
-                            onClick={() => void handleDelete(gradeData.grade, classData.className, classData.assignmentId)}
-                            disabled={!classData.assignmentId || deleteLoading}
-                            sx={{ ml: 1 }}
-                          >
-                            {deleteLoading ? <CircularProgress size={18} /> : "Delete"}
                           </Button>
                         </Box>
                       </TableCell>
@@ -474,36 +369,19 @@ const AddClassTeacher = () => {
                 }}
               />
               
-              <FormControl sx={{ minWidth: 160 }} size="small">
+              <FormControl sx={{ minWidth: 120 }} size="small">
                 <InputLabel>Grade</InputLabel>
                 <Select
                   value={popupFormData.selectedGrade}
                   label="Grade"
-                  onChange={(e) => onGradeChange(e.target.value as string)}
+                  onChange={(e) => setPopupFormData(prev => ({
+                    ...prev,
+                    selectedGrade: e.target.value
+                  }))}
                 >
                   <MenuItem value="">All Grades</MenuItem>
-                  {/* Grade select: use index fallback for key */}
-                  {gradeOptions.map((grade, gIdx) => (
-                    <MenuItem key={grade || `grade-${gIdx}`} value={grade}>
-                      {grade}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl sx={{ minWidth: 160 }} size="small">
-                <InputLabel>Class</InputLabel>
-                <Select
-                  value={popupFormData.selectedClass}
-                  label="Class"
-                  onChange={(e) => setPopupFormData(prev => ({ ...prev, selectedClass: e.target.value as string }))}
-                >
-                  <MenuItem value="">All Classes</MenuItem>
-                  {/* Class select inside popup: use index fallback for key */}
-                  {getClassesForGrade(popupFormData.selectedGrade).map((cls, cIdx) => (
-                    <MenuItem key={cls || `class-${cIdx}`} value={cls}>
-                      {cls}
-                    </MenuItem>
+                  {Array.from({ length: 12 }, (_, i) => (i + 1).toString()).map(grade => (
+                    <MenuItem key={grade} value={grade}>Grade {grade}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -530,17 +408,19 @@ const AddClassTeacher = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {popupFormData.teachers.map((teacher, tIdx) => (
+                  {popupFormData.teachers.map((teacher) => (
                     <TableRow 
-                      key={teacher.id || `teacher-${tIdx}`}
+                      key={teacher.id}
                       onClick={() => setSelectedTeacher(teacher)}
                       sx={{ 
                         cursor: 'pointer',
                         backgroundColor: selectedTeacher?.id === teacher.id ? theme.palette.action.selected : 'inherit',
-                        '&:hover': { backgroundColor: theme.palette.action.hover }
+                        '&:hover': {
+                          backgroundColor: theme.palette.action.hover
+                        }
                       }}
                     >
-                      <TableCell>{teacher.staffNo  || 'Not assigned'}</TableCell>
+                      <TableCell>{teacher.staffNo}</TableCell>
                       <TableCell>{teacher.name}</TableCell>
                       <TableCell>{teacher.grade || 'Not assigned'}</TableCell>
                       <TableCell>{teacher.class || 'Not assigned'}</TableCell>

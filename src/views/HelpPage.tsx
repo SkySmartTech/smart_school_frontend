@@ -151,7 +151,7 @@ const HelpPage: React.FC = () => {
                         <Stack direction="row" spacing={2} alignItems="center" mb={3}>
                             <HelpOutlineIcon sx={{ fontSize: 32, color: theme.palette.primary.main }} />
                             <Typography variant="h5" fontWeight={700}>
-                                System Manuals
+                                System Manuals....!
                             </Typography>
                         </Stack>
                         

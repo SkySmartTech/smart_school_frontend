@@ -12,10 +12,9 @@ export interface Teacher {
 }
 
 export interface ClassTeacher {
-  id?: number;
   grade: string;
   className: string;
-  teacherId?: string;
+  teacherId: string;
   teacherName?: string;
   staffNo?: string;
 }
@@ -32,21 +31,6 @@ export interface SearchTeachersParams {
   search?: string;
   grade?: string;
 }
-
-// Raw API response shape for /api/class-teachers
-interface ApiClassTeacher {
-  teacherClass: any;
-  teacherGrade: any;
-  staffNo: string;
-  name: string;
-  id: number;
-  grade: string;
-  class: string;
-  classTeacher?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
 
 // Auth header function
 const getAuthHeader = () => {
@@ -83,88 +67,28 @@ export async function fetchTeachers(params?: SearchTeachersParams): Promise<Teac
   }
 }
 
-// Fetch teachers for a specific grade and class
-export async function fetchTeachersByGradeAndClass(grade: string, className: string): Promise<Teacher[]> {
-  try {
-    const res = await axios.get(
-      `${API_BASE_URL}/api/teachers/${encodeURIComponent(grade)}/${encodeURIComponent(className)}`,
-      getAuthHeader()
-    );
-
-    const raw = Array.isArray(res.data) ? res.data as any[] : [];
-
-
-    const mapped: Teacher[] = raw.flatMap((item, idx) => {
-
-      if (item && (item.staffNo || item.teacherGrade || item.teacherClass) && !Array.isArray(item.teacher)) {
-        const idCandidate = item.userId ?? item.id ?? `${item.staffNo ?? 't'}-${idx}`;
-        return [{
-          id: String(idCandidate),
-          staffNo: item.staffNo ?? "",
-          name: item.name ?? item.displayName ?? "",
-          grade: item.teacherGrade ?? "",
-          class: item.teacherClass ?? ""
-        }];
-      }
-
-      
-      if (Array.isArray(item.teacher) && item.teacher.length > 0) {
-        return item.teacher.map((t: any, tIdx: number) => ({
-          
-          id: String(t.id ?? t.userId ?? item.id ?? `u-${idx}-t-${tIdx}`),
-          staffNo: t.staffNo ?? "",
-          name: item.name ?? "",
-          grade: t.teacherGrade ?? "",
-          class: t.teacherClass ?? ""
-        }));
-      }
-
-
-      return [{
-        id: String(item.id ?? `unknown-${idx}`),
-        staffNo: item.staffNo ?? "",
-        name: item.name ?? "",
-        grade: item.teacherGrade ?? item.teacher?.[0]?.teacherGrade ?? "",
-        class: item.teacherClass ?? item.teacher?.[0]?.teacherClass ?? ""
-      }];
-    });
-
-    return mapped;
-  } catch (error) {
-    handleApiError(error, "fetchTeachersByGradeAndClass");
-    return [];
-  }
-}
-
 // Fetch class teachers for a specific grade
 export async function fetchClassTeachersByGrade(grade: string): Promise<ClassTeacher[]> {
   try {
-    const res = await axios.get(`${API_BASE_URL}/api/class-teachers/grade/${encodeURIComponent(grade)}`, getAuthHeader());
-    const raw = Array.isArray(res.data) ? res.data as ApiClassTeacher[] : [];
-    return raw.map(item => ({
-      id: item.id,
-      grade: item.teacherGrade,
-      className: item.teacherClass,
-      staffNo: item.staffNo,
-      teacherName: item.name || "Not assigned"
-    }));
+    const res = await axios.get(`${API_BASE_URL}/api/class-teachers/grade/${grade}`, getAuthHeader());
+    return Array.isArray(res.data) ? res.data : [];
   } catch (error) {
     handleApiError(error, "fetchClassTeachersByGrade");
     return [];
   }
 }
 
-// Assign/update class teacher (your backend uses this endpoint)
+// Assign/update class teacher
 export async function assignClassTeacher(assignment: ClassTeacherAssignment): Promise<{success: boolean; message: string}> {
   try {
     const response = await axios.post(
-      `${API_BASE_URL}/api/class-teacher-create`, 
+      `${API_BASE_URL}/api/class-teachers/assign`, 
       assignment, 
       getAuthHeader()
     );
     return {
       success: true,
-      message: response.data?.message || "Class teacher assigned successfully"
+      message: response.data.message || "Class teacher assigned successfully"
     };
   } catch (error) {
     handleApiError(error, "assignClassTeacher");
@@ -175,40 +99,11 @@ export async function assignClassTeacher(assignment: ClassTeacherAssignment): Pr
   }
 }
 
-// Delete a class teacher assignment by its assignment id
-export async function deleteClassTeacher(assignmentId: number | string): Promise<{ success: boolean; message: string }> {
-  try {
-    const response = await axios.delete(
-      `${API_BASE_URL}/api/class-teacher/${encodeURIComponent(String(assignmentId))}/delete`,
-      getAuthHeader()
-    );
-    return {
-      success: true,
-      message: response.data?.message || "Class teacher assignment deleted successfully"
-    };
-  } catch (error) {
-    try {
-      // handleApiError will throw; catch and convert to returned message instead
-      handleApiError(error, "deleteClassTeacher");
-      return { success: false, message: "Failed to delete class teacher" };
-    } catch (e: any) {
-      return { success: false, message: e?.message || "Failed to delete class teacher" };
-    }
-  }
-}
-
 // Get all class teacher assignments
 export async function getAllClassTeachers(): Promise<ClassTeacher[]> {
   try {
     const res = await axios.get(`${API_BASE_URL}/api/class-teachers`, getAuthHeader());
-    const raw = Array.isArray(res.data) ? res.data as ApiClassTeacher[] : [];
-    return raw.map(item => ({
-      id: item.id,
-      grade: item.teacherGrade,
-      className: item.teacherClass,
-      staffNo: item.staffNo,
-      teacherName: item.name || "Not assigned"
-    }));
+    return Array.isArray(res.data) ? res.data : [];
   } catch (error) {
     handleApiError(error, "getAllClassTeachers");
     return [];
