@@ -68,7 +68,7 @@ const HelpSlot: React.FC<HelpSlotProps> = ({ icon, title, onClick, isManual = fa
                     boxShadow: theme.shadows[1],
                     textDecoration: 'none',
                 },
-                // Ensures color matches the mode regardless of parent link
+                // Ensures color matches the mode regardless of parent linkf
                 color: theme.palette.text.primary,
             }}
             underline="none"
