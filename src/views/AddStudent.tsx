@@ -411,7 +411,7 @@ const AddStudent = () => {
       >
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">Promote Students to Next Year</Typography>
+            <Typography variant="h6">Promote Students to Next Year...</Typography>
             <IconButton onClick={handleCloseDialog}>
               <Close />
             </IconButton>
