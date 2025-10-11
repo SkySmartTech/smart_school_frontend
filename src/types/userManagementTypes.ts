@@ -60,6 +60,12 @@ export interface User extends BaseUser {
     studentAdmissionNo: string;
     relation: string;
   };
+  parentEntries?: Array<{
+    relation: string;
+    profession: string;
+    parentContact: string;
+    studentAdmissionNo: string;
+  }>;
 }
 
 export interface UserListResponse {

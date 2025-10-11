@@ -544,6 +544,7 @@ const TeacherDashboard: React.FC = () => {
                     variant="outlined"
                     size="small"
                     value={params.row.marks || ''}
+                    placeholder={params.row.student_admission ?? ''} 
                     disabled={params.row.attendance === 'absent'}
                     onChange={(e) => {
                         const value = e.target.value;

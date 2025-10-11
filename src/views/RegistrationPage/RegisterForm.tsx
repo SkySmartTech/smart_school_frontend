@@ -41,12 +41,12 @@ import {
   Delete,
   Language
 } from "@mui/icons-material";
+import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser, registerStudent, registerTeacher, registerParent } from "../../api/userApi";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 // import { styled } from '@mui/material/styles';
 
 // const VisuallyHiddenInput = styled('input')({
@@ -68,6 +68,8 @@ const subjects = ["Mathematics", "Science", "English", "History", "Geography", "
 const classes = ["Araliya", "Olu", "Nelum", "Rosa", "Manel", "Sooriya", "Kumudu"];
 const mediumOptions = ["Sinhala", "English", "Tamil"];
 
+const steps: string[] = ['Basic Information', 'Role Details'];
+
 interface FormData {
   // Base User properties (excluding photo)
   name: string;
@@ -78,7 +80,7 @@ interface FormData {
   userType: string;
   username: string;
   password: string;
-  location: string; 
+  location?: string | null; // Changed to optional
   userRole: string;
   gender: string;
 
@@ -106,6 +108,15 @@ interface FormData {
   relation?: string;             
 }
 
+type ParentEntry = {
+  id: string;
+  studentAdmissionNo: string;
+  profession: string;
+  relation: string;
+  parentContact: string;
+  status?: boolean;
+};
+
 // Add this alias so RegisterFormValues is defined and matches the form shape
 type RegisterFormValues = FormData;
 
@@ -122,8 +133,6 @@ type TeacherAssignment = {
   id: string; 
 };
 
-const steps = ['Basic Information', 'Role Details'];
-
 const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [activeStep, setActiveStep] = useState(0);
   const navigate = useNavigate();
@@ -135,6 +144,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [registeredUser, setRegisteredUser] = useState<{ userId: number; userType: string } | null>(null);
   const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
+  const [parentEntries, setParentEntries] = useState<ParentEntry[]>([]);
   // const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add state for success/error messages
@@ -156,8 +166,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       teacherClass: [],
       subjects: [],
       medium: [],
-      location: "", 
-      userRole: "user", 
+      location: "", // Keep as empty string but optional
+      userRole: "user",
     }
   });
 
@@ -269,8 +279,8 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
         "username",
         "password",
         "password_confirmation",
-        "location",
         "gender"
+        // Removed "location" from validation
       ]);
     } else if (activeStep === 1) {
       if (selectedRole === "Teacher") {
@@ -294,7 +304,7 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
       Object.entries(formValues)
         .filter(([key]) => !['teacherGrades', 'teacherClass', 'subjects', 'medium'].includes(key))
         .forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+          if (value !== undefined && value !== null && value !== '') {
             if (key === 'photo' && value instanceof FileList && value.length > 0) {
               formData.append(key, value[0]);
             } else if (typeof value === 'string' || value instanceof Blob) {
@@ -330,56 +340,80 @@ const RegisterForm = ({ onSuccess, onError }: RegisterFormProps) => {
 const onSubmit = (data: RegisterFormValues) => {
   if (!registeredUser) return;
 
-  const formData = new FormData();
-  formData.append('userId', registeredUser.userId.toString());
-  formData.append('userType', registeredUser.userType);
+    const formData = new FormData();
+    // ensure these are strings
+    formData.append('userId', String(registeredUser.userId));
+    formData.append('userType', String(registeredUser.userType));
 
   const role = (registeredUser.userType || '').toLowerCase();
 
-  if (role === "teacher") {
-    formData.append('staffNo', data.staffNo || '');
-    formData.append('teacherAssignments', JSON.stringify(teacherAssignments.map(assignment => ({
-      teacherGrade: assignment.grades[0],
-      teacherClass: assignment.classes[0],
-      subject: assignment.subjects[0],
-      medium: assignment.medium[0],
-      staffNo: data.staffNo,
-      userId: registeredUser.userId,
-      userType: registeredUser.userType
-    }))));
-  } 
-  else if (role === "parent") {
-    // Create a parent assignment array with ALL the form data
-    const parentAssignments = [{
-      studentAdmissionNo: data.studentAdmissionNo,
-      profession: data.profession,
-      relation: data.relation,
-      parentContact: data.parentContact,
-      userId: registeredUser.userId,
-      userType: registeredUser.userType,
-      status: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }];
+    if (role === "teacher") {
+      formData.append('staffNo', data.staffNo || '');
 
-    // Send the parent data properly
-    formData.append('parentData', JSON.stringify(parentAssignments));
-  }
-  else if (role === "student") {
-    // Handle student data similarly
-    const studentAssignments = [{
-      studentGrade: data.studentGrade,
-      studentClass: data.studentClass,
-      medium: data.medium,
-      studentAdmissionNo: data.studentAdmissionNo,
-      parentContact: data.parentContact,
-      parentProfession: data.parentProfession,
-      userId: registeredUser.userId,
-      userType: registeredUser.userType
-    }];
-    
-    formData.append('studentData', JSON.stringify(studentAssignments));
-  }
+      // ensure userId/userType are strings inside each assignment
+      const teacherPayload = teacherAssignments.map(assignment => ({
+        teacherGrade: assignment.grades[0],
+        teacherClass: assignment.classes[0],
+        subject: assignment.subjects[0],
+        medium: assignment.medium[0],
+        staffNo: data.staffNo ?? '',
+        userId: String(registeredUser.userId),
+        userType: String(registeredUser.userType)
+      }));
+
+      formData.append('teacherAssignments', JSON.stringify(teacherPayload));
+    }
+    else if (role === "parent") {
+      // Prefer using parentEntries (added via "Add to List") if any exist.
+      // Fallback to the single-row form data (useful if user didn't click "Add").
+      const parentAssignments = parentEntries && parentEntries.length > 0
+        ? parentEntries.map(entry => ({
+            studentAdmissionNo: entry.studentAdmissionNo,
+            profession: entry.profession,
+            relation: entry.relation,
+            parentContact: entry.parentContact,
+            userId: String(registeredUser.userId),
+            userType: String(registeredUser.userType),
+            status: entry.status ?? true,
+            created_at: (entry as any).created_at ?? new Date().toISOString(),
+            updated_at: (entry as any).updated_at ?? new Date().toISOString()
+          }))
+        : [{
+            studentAdmissionNo: data.studentAdmissionNo ?? "",
+            profession: data.profession ?? "",
+            relation: data.relation ?? "",
+            parentContact: data.parentContact ?? "",
+            userId: String(registeredUser.userId),
+            userType: String(registeredUser.userType),
+            status: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }];
+
+      // Basic client-side validation before sending to API
+      if (!parentAssignments.length || !parentAssignments[0].studentAdmissionNo) {
+        // Reuse existing snackbar helper to show the error
+        showError("Please provide at least one parent entry with a Student Admission Number");
+        return;
+      }
+
+      formData.append('parentData', JSON.stringify(parentAssignments));
+    }
+    else if (role === "student") {
+      // Handle student data similarly and ensure userId/userType are strings
+      const studentAssignments = [{
+        studentGrade: data.studentGrade,
+        studentClass: data.studentClass,
+        medium: data.medium,
+        studentAdmissionNo: data.studentAdmissionNo,
+        parentContact: data.parentContact,
+        parentProfession: data.parentProfession,
+        userId: String(registeredUser.userId),
+        userType: String(registeredUser.userType)
+      }];
+
+      formData.append('studentData', JSON.stringify(studentAssignments));
+    }
 
   // Call the appropriate registration function
   if (role === "student") registerStudentData(formData);
@@ -430,6 +464,38 @@ const onSubmit = (data: RegisterFormValues) => {
       setValue("teacherClass", []);
       setValue("medium", []);
     }
+  };
+
+  const handleAddParent = () => {
+    const studentAdmissionNo = watch("studentAdmissionNo") || "";
+    const profession = watch("profession") || "";
+    const relation = watch("relation") || "";
+    const parentContact = watch("parentContact") || "";
+
+    if (!studentAdmissionNo && !profession && !relation && !parentContact) {
+      // you can replace alert with your snackbar helper if available
+      alert("Please fill at least one parent field before adding");
+      return;
+    }
+
+    const newEntry: ParentEntry = {
+      id: (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function")
+        ? (crypto as any).randomUUID()
+        : Math.random().toString(36).substr(2, 9),
+      studentAdmissionNo: String(studentAdmissionNo),
+      profession: String(profession),
+      relation: String(relation),
+      parentContact: String(parentContact),
+      status: true
+    };
+
+    setParentEntries(prev => [...prev, newEntry]);
+
+    // clear the single-field inputs via setValue (react-hook-form)
+    setValue("studentAdmissionNo", "");
+    setValue("profession", "");
+    setValue("relation", "");
+    setValue("parentContact", "");
   };
 
   const handleCloseSuccessSnackbar = () => {
@@ -592,7 +658,7 @@ const onSubmit = (data: RegisterFormValues) => {
                   label="Location"
                   fullWidth
                   variant="outlined"
-                  {...register("location", { required: "Location is required" })}
+                  {...register("location")}
                   error={!!errors.location}
                   helperText={errors.location?.message}
                   InputProps={{
@@ -1088,7 +1154,6 @@ const onSubmit = (data: RegisterFormValues) => {
                 </Button>
 
                 {/* Assignments Grid */}
-                {/* Assignments Grid */}
                 {teacherAssignments.length > 0 && (
                   <Box sx={{ mt: 2, width: '100%' }}>
                     <TableContainer
@@ -1203,7 +1268,7 @@ const onSubmit = (data: RegisterFormValues) => {
                     label="Student Admission Number"
                     fullWidth
                     variant="outlined"
-                    {...register("studentAdmissionNo", { required: "Student admission number is required" })}
+                    {...register("studentAdmissionNo")}
                     error={!!errors.studentAdmissionNo}
                     helperText={errors.studentAdmissionNo?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
@@ -1212,11 +1277,7 @@ const onSubmit = (data: RegisterFormValues) => {
                     label="Contact Number"
                     fullWidth
                     variant="outlined"
-                    {...register("parentContact", {
-                      required: "Contact number is required",
-                      minLength: { value: 10, message: "Phone must be at least 10 digits" },
-                      maxLength: { value: 15, message: "Phone must be at most 15 digits" },
-                    })}
+                    {...register("parentContact")}
                     error={!!errors.parentContact}
                     helperText={errors.parentContact?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
@@ -1228,7 +1289,7 @@ const onSubmit = (data: RegisterFormValues) => {
                     label="Profession"
                     fullWidth
                     variant="outlined"
-                    {...register("profession", { required: "Profession is required" })}
+                    {...register("profession")}
                     error={!!errors.profession}
                     helperText={errors.profession?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
@@ -1237,12 +1298,63 @@ const onSubmit = (data: RegisterFormValues) => {
                     label="Relation"
                     fullWidth
                     variant="outlined"
-                    {...register("relation", { required: "Relation is required" })}
+                    {...register("relation")}
                     error={!!errors.relation}
                     helperText={errors.relation?.message}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "10px", height: "40px" } }}
                   />
                 </Stack>
+
+                <Button
+                  variant="contained"
+                  onClick={handleAddParent}
+                  sx={{
+                    minWidth: '120px',
+                    height: '40px',
+                    borderRadius: '10px'
+                  }}
+                  startIcon={<Add />}
+                >
+                  Add to List
+                </Button>
+
+                {/* Parent entries table */}
+                {parentEntries.length > 0 && (
+                  <Box sx={{ mt: 2, width: '100%' }}>
+                    <TableContainer component={Paper} sx={{ maxHeight: 220, overflowY: 'auto' }}>
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Admission No</TableCell>
+                            <TableCell>Profession</TableCell>
+                            <TableCell>Relation</TableCell>
+                            <TableCell>Contact</TableCell>
+                            <TableCell>Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {parentEntries.map((p) => (
+                            <TableRow key={p.id}>
+                              <TableCell>{p.studentAdmissionNo}</TableCell>
+                              <TableCell>{p.profession}</TableCell>
+                              <TableCell>{p.relation}</TableCell>
+                              <TableCell>{p.parentContact}</TableCell>
+                              <TableCell>
+                                <IconButton
+                                  onClick={() => setParentEntries(prev => prev.filter(x => x.id !== p.id))}
+                                  size="small"
+                                  color="error"
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
               </>
             )}
           </Stack>
@@ -1289,3 +1401,4 @@ const onSubmit = (data: RegisterFormValues) => {
 };
 
 export default RegisterForm;
+
