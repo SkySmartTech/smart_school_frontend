@@ -60,6 +60,12 @@ export interface User extends BaseUser {
     studentAdmissionNo: string;
     relation: string;
   };
+  parentEntries?: Array<{
+    relation: string;
+    profession: string;
+    parentContact: string;
+    studentAdmissionNo: string;
+  }>;
 }
 
 export interface UserListResponse {
@@ -137,7 +143,7 @@ export const subjectOptions: string[] = [
   'Art',
   'Music',
   'Dancing',
-  'Physical education',
+  'Physical Education',
   'Buddhism',
   'Christianity',
   'Islam',

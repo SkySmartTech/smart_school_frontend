@@ -7,40 +7,7 @@ const api = axios.create({
   }
 });
 
-// Session timeout variables
-let inactivityTimer: ReturnType<typeof setTimeout>;
-const SESSION_TIMEOUT = 15 * 60 * 1000; 
-let isUserActive = true;
 
-// Enhanced activity detection
-function detectUserActivity() {
-  isUserActive = true;
-  resetInactivityTimer();
-}
-
-// Function to reset the inactivity timer
-function resetInactivityTimer() {
-  if (!isUserActive) return;
-  
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(() => {
-    isUserActive = false;
-    // Give one last chance to detect activity before logging out
-    const finalCheckTimer = setTimeout(() => {
-      if (!isUserActive) {
-        logout();
-        window.location.href = '/login';
-      }
-    }, 5000); 
-    
-    // Reset if activity detected during grace period
-    window.addEventListener('mousemove', () => {
-      clearTimeout(finalCheckTimer);
-      isUserActive = true;
-      resetInactivityTimer();
-    }, { once: true });
-  }, SESSION_TIMEOUT);
-}
 
 // Function to setup activity listeners
 
@@ -94,9 +61,7 @@ export async function login({
 export async function logout() {
   const token = localStorage.getItem('token');
   
-  // Clear the inactivity timer
-  clearTimeout(inactivityTimer);
-  isUserActive = false;
+
 
   if (!token) return;
 
@@ -198,27 +163,6 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Add response interceptor to handle token expiration
-api.interceptors.response.use(
-  (response) => {
-    // Reset activity timer on successful API responses
-    detectUserActivity();
-    return response;
-  },
-  async (error) => {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        clearTimeout(inactivityTimer);
-        isUserActive = false;
-        window.location.href = '/login';
-      }
-    }
     return Promise.reject(error);
   }
 );

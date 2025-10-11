@@ -22,7 +22,7 @@ export interface Subject {
   subjectName: string;
   updated_at: string;
   created_at: string;
-  medium: string; // <-- ADDED: Required by the database
+  medium: string; 
 }
 
 export interface Class {
@@ -135,9 +135,9 @@ export const createSchool = async (data: Omit<School, 'id' | 'created_at' | 'upd
 export const createGrade = async (data: Omit<Grade, 'id' | 'created_at' | 'updated_at'> & { gradeId: string | number }): Promise<Grade> => {
   try {
     const response = await api.post('/api/grade-create', { 
-        gradeId: data.gradeId, 
-        grade: data.grade 
-    });
+        gradeId: data.gradeId, 
+        grade: data.grade 
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating grade:', error);
@@ -147,11 +147,11 @@ export const createGrade = async (data: Omit<Grade, 'id' | 'created_at' | 'updat
 
 export const createSubject = async (data: Omit<Subject, 'id' | 'created_at' | 'updated_at'>): Promise<Subject> => {
   try {
-    // FIX APPLIED: Include the required 'medium' field in the payload
+    // Include the required 'medium' field in the payload
     const response = await api.post('/api/subject-create', { 
-        subjectName: data.subjectName,
-        medium: data.medium // <-- ADDED: Passing the medium from formData
-    });
+        subjectName: data.subjectName,
+        medium: data.medium 
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating subject:', error);
@@ -192,10 +192,11 @@ export const updateSchool = async (id: number, data: Partial<School>): Promise<S
 
 export const updateGrade = async (id: number, data: Partial<Grade>): Promise<Grade> => {
   try {
+    // FIX: Removed gradeId from the request body. Only send the 'grade' name, 
+    // as the ID is already in the URL (`/api/grade/${id}/update`).
     const response = await api.post(`/api/grade/${id}/update`, { 
-        gradeId: id, 
-        grade: data.grade 
-    });
+        grade: data.grade // Only the editable field is sent
+    });
     return response.data;
   } catch (error) {
     console.error('Error updating grade:', error);
@@ -205,11 +206,11 @@ export const updateGrade = async (id: number, data: Partial<Grade>): Promise<Gra
 
 export const updateSubject = async (id: number, data: Partial<Subject>): Promise<Subject> => {
   try {
-    // FIX APPLIED: Include the 'medium' field in the update payload as well
+    // Include the 'medium' field in the update payload as well
     const response = await api.post(`/api/subject/${id}/update`, { 
-        subjectName: data.subjectName,
-        medium: data.medium // <-- ADDED: Passing the medium for update
-    });
+        subjectName: data.subjectName,
+        medium: data.medium
+    });
     return response.data;
   } catch (error) {
     console.error('Error updating subject:', error);
