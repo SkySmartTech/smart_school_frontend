@@ -448,7 +448,7 @@ const ParentReport: React.FC = () => {
 
                                     {/* Subject Wise Marks (Pie Chart) */}
                                     <Paper sx={{ p: 3, flex: 1 }}>
-                                        <Typography fontWeight={600} mb={2}>Subject Wise Marks</Typography>
+                                        <Typography fontWeight={600} mb={2}>Subject Wise Marks.</Typography>
                                         <ResponsiveContainer width="100%" height={250}>
                                             {isLoadingReport ? (
                                                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
