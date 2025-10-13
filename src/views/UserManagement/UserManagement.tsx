@@ -320,8 +320,8 @@ const UserManagement: React.FC = () => {
           class: form.class || '',
           medium: form.medium || '',
           studentAdmissionNo: form.studentAdmissionNo || '',
-          studentGrade: form.grade || '', // Make sure this is set
-          studentClass: form.class || '', // Make sure this is set
+          studentGrade: form.grade || '',
+          studentClass: form.class || '', 
           studentData: {
             studentGrade: form.grade || '',
             studentClass: form.class || '',
@@ -649,6 +649,7 @@ const UserManagement: React.FC = () => {
           { field: 'grade', headerName: 'Grade', width: 100, flex: 1 },
           { field: 'medium', headerName: 'Medium', width: 100, flex: 1 },
           { field: 'class', headerName: 'Class', width: 100, flex: 1 },
+          { field: 'studentAdmissionNo', headerName: 'Student Admission No', width: 150, flex: 1 },
           statusColumn,
           actionColumn
         ];
@@ -928,6 +929,14 @@ const UserManagement: React.FC = () => {
                 </MenuItem>
               ))}
             </TextField>
+             <TextField
+              label="Student Admission No"
+              name="studentAdmissionNo"
+              value={form.studentAdmissionNo || ''}
+              onChange={(e) => handleSelectChange(e, "studentAdmissionNo")}
+              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
+              size="small"
+            />
             <TextField
               select
               label="Class"
@@ -943,14 +952,7 @@ const UserManagement: React.FC = () => {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              label="Student Admission No"
-              name="studentAdmissionNo"
-              value={form.studentAdmissionNo || ''}
-              onChange={(e) => handleSelectChange(e, "studentAdmissionNo")}
-              sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-              size="small"
-            />
+           
             {/* <TextField
               label="Parent Profession"
               name="profession"

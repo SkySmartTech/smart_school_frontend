@@ -51,7 +51,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
 
     switch (activeTab) {
       case "STUDENT":
-        return [...commonColumns.slice(0, 7), "Grade", "Class", "Medium", ...commonColumns.slice(7)];
+        return [...commonColumns.slice(0, 7), "Grade", "Class", "Medium", "Student Admission No", ...commonColumns.slice(7)];
       case "TEACHER":
         return [...commonColumns.slice(0, 7), "Grade", "Class", "Subject", "Medium", ...commonColumns.slice(7)];
       case "PARENT":
@@ -84,6 +84,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
         return user.class || "-";
       case "medium":
         return user.medium || "-";
+      case "student admission no":
+        return user.studentAdmissionNo || "-";
       // Teacher specific
       case "subject":
         return user.subject || "-";
