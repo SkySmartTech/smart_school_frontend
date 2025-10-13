@@ -112,6 +112,80 @@ export const getAuthHeader = () => {
     };
 };
 
+/**
+ * NEW FUNCTION: Fetch list of all children for the logged-in parent
+ * 
+ * When backend API is ready, update this function to call the correct endpoint.
+ * Expected backend response format:
+ * {
+ *   children: [
+ *     {
+ *       studentId: "...",
+ *       admissionNo: "Stu001",
+ *       studentName: "John Doe",
+ *       grade: "10",
+ *       className: "10-A"
+ *     },
+ *     ...
+ *   ]
+ * }
+ */
+export const fetchChildrenList = async (): Promise<ChildDetails[]> => {
+    try {
+        const authHeader = getAuthHeader();
+        
+        // TEMPORARY: Using existing /api/user endpoint
+        // TODO: Replace with dedicated children list endpoint when backend is ready
+        // Example: const response = await axios.get(`${API_BASE_URL}/api/parent/children`, {
+        const response = await axios.get(`${API_BASE_URL}/api/user`, {
+            headers: authHeader.headers,
+        });
+
+        const parentData = response.data?.parent_data;
+        
+        // TEMPORARY: Extracting single child from current structure
+        // When backend provides multiple children, update this logic
+        const studentInfo = parentData?.student_info;
+        const parentInfo = parentData?.parent_info;
+
+        if (!studentInfo) {
+            throw new Error("Student information not found in API response.");
+        }
+
+        // TODO: When backend returns array of children, replace this with:
+        // return response.data.children.map((child: any) => ({
+        //     studentId: child.studentId || child.student_id,
+        //     admissionNo: child.admissionNo || child.admission_no,
+        //     studentName: child.studentName || child.student_name || child.name,
+        //     grade: child.grade,
+        //     className: child.className || child.class_name || child.class
+        // }));
+
+        // TEMPORARY: Return single child as array until backend supports multiple children
+        const children: ChildDetails[] = [{
+            studentId: studentInfo.studentId || studentInfo.student_id,
+            admissionNo: parentInfo?.studentAdmissionNo || parentInfo?.student_admission_no || '',
+            studentName: studentInfo.name || studentInfo.studentName || '',
+            grade: studentInfo.grade || '',
+            className: studentInfo.class || studentInfo.className || '',
+        }];
+
+        return children;
+
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('token');
+                localStorage.removeItem('access_token');
+                throw new Error('Session expired. Please login again.');
+            }
+            throw new Error(error.response?.data?.message || 'Failed to load children list');
+        }
+        throw new Error("Network error occurred");
+    }
+};
+
 // API call to fetch parent report data
 export const fetchParentReport = async (
     startDate: string,
@@ -130,15 +204,14 @@ export const fetchParentReport = async (
         const studentClass = studentInfo?.class || '';
 
         // Convert empty/null values to "null" string for URL path
-        const sanitizedStartDate = startDate ;
+        const sanitizedStartDate = startDate;
         const sanitizedEndDate = endDate;
-        const sanitizedExam = exam ;
-        const sanitizedMonth = month || 'null'; // This will now pass "null" as string when month is empty
+        const sanitizedExam = exam;
+        const sanitizedMonth = month || 'null';
 
         // Constructing the URL with the sanitized parameters
         const urlPath = `${API_BASE_URL}/api/parent-report-data/${sanitizedStartDate}/${sanitizedEndDate}/${sanitizedExam}/${sanitizedMonth}/${encodeURIComponent(studentGrade)}/${encodeURIComponent(studentClass)}`;
 
-        // Changed parameter name from student_admission_no to admission_no
         const params: any = {
             admission_no: studentAdmissionNo,
         };
@@ -226,7 +299,10 @@ export const fetchParentReport = async (
     }
 };
 
-// API call to fetch child details
+/**
+ * DEPRECATED: Use fetchChildrenList() instead
+ * This function is kept for backward compatibility but will be removed
+ */
 export const fetchChildDetails = async (): Promise<ChildDetails> => {
     try {
         const authHeader = getAuthHeader();
@@ -234,7 +310,6 @@ export const fetchChildDetails = async (): Promise<ChildDetails> => {
             headers: authHeader.headers,
         });
 
-        // Extract from parent_data based on your provided structure
         const parentData = response.data?.parent_data;
         const studentInfo = parentData?.student_info;
         const parentInfo = parentData?.parent_info;
