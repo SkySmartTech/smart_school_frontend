@@ -113,62 +113,44 @@ export const getAuthHeader = () => {
 };
 
 /**
- * NEW FUNCTION: Fetch list of all children for the logged-in parent
- * 
- * When backend API is ready, update this function to call the correct endpoint.
- * Expected backend response format:
- * {
- *   children: [
- *     {
- *       studentId: "...",
- *       admissionNo: "Stu001",
- *       studentName: "John Doe",
- *       grade: "10",
- *       className: "10-A"
- *     },
- *     ...
- *   ]
- * }
+ * Fetch list of all children for the logged-in parent
+ * Extracts all students from all parent_data entries
  */
 export const fetchChildrenList = async (): Promise<ChildDetails[]> => {
     try {
         const authHeader = getAuthHeader();
-        
-        // TEMPORARY: Using existing /api/user endpoint
-        // TODO: Replace with dedicated children list endpoint when backend is ready
-        // Example: const response = await axios.get(`${API_BASE_URL}/api/parent/children`, {
         const response = await axios.get(`${API_BASE_URL}/api/user`, {
             headers: authHeader.headers,
         });
 
-        const parentData = response.data?.parent_data;
+        const parentDataArray = response.data?.parent_data;
         
-        // TEMPORARY: Extracting single child from current structure
-        // When backend provides multiple children, update this logic
-        const studentInfo = parentData?.student_info;
-        const parentInfo = parentData?.parent_info;
-
-        if (!studentInfo) {
-            throw new Error("Student information not found in API response.");
+        if (!parentDataArray || !Array.isArray(parentDataArray)) {
+            throw new Error("Parent data not found in API response.");
         }
 
-        // TODO: When backend returns array of children, replace this with:
-        // return response.data.children.map((child: any) => ({
-        //     studentId: child.studentId || child.student_id,
-        //     admissionNo: child.admissionNo || child.admission_no,
-        //     studentName: child.studentName || child.student_name || child.name,
-        //     grade: child.grade,
-        //     className: child.className || child.class_name || child.class
-        // }));
+        // Extract all students from all parent_data entries
+        const children: ChildDetails[] = [];
+        
+        parentDataArray.forEach((parentEntry: any) => {
+            const studentsInfo = parentEntry.students_info;
+            
+            if (Array.isArray(studentsInfo)) {
+                studentsInfo.forEach((student: any) => {
+                    children.push({
+                        studentId: student.studentId || student.student_id,
+                        admissionNo: student.studentAdmissionNo || student.student_admission_no || '',
+                        studentName: student.name || student.studentName || '',
+                        grade: student.grade || '',
+                        className: student.class || student.className || '',
+                    });
+                });
+            }
+        });
 
-        // TEMPORARY: Return single child as array until backend supports multiple children
-        const children: ChildDetails[] = [{
-            studentId: studentInfo.studentId || studentInfo.student_id,
-            admissionNo: parentInfo?.studentAdmissionNo || parentInfo?.student_admission_no || '',
-            studentName: studentInfo.name || studentInfo.studentName || '',
-            grade: studentInfo.grade || '',
-            className: studentInfo.class || studentInfo.className || '',
-        }];
+        if (children.length === 0) {
+            throw new Error("No student information found.");
+        }
 
         return children;
 
@@ -186,48 +168,34 @@ export const fetchChildrenList = async (): Promise<ChildDetails[]> => {
     }
 };
 
-// API call to fetch parent report data
+/**
+ * API call to fetch parent report data
+ * Route format: /api/parent-report-data/{studentAdmissionNo}/{start_date}/{end_date}/{exam}/{month}/{student_grade}/{student_class}
+ */
 export const fetchParentReport = async (
+    studentAdmissionNo: string,
     startDate: string,
     endDate: string,
     exam: string,
     month: string,
-    studentAdmissionNo: string
+    studentGrade: string,
+    studentClass: string
 ): Promise<ParentReportData> => { 
     try {
-        const studentResponse = await axios.get(`${API_BASE_URL}/api/user`, {
-            ...getAuthHeader(),
-        });
-
-        const studentInfo = studentResponse.data?.parent_data?.student_info;
-        const studentGrade = studentInfo?.grade || '';
-        const studentClass = studentInfo?.class || '';
-
         // Convert empty/null values to "null" string for URL path
-        const sanitizedStartDate = startDate;
-        const sanitizedEndDate = endDate;
-        const sanitizedExam = exam;
         const sanitizedMonth = month || 'null';
 
-        // Constructing the URL with the sanitized parameters
-        const urlPath = `${API_BASE_URL}/api/parent-report-data/${sanitizedStartDate}/${sanitizedEndDate}/${sanitizedExam}/${sanitizedMonth}/${encodeURIComponent(studentGrade)}/${encodeURIComponent(studentClass)}`;
+        // Constructing the URL according to your backend route format:
+        // /api/parent-report-data/{studentAdmissionNo}/{start_date}/{end_date}/{exam}/{month}/{student_grade}/{student_class}
+        const urlPath = `${API_BASE_URL}/api/parent-report-data/${encodeURIComponent(studentAdmissionNo)}/${startDate}/${endDate}/${exam}/${sanitizedMonth}/${encodeURIComponent(studentGrade)}/${encodeURIComponent(studentClass)}`;
 
-        const params: any = {
-            admission_no: studentAdmissionNo,
-        };
-
-        const filteredParams = Object.fromEntries(
-            Object.entries(params).filter(([_, value]) => value !== undefined && value !== "")
-        );
-
-        console.log('API Request params:', filteredParams);
         console.log('API URL:', urlPath);
+        console.log('Student Admission No:', studentAdmissionNo);
         console.log('Student Grade:', studentGrade);
         console.log('Student Class:', studentClass);
 
         const response = await axios.get(urlPath, {
             ...getAuthHeader(),
-            params: filteredParams,
             timeout: 10000,
         });
 
@@ -310,19 +278,28 @@ export const fetchChildDetails = async (): Promise<ChildDetails> => {
             headers: authHeader.headers,
         });
 
-        const parentData = response.data?.parent_data;
-        const studentInfo = parentData?.student_info;
-        const parentInfo = parentData?.parent_info;
-
-        if (!studentInfo || !studentInfo.name || !studentInfo.grade || !studentInfo.class) {
+        const parentDataArray = response.data?.parent_data;
+        
+        if (!parentDataArray || !Array.isArray(parentDataArray) || parentDataArray.length === 0) {
             throw new Error("Student details not found in API response.");
         }
 
+        // Get first student from first parent entry
+        const firstParentEntry = parentDataArray[0];
+        const studentsInfo = firstParentEntry.students_info;
+        
+        if (!Array.isArray(studentsInfo) || studentsInfo.length === 0) {
+            throw new Error("Student details not found in API response.");
+        }
+
+        const studentInfo = studentsInfo[0];
+
         const transformedData: ChildDetails = {
-            studentName: studentInfo.name,
-            grade: studentInfo.grade,
-            className: studentInfo.class,
-            admissionNo: parentInfo?.studentAdmissionNo || '',
+            studentId: studentInfo.studentId || studentInfo.student_id,
+            admissionNo: studentInfo.studentAdmissionNo || studentInfo.student_admission_no || '',
+            studentName: studentInfo.name || studentInfo.studentName || '',
+            grade: studentInfo.grade || '',
+            className: studentInfo.class || studentInfo.className || '',
         };
 
         return transformedData;

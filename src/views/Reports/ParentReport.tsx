@@ -132,8 +132,11 @@ const ParentReport: React.FC = () => {
         ],
         queryFn: () => {
             const admissionNo = selectedChild?.admissionNo;
-            if (!admissionNo) {
-                throw new Error("Student admission number not available");
+            const studentGrade = selectedChild?.grade;
+            const studentClass = selectedChild?.className;
+
+            if (!admissionNo || !studentGrade || !studentClass) {
+                throw new Error("Student information not available");
             }
 
             const startDateValue = startDate?.format('YYYY-MM-DD') || '2024-01-01';
@@ -142,11 +145,13 @@ const ParentReport: React.FC = () => {
             const monthValue = exam === MONTHLY_EXAM_VALUE ? month : "";
 
             return fetchParentReport(
+                admissionNo,
                 startDateValue,
                 endDateValue,
                 examValue,
                 monthValue,
-                admissionNo
+                studentGrade,
+                studentClass
             );
         },
         enabled: Boolean(selectedChild?.admissionNo) && hasValidFilters(),
@@ -387,7 +392,7 @@ const ParentReport: React.FC = () => {
                                     >
                                         {childrenData.map((child, index) => (
                                             <MenuItem key={index} value={index}>
-                                                {child.studentName} - Grade {child.grade} ({child.className})
+                                                {child.studentName} - {child.admissionNo}
                                             </MenuItem>
                                         ))}
                                     </TextField>
