@@ -38,7 +38,8 @@ const defaultPermissions: Record<PermissionKey, boolean> = {
     managementStaffReport: false,
     classTeacherReport: false,
     parentReport: false,
-
+    parentTeacherReport: false,
+    parentPrincipalReport: false,
     // User Management
     userManagementSub: false,
     userManagement: false,
@@ -382,8 +383,8 @@ const UserAccessManagementSystem = () => {
                                         {renderParentCheckbox(
                                             "reports",
                                             "Reports",
-                                            ["managementStaffReport", "classTeacherReport", "parentReport"],
-                                            ["Management Staff Report", "Class Teacher Report", "Parent Report"]
+                                            ["managementStaffReport", "classTeacherReport", "parentReport", "parentPrincipalReport", "parentTeacherReport"],
+                                            ["Management Staff Report", "Class Teacher Report", "Parent Report", "Parent Principal Report", "Parent Teacher Report"],
                                         )}
 
                                         {renderCheckbox("systemManagement", "System Management", true)}

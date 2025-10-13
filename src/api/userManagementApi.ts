@@ -459,14 +459,15 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
   };
 
   // Helper function to safely handle string or string array
-  const safeString = (value: string | string[] | undefined): string | undefined => {
-    if (!value) return undefined;
+  const safeString = (value: string | string[] | undefined | null): string | null => {
+    if (!value) {
+      return null;
+    }
     if (Array.isArray(value)) {
-      const joined = value.join(', ').trim();
-      return joined || undefined;
+      return value.join(', ').trim() || null;
     }
     const trimmed = String(value).trim();
-    return trimmed || undefined;
+    return trimmed || null;
   };
 
   // Handle required and optional fields
@@ -692,25 +693,64 @@ export const deactivateUser = async (id: number, userType: UserType): Promise<vo
   );
 };
 
-export const searchUsers = async (searchTerm: string, userType?: string): Promise<User[]> => {
-  const response = await axios.get<UserListResponse>(
-    `${API_BASE_URL}/api/users/search`,
-    {
-      ...getAuthHeader(),
-      params: {
-        keyword: searchTerm,
-        userType,
-      },
-    }
-  );
-  return response.data.data;
+// ...existing code...
+
+export const searchUsers = async (searchTerm: string, userType: UserType): Promise<User[]> => {
+  let endpoint = '';
+  
+  // Determine the correct endpoint based on userType
+  switch (userType) {
+    case 'Teacher':
+      endpoint = '/api/teacher/search';
+      break;
+    case 'Student':
+      endpoint = '/api/student/search';
+      break;
+    case 'Parent':
+      endpoint = '/api/parent/search';
+      break;
+    default:
+      throw new Error('Invalid user type for search');
+  }
+
+  try {
+    const response = await axios.get<UserListResponse>(
+      `${API_BASE_URL}${endpoint}`,
+      {
+        ...getAuthHeader(),
+        params: {
+          keyword: searchTerm
+        },
+      }
+    );
+
+    // Transform the response data to match User type
+    return Array.isArray(response.data.data) 
+      ? response.data.data 
+      : Array.isArray(response.data) 
+        ? response.data 
+        : [];
+        
+  } catch (error) {
+    console.error('Search users error:', error);
+    throw error;
+  }
 };
+
+// ...existing code...
 
 export const bulkDeactivateUsers = async (ids: number[], userType: UserType): Promise<void> => {
   const promises = ids.map(id => deactivateUser(id, userType));
   await Promise.all(promises);
 };
-function safeString(_studentAdmissionNo: any): any {
-  throw new Error("Function not implemented.");
+function safeString(value: string | string[] | undefined | null): string | null {
+  if (!value) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ').trim() || null;
+  }
+  const trimmed = String(value).trim();
+  return trimmed || null;
 }
 

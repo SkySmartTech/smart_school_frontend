@@ -15,6 +15,8 @@ export type PermissionKey =
   | "managementStaffReport"
   | "classTeacherReport"
   | "parentReport"
+  | "parentTeacherReport"
+  | "parentPrincipalReport"
   | "systemManagement"
   | "userProfile"
   |"autoRefresh"
