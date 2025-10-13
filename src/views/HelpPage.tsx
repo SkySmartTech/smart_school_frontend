@@ -177,7 +177,7 @@ const HelpPage: React.FC = () => {
                         <Box sx={{ textAlign: 'right' }}>
                             {/* Optional button for further help/contact */}
                             <Button variant="outlined" color="primary">
-                                Contact Support
+                                Contact Support..
                             </Button>
                         </Box>
 
