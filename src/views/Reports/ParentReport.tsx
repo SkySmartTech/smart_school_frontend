@@ -432,10 +432,10 @@ const ParentReport: React.FC = () => {
                         {!hasValidFilters() && (
                             <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
                                 <Typography variant="h6" color="text.secondary" gutterBottom>
-                                    Please select filters to view report data
+                                    Please select the filters to view report data
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    Choose either an exam (and month if monthly) or select a date range to load the report.
+                                    Choose either an exam (and month) or select a date range to load the report.
                                 </Typography>
                             </Paper>
                         )}
