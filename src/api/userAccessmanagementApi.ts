@@ -8,6 +8,7 @@ export type PermissionKey =
   | "addMarks"
   | "addStudent"
   | "addClassTeacher"
+  | "addStudent"
   | "reports"
   | "help"
   | "userManagementSub"
