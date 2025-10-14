@@ -7,6 +7,7 @@ export type PermissionKey =
   | "commonDashboard"
   | "addMarks"
   | "addClassTeacher"
+  | "addStudent"
   | "reports"
   | "help"
   | "userManagementSub"
