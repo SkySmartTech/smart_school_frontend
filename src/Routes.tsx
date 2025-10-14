@@ -126,6 +126,17 @@ function AppRoutes() {
         />
 
         <Route
+          path="/addStudent"
+          element={
+            <ProtectedRoute permission="addStudent">
+              <Suspense fallback={<PageLoader />}>
+                <AddStudent />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/userManagement"
           element={
             <ProtectedRoute permission="userManagement">
