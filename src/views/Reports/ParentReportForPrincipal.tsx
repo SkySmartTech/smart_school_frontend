@@ -18,7 +18,9 @@ import {
     CircularProgress,
     Snackbar,
     Alert,
+    Autocomplete,
 } from "@mui/material";
+
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -43,11 +45,27 @@ import dayjs, { type Dayjs } from "dayjs";
 
 import {
     fetchParentReport,
-    fetchChildrenList,
     type ParentReportData,
-    type ChildDetails,
-    type DetailedMarksTableRow
+    type DetailedMarksTableRow,
+    fetchClassStudents
 } from "../../api/parentReportForPrincipalApi.ts";
+
+interface Student {
+    [x: string]: any;
+    id: number;
+    name: string;
+    student: {
+        id: number;
+        studentGrade: string;
+        studentClass: string;
+        medium: string;
+        studentAdmissionNo: string;
+        year: string;
+        userId: string;
+    };
+}
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import axios from "axios";
 
 // Standardize the Monthly Exam value to 'Monthly'
 const MONTHLY_EXAM_VALUE = 'Monthly';
@@ -71,7 +89,23 @@ const ParentReport: React.FC = () => {
     const [month, setMonth] = useState("");
     const [startDate, setStartDate] = useState<Dayjs | null>(null);
     const [endDate, setEndDate] = useState<Dayjs | null>(null);
-    const [selectedChildIndex, setSelectedChildIndex] = useState<number>(0);
+
+    // New states for Year / Grade / Class / Students
+    const [yearOptions] = useState<string[]>(['2023', '2024', '2025', '2026']);
+    const [gradeOptions, setGradeOptions] = useState<string[]>([]);
+    const [classOptions, setClassOptions] = useState<string[]>([]);
+    const [studentOptions, setStudentOptions] = useState<Student[]>([]);
+
+    // Cache of all students (from /api/students) to derive Year/Grade/Class without calling /api/years
+    const [] = useState<Student[]>([]);
+
+    const [selectedYear, setSelectedYear] = useState<string>('');
+    const [selectedGrade, setSelectedGrade] = useState<string>('');
+    const [selectedClass, setSelectedClass] = useState<string>('');
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+    // text input for student search (freeSolo)
+    const [, setStudentSearchText] = useState<string>('');
 
     type SnackbarState = {
         open: boolean;
@@ -93,29 +127,114 @@ const ParentReport: React.FC = () => {
         return hasExamFilter || hasDateFilter;
     };
 
-    // Fetch list of all children for this parent
-    const {
-        isLoading: isLoadingChildren,
-        isError: isErrorChildren,
-        error: errorChildren,
-        data: childrenData
-    } = useQuery<ChildDetails[], Error>({
-        queryKey: ["children-list"],
-        queryFn: fetchChildrenList,
-        retry: 1,
-    });
-
-    // Get currently selected child
-    const selectedChild = childrenData?.[selectedChildIndex];
-
-    // Reset selected child index if children data changes
+    // Initial data loading effect
     useEffect(() => {
-        if (childrenData && childrenData.length > 0 && selectedChildIndex >= childrenData.length) {
-            setSelectedChildIndex(0);
-        }
-    }, [childrenData, selectedChildIndex]);
+        let mounted = true;
+        const loadInitialData = async () => {
+            try {
+                // Fetch grades from /api/grades endpoint
+                const gradesResponse = await axios.get(
+                    `${API_BASE_URL}/api/grades`,
+                    getAuthHeader()
+                );
+                
+                if (!mounted) return;
 
-    // Fetches report data for the selected child
+                if (Array.isArray(gradesResponse.data)) {
+                    const grades = gradesResponse.data.map((item: any) => item.grade);
+                    setGradeOptions(grades.sort());
+                }
+
+            } catch (err: any) {
+                if (mounted) {
+                    setSnackbar({
+                        open: true,
+                        message: `Failed to load grades: ${err.message}`,
+                        severity: "error"
+                    });
+                }
+            }
+        };
+
+        loadInitialData();
+        return () => { mounted = false; };
+    }, []);
+
+    // Effect to load classes when grade is selected
+    useEffect(() => {
+        let mounted = true;
+        const loadClasses = async () => {
+            if (!selectedGrade) {
+                setClassOptions([]);
+                return;
+            }
+
+            try {
+                // Fetch classes from /api/grade-classes endpoint
+                const classesResponse = await axios.get(
+                    `${API_BASE_URL}/api/grade-classes`,
+                    getAuthHeader()
+                );
+                
+                if (!mounted) return;
+
+                if (Array.isArray(classesResponse.data)) {
+                    const classes = classesResponse.data.map((item: any) => item.class);
+                    setClassOptions(classes.sort());
+                }
+
+            } catch (err: any) {
+                if (mounted) {
+                    setSnackbar({
+                        open: true,
+                        message: `Failed to load classes: ${err.message}`,
+                        severity: "error"
+                    });
+                }
+            }
+        };
+
+        loadClasses();
+        return () => { mounted = false; };
+    }, [selectedGrade]);
+
+    // Effect to load students when year, grade and class are all selected
+    useEffect(() => {
+        let mounted = true;
+        setStudentOptions([]);
+        setSelectedStudent(null);
+        setStudentSearchText('');
+        
+        if (!selectedYear || !selectedGrade || !selectedClass) {
+            return;
+        }
+
+        const loadStudents = async () => {
+            try {
+                const students = await fetchClassStudents(selectedYear, selectedGrade, selectedClass);
+                if (!mounted) return;
+                
+                if (students && students.length > 0) {
+                    setStudentOptions(students);
+                }
+            } catch (err: any) {
+                if (mounted) {
+                    setSnackbar({
+                        open: true,
+                        message: `Failed to load students: ${err.message}`,
+                        severity: "error"
+                    });
+                }
+            }
+        };
+
+        loadStudents();
+        return () => { mounted = false; };
+    }, [selectedYear, selectedGrade, selectedClass]);
+
+    // When studentSearchText changes we can attempt local filter - actual selection is on Enter or on option click
+
+    // Fetches report data for the selected student
     const {
         data: reportData,
         isLoading: isLoadingReport,
@@ -124,16 +243,19 @@ const ParentReport: React.FC = () => {
     } = useQuery<ParentReportData, Error>({
         queryKey: [
             "parent-report",
+            selectedYear,
+            selectedGrade,
+            selectedClass,
+            selectedStudent?.admissionNo || '',
             startDate?.format('YYYY-MM-DD') || '',
             endDate?.format('YYYY-MM-DD') || '',
             exam,
-            month,
-            selectedChild?.admissionNo || ''
+            month
         ],
         queryFn: () => {
-            const admissionNo = selectedChild?.admissionNo;
-            const studentGrade = selectedChild?.grade;
-            const studentClass = selectedChild?.className;
+            const admissionNo = selectedStudent?.student.studentAdmissionNo;
+            const studentGrade = selectedGrade;
+            const studentClass = selectedClass;
 
             if (!admissionNo || !studentGrade || !studentClass) {
                 throw new Error("Student information not available");
@@ -154,19 +276,12 @@ const ParentReport: React.FC = () => {
                 studentClass
             );
         },
-        enabled: Boolean(selectedChild?.admissionNo) && hasValidFilters(),
+        enabled: Boolean(selectedStudent?.student.studentAdmissionNo) && hasValidFilters() && Boolean(selectedYear && selectedGrade && selectedClass),
         retry: 1
     });
 
     // Handle side effects for errors
     useEffect(() => {
-        if (isErrorChildren && errorChildren) {
-            setSnackbar({
-                open: true,
-                message: `Failed to load children list: ${errorChildren.message}`,
-                severity: "error"
-            });
-        }
         if (isErrorReport && errorReport) {
             setSnackbar({
                 open: true,
@@ -174,7 +289,7 @@ const ParentReport: React.FC = () => {
                 severity: "error"
             });
         }
-    }, [isErrorChildren, errorChildren, isErrorReport, errorReport]);
+    }, [isErrorReport, errorReport]);
 
     useEffect(() => {
         if (startDate && endDate &&
@@ -190,6 +305,47 @@ const ParentReport: React.FC = () => {
     }, [startDate, endDate]);
 
     const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
+
+    const handleStudentSelect = (value: Student | string | null) => {
+        if (!value) {
+            setSelectedStudent(null);
+            return;
+        }
+        if (typeof value === 'string') {
+            const typed = value.trim();
+            // try to find in options by admissionNo
+            const found = studentOptions.find(s => s.student.studentAdmissionNo === typed);
+            if (found) {
+                setSelectedStudent(found);
+            } else {
+                // If not found but grade/class/year are present, create a minimal student object so query can run
+                if (selectedYear && selectedGrade && selectedClass) {
+                    setSelectedStudent({
+                        id: 0,
+                        name: typed,
+                        student: {
+                            id: 0,
+                            studentGrade: selectedGrade,
+                            studentClass: selectedClass,
+                            medium: '',
+                            studentAdmissionNo: typed,
+                            year: selectedYear,
+                            userId: ''
+                        }
+                    });
+                } else {
+                    setSnackbar({ open: true, message: 'Please select Year/Grade/Class before searching by admission number', severity: 'warning' });
+                }
+            }
+            return;
+        }
+        // Student object selected
+        setSelectedStudent(value);
+        // prefill year/grade/class if available from student
+        if (value.student.year && !selectedYear) setSelectedYear(value.student.year);
+        if (value.student.studentGrade && !selectedGrade) setSelectedGrade(value.student.studentGrade);
+        if (value.student.studentClass && !selectedClass) setSelectedClass(value.student.studentClass);
+    };
 
     const renderDetailedMarksTable = (): React.ReactNode => {
         if (isLoadingReport) {
@@ -315,121 +471,159 @@ const ParentReport: React.FC = () => {
                                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                                     Report Filters
                                 </Typography>
-                                <Stack
-                                    direction={{ xs: 'column', sm: 'row' }}
-                                    spacing={2}
-                                    alignItems="flex-start"
-                                    flexWrap="wrap"
-                                    useFlexGap={true}
-                                >
-                                    {/* Start Date */}
-                                    <TextField
-                                        type="date"
-                                        label="Start Date"
-                                        value={startDate ? startDate.format('YYYY-MM-DD') : ''}
-                                        onChange={(e) => setStartDate(e.target.value ? dayjs(e.target.value) : null)}
-                                        InputLabelProps={{ shrink: true }}
-                                        sx={{ minWidth: { xs: '100%', sm: 150 } }}
-                                    />
-                                    {/* End Date */}
-                                    <TextField
-                                        type="date"
-                                        label="End Date"
-                                        value={endDate ? endDate.format('YYYY-MM-DD') : ''}
-                                        onChange={(e) => setEndDate(e.target.value ? dayjs(e.target.value) : null)}
-                                        InputLabelProps={{ shrink: true }}
-                                        sx={{ minWidth: { xs: '100%', sm: 150 } }}
-                                    />
-                                    {/* Exam */}
-                                    <TextField
-                                        select
-                                        label="Exam"
-                                        value={exam}
-                                        onChange={e => setExam(e.target.value)}
-                                        sx={{ minWidth: { xs: '100%', sm: 150 } }}
-                                    >
-                                        {examOptions.map((examOption) => (
-                                            <MenuItem key={examOption.value} value={examOption.value}>
-                                                {examOption.label}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                    {/* Month - Only enabled when Monthly exam is selected */}
-                                    <TextField
-                                        select
-                                        label="Month"
-                                        value={month}
-                                        onChange={e => setMonth(e.target.value)}
-                                        disabled={exam !== MONTHLY_EXAM_VALUE}
-                                        sx={{
-                                            minWidth: { xs: '100%', sm: 150 },
-                                            opacity: exam !== MONTHLY_EXAM_VALUE ? 0.6 : 1
-                                        }}
-                                        helperText={exam !== MONTHLY_EXAM_VALUE ? "Available only for Monthly exams" : ""}
-                                    >
-                                        {months.map(m => (
-                                            <MenuItem key={m} value={m}>{m}</MenuItem>
-                                        ))}
-                                    </TextField>
+                                <Stack spacing={2}>
+
+                                    {/* Exam Type Selection */}
+                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                                        <Autocomplete
+                                            fullWidth
+                                            options={examOptions}
+                                            value={examOptions.find(opt => opt.value === exam) || null}
+                                            onChange={(_, newValue) => setExam(newValue?.value || '')}
+                                            getOptionLabel={(option) => option.label}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Exam Type"
+                                                    size="small"
+                                                />
+                                            )}
+                                        />
+                                        {exam === MONTHLY_EXAM_VALUE && (
+                                            <Autocomplete
+                                                fullWidth
+                                                options={months}
+                                                value={month}
+                                                onChange={(_, newValue) => setMonth(newValue || '')}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        label="Month"
+                                                        size="small"
+                                                    />
+                                                )}
+                                            />
+                                        )}
+                                    </Stack>
+
+                                    {/* Date Range Selection */}
+                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                                        <DatePicker
+                                            label="Start Date"
+                                            value={startDate}
+                                            onChange={(newValue) => setStartDate(dayjs(newValue))}
+                                            slotProps={{
+                                                textField: { size: 'small', fullWidth: true }
+                                            }}
+                                        />
+                                        <DatePicker
+                                            label="End Date"
+                                            value={endDate}
+                                            onChange={(newValue) => setEndDate(dayjs(newValue))}
+                                            slotProps={{
+                                                textField: { size: 'small', fullWidth: true }
+                                            }}
+                                        />
+                                    </Stack>
                                 </Stack>
                             </Paper>
 
-                            {/* Student Details Section */}
-                            <Paper elevation={2} sx={{ p: 3, flexShrink: 0, minWidth: { xs: '100%', md: 300 } }}>
+                            {/* Student Details Section - NEW: Year / Grade / Class / Students */}
+                            <Paper elevation={2} sx={{ p: 3, flexShrink: 0, minWidth: { xs: '100%', md: 320 } }}>
                                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                                     Student Details
                                 </Typography>
-                                
-                                {/* Child Selection Dropdown - Only show if multiple children */}
-                                {!isLoadingChildren && childrenData && childrenData.length > 1 && (
+
+                                <Stack spacing={2}>
                                     <TextField
                                         select
-                                        label="Select Child"
-                                        value={selectedChildIndex}
-                                        onChange={(e) => setSelectedChildIndex(Number(e.target.value))}
+                                        label="Year"
+                                        value={selectedYear}
+                                        onChange={(e) => setSelectedYear(e.target.value)}
                                         fullWidth
-                                        sx={{ mb: 2 }}
+                                        size="small"
                                     >
-                                        {childrenData.map((child, index) => (
-                                            <MenuItem key={index} value={index}>
-                                                {child.studentName} - {child.admissionNo}
-                                            </MenuItem>
-                                        ))}
+                                        <MenuItem value=""><em>None</em></MenuItem>
+                                        {yearOptions.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
                                     </TextField>
-                                )}
 
-                                <Box sx={{
-                                    p: 2,
-                                    border: `1px solid ${theme.palette.divider}`,
-                                    borderRadius: theme.shape.borderRadius,
-                                    textAlign: 'left'
-                                }}>
-                                    {isLoadingChildren ? (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            <CircularProgress size={20} />
-                                            <Typography>Loading...</Typography>
-                                        </Box>
-                                    ) : selectedChild ? (
-                                        <Stack spacing={1}>
-                                            <Typography variant="body2" fontWeight="bold">
-                                                Student: {selectedChild.studentName}
+                                    <TextField
+                                        select
+                                        label="Grade"
+                                        value={selectedGrade}
+                                        onChange={(e) => setSelectedGrade(e.target.value)}
+                                        fullWidth
+                                        size="small"
+                                        disabled={!selectedYear}
+                                    >
+                                        <MenuItem value=""><em>None</em></MenuItem>
+                                        {gradeOptions.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+                                    </TextField>
+
+                                    <TextField
+                                        select
+                                        label="Class"
+                                        value={selectedClass}
+                                        onChange={(e) => setSelectedClass(e.target.value)}
+                                        fullWidth
+                                        size="small"
+                                        disabled={!selectedGrade}
+                                    >
+                                        <MenuItem value=""><em>None</em></MenuItem>
+                                        {classOptions.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                                    </TextField>
+
+                                    <Autocomplete
+                                        options={studentOptions}
+                                        value={selectedStudent}
+                                        onChange={(_, newValue) => handleStudentSelect(newValue)}
+                                        disabled={!selectedClass}
+                                        getOptionLabel={(option) => 
+                                            `${option.name} (${option.student.studentAdmissionNo})`
+                                        }
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Student"
+                                                size="small"
+                                                placeholder={selectedClass ? "Search by name or admission no." : "Select class first"}
+                                            />
+                                        )}
+                                        renderOption={(props, option) => (
+                                            <li {...props}>
+                                                {option.name} ({option.student.studentAdmissionNo})
+                                            </li>
+                                        )}
+                                    />
+
+                                    <Box sx={{
+                                        p: 2,
+                                        border: `1px solid ${theme.palette.divider}`,
+                                        borderRadius: theme.shape.borderRadius,
+                                        textAlign: 'left'
+                                    }}>
+                                        {selectedStudent ? (
+                                            <Stack spacing={1}>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    Student: {selectedStudent.name}
+                                                </Typography>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    Grade: {selectedGrade || selectedStudent.student.studentGrade}
+                                                </Typography>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    Class: {selectedClass || selectedStudent.student.studentClass}
+                                                </Typography>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    Admission No: {selectedStudent.student.studentAdmissionNo}
+                                                </Typography>
+                                            </Stack>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                No student selected
                                             </Typography>
-                                            <Typography variant="body2" fontWeight="bold">
-                                                Grade: {selectedChild.grade}
-                                            </Typography>
-                                            <Typography variant="body2" fontWeight="bold">
-                                                Class: {selectedChild.className}
-                                            </Typography>
-                                            <Typography variant="body2" fontWeight="bold">
-                                                Admission No: {selectedChild.admissionNo}
-                                            </Typography>
-                                        </Stack>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary">
-                                            No student data available
-                                        </Typography>
-                                    )}
-                                </Box>
+                                        )}
+                                    </Box>
+                                </Stack>
                             </Paper>
                         </Stack>
 
@@ -446,7 +640,7 @@ const ParentReport: React.FC = () => {
                         )}
 
                         {/* Charts and Data - Only show if valid filters are applied */}
-                        {hasValidFilters() && selectedChild && (
+                        {hasValidFilters() && selectedStudent && (
                             <>
                                 {/* Charts Section */}
                                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} flexWrap="wrap">
@@ -454,20 +648,16 @@ const ParentReport: React.FC = () => {
                                     <Paper sx={{ p: 3, flex: 2 }}>
                                         <Typography fontWeight={600} mb={2}>Overall Subject</Typography>
                                         <ResponsiveContainer width="100%" height={250}>
-                                            {isLoadingReport ? (
-                                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
-                                                    <CircularProgress />
-                                                </Box>
-                                            ) : (
-                                                <BarChart data={reportData?.overallSubjectLineGraph} barSize={50}>
-                                                    <XAxis dataKey="year" />
-                                                    <YAxis domain={[0, 100]} />
-                                                    <ReTooltip />
-                                                    <Bar dataKey="firstTerm" fill="#0d1542ff" name="First Term" />
-                                                    <Bar dataKey="secondTerm" fill="#1310b6ff" name="Second Term" />
-                                                    <Bar dataKey="thirdTerm" fill=" #77aef5ff" name="Third Term" />
-                                                </BarChart>
-                                            )}
+                                            {/* Recharts bar chart rendering retained from original file */}
+                                            <BarChart data={reportData?.overallSubjectLineGraph || []}>
+                                                <XAxis dataKey="year" />
+                                                <YAxis />
+                                                <ReTooltip />
+                                                <Legend />
+                                                <Bar dataKey="firstTerm" stackId="a" fill="#8884d8" name="First Term" />
+                                                <Bar dataKey="secondTerm" stackId="a" fill="#82ca9d" name="Second Term" />
+                                                <Bar dataKey="thirdTerm" stackId="a" fill="#ffc658" name="Third Term" />
+                                            </BarChart>
                                         </ResponsiveContainer>
                                     </Paper>
 
@@ -475,27 +665,14 @@ const ParentReport: React.FC = () => {
                                     <Paper sx={{ p: 3, flex: 1 }}>
                                         <Typography fontWeight={600} mb={2}>Subject Wise Marks.</Typography>
                                         <ResponsiveContainer width="100%" height={250}>
-                                            {isLoadingReport ? (
-                                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 250 }}>
-                                                    <CircularProgress />
-                                                </Box>
-                                            ) : (
-                                                <PieChart>
-                                                    <Pie
-                                                        data={reportData?.subjectWiseMarksPie}
-                                                        dataKey="value"
-                                                        nameKey="name"
-                                                        outerRadius={80}
-                                                        label={(entry: any) => entry.name}
-                                                    >
-                                                        {(reportData?.subjectWiseMarksPie || []).map((_: any, idx: number) => (
-                                                            <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                                                        ))}
-                                                    </Pie>
-                                                    <ReTooltip />
-                                                    <Legend />
-                                                </PieChart>
-                                            )}
+                                            <PieChart>
+                                                <Pie data={reportData?.subjectWiseMarksPie || []} dataKey="value" nameKey="name" innerRadius={40} outerRadius={80} fill="#8884d8">
+                                                    {(reportData?.subjectWiseMarksPie || []).map((_entry, idx) => (
+                                                        <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <ReTooltip />
+                                            </PieChart>
                                         </ResponsiveContainer>
                                     </Paper>
                                 </Stack>
@@ -511,15 +688,11 @@ const ParentReport: React.FC = () => {
                                         <Table size="small" stickyHeader>
                                             <TableHead>
                                                 <TableRow>
-                                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', minWidth: 100 }}>Subject</TableCell>
-                                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', borderBottom: 1, borderColor: 'divider' }}>Highest Student</TableCell>
-                                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', borderBottom: 1, borderColor: 'divider' }}>{selectedChild?.studentName || 'Student'}</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold', minWidth: 70 }}>Marks</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold', minWidth: 70 }}>Mark Grade</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold', minWidth: 70 }}>Marks</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold', minWidth: 70 }}>Mark Grade</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Subject</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Highest Marks</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Highest Grade</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Student Marks</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Student Grade</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -544,3 +717,21 @@ const ParentReport: React.FC = () => {
 };
 
 export default ParentReport;
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+function getAuthHeader() {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || localStorage.getItem('access_token');
+
+    if (!token) {
+        throw new Error('Authentication token not found. Please login again.');
+    }
+
+    return {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    };
+}

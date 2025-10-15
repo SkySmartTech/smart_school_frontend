@@ -44,6 +44,20 @@ export interface ChildDetails {
     className: string;
 }
 
+export interface StudentDetails {
+    id: number;
+    name: string;
+    student: {
+        id: number;
+        studentGrade: string;
+        studentClass: string;
+        medium: string;
+        studentAdmissionNo: string;
+        year: string;
+        userId: string;
+    };
+}
+
 // Helper function to transform backend data to detailed marks table
 const transformToDetailedMarksTable = (
     highestMarksData: any[],
@@ -316,3 +330,219 @@ export const fetchChildDetails = async (): Promise<ChildDetails> => {
         throw new Error("Network error occurred");
     }
 };
+
+/**
+ * Helper: fetch raw students list (fallback)
+ * Uses /api/students and returns the raw array (or empty array).
+ */
+async function fetchAllStudentsRaw(): Promise<any[]> {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/students`, getAuthHeader());
+    return Array.isArray(res.data) ? res.data : [];
+  } catch (error) {
+    // If fetching all students fails, rethrow so caller can handle/log
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      // mirror behavior used elsewhere: remove tokens so the app will prompt login
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
+      localStorage.removeItem('access_token');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get available years.
+ * Try /api/years first; if not available, derive from /api/students.
+ */
+export async function getAvailableYears(): Promise<string[]> {
+  try {
+    // Try the dedicated endpoint first
+    const res = await axios.get(`${API_BASE_URL}/api/years`, getAuthHeader());
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      // Ensure strings
+      return res.data.map((y: any) => String(y));
+    }
+    // If empty or unexpected, fall through to fallback
+  } catch (error: any) {
+    // If it's a 404, use fallback. For 401/403/etc. rethrow to preserve auth behavior.
+    if (!(axios.isAxiosError(error) && error.response?.status === 404)) {
+      // Not a 404: let caller handle (401 will clear tokens in handleApiError below)
+      try { handleApiError(error, "getAvailableYears"); } catch (e) { throw e; }
+    }
+    // otherwise continue to fallback
+  }
+
+  // Fallback: derive from /api/students
+  try {
+    const raw = await fetchAllStudentsRaw();
+    const yearsSet = new Set<string>();
+    raw.forEach((item: any) => {
+      const student = item.student ?? item.student_data ?? item;
+      const year = student?.year ?? student?.year?.toString?.();
+      if (year) yearsSet.add(String(year));
+    });
+    const years = Array.from(yearsSet).sort((a, b) => b.localeCompare(a)); // newest first
+    return years;
+  } catch (error) {
+    handleApiError(error, "getAvailableYears");
+    return [];
+  }
+}
+
+/**
+ * Get available grades.
+ * Try /api/grades first; if not available, derive from /api/students.
+ */
+export async function getAvailableGrades(): Promise<string[]> {
+  try {
+    // Try dedicated endpoint
+    const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      // The earlier code mapped to item.grade — preserve that if present
+      return res.data.map((item: any) => (item.grade ?? String(item))).filter(Boolean);
+    }
+    // fall back if empty/unexpected
+  } catch (error: any) {
+    // Allow 404 to fall through to fallback; propagate other errors via handleApiError
+    if (!(axios.isAxiosError(error) && error.response?.status === 404)) {
+      try { handleApiError(error, "getAvailableGrades"); } catch (e) { throw e; }
+    }
+  }
+
+  // Fallback: derive from /api/students
+  try {
+    const raw = await fetchAllStudentsRaw();
+    const gradeSet = new Set<string>();
+    raw.forEach((item: any) => {
+      const student = item.student ?? item.student_data ?? item;
+      const grade = student?.studentGrade ?? student?.student_grade ?? student?.grade;
+      if (grade) gradeSet.add(String(grade));
+    });
+    return Array.from(gradeSet).sort();
+  } catch (error) {
+    handleApiError(error, "getAvailableGrades");
+    return [];
+  }
+}
+
+/**
+ * Get available classes. If grade is provided, filter classes for that grade.
+ * Try /api/grade-classes first; if not available, derive from /api/students.
+ */
+export async function getAvailableClasses(gradeFilter: string): Promise<string[]> {
+  try {
+    // Try dedicated endpoint first
+    const res = await axios.get(`${API_BASE_URL}/api/grade-classes`, getAuthHeader());
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      // Map to item.class (same as previous behavior)
+      let classes = res.data.map((item: any) => item.class).filter(Boolean);
+      if (gradeFilter) {
+        // If the API returns grade relationship, try to filter (best-effort)
+        classes = classes.filter((_c: any) => {
+          // If API items include grade, we could filter; otherwise keep as-is
+          return true;
+        });
+      }
+      return Array.from(new Set(classes)).sort();
+    }
+  } catch (error: any) {
+    // If endpoint missing (404) fall back; otherwise propagate via handleApiError
+    if (!(axios.isAxiosError(error) && error.response?.status === 404)) {
+      try { handleApiError(error, "getAvailableClasses"); } catch (e) { throw e; }
+    }
+  }
+
+  // Fallback: derive classes from /api/students, optionally filtering by grade
+  try {
+    const raw = await fetchAllStudentsRaw();
+    const classSet = new Set<string>();
+    raw.forEach((item: any) => {
+      const student = item.student ?? item.student_data ?? item;
+      const studentGrade = student?.studentGrade ?? student?.student_grade ?? student?.grade;
+      const className = student?.studentClass ?? student?.student_class ?? student?.class;
+      if (!className) return;
+      if (gradeFilter) {
+        if (studentGrade && String(studentGrade) === String(gradeFilter)) {
+          classSet.add(String(className));
+        }
+      } else {
+        classSet.add(String(className));
+      }
+    });
+    return Array.from(classSet).sort();
+  } catch (error) {
+    handleApiError(error, "getAvailableClasses");
+    return [];
+  }
+}
+
+/**
+ * Fetch students for a specific class
+ * Uses the /api/class-students endpoint
+ */
+export const fetchClassStudents = async (year: string, grade: string, className: string): Promise<StudentDetails[]> => {
+    try {
+        // Skip the call if any parameter is empty to avoid invalid API calls
+        if (!year || !grade || !className) {
+            return [];
+        }
+
+        const response = await axios.get(
+            `${API_BASE_URL}/api/class-students/${encodeURIComponent(year)}/${encodeURIComponent(grade)}/${encodeURIComponent(className)}`,
+            getAuthHeader()
+        );
+
+        if (!Array.isArray(response.data)) {
+            throw new Error('Invalid response format from server');
+        }
+
+        return response.data.map((student: any) => ({
+            id: student.id,
+            name: student.name,
+            student: {
+                id: student.student.id,
+                studentGrade: student.student.studentGrade,
+                studentClass: student.student.studentClass,
+                medium: student.student.medium,
+                studentAdmissionNo: student.student.studentAdmissionNo,
+                year: student.student.year,
+                userId: student.student.userId
+            }
+        }));
+    } catch (error) {
+        handleApiError(error, 'fetchClassStudents');
+        return [];
+    }
+}
+
+function handleApiError(error: any, _operation: string): never {
+  // Standardized error handling for axios errors and network issues.
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status === 401) {
+      // Clear auth tokens so app can redirect to login
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
+      localStorage.removeItem('access_token');
+      throw new Error('Session expired. Please login again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('You do not have permission to perform this action.');
+    } else if (error.response?.status === 404) {
+      throw new Error('The requested resource was not found.');
+    } else if (error.response?.status === 500) {
+      throw new Error('Server error. Please try again later.');
+    } else {
+      throw new Error(
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        `Request failed with status ${error.response?.status}`
+      );
+    }
+  } else if (error.request) {
+    // request was made but no response received
+    throw new Error("Network error. Please check your connection and try again.");
+  } else {
+    // Something happened in setting up the request
+    throw new Error(error.message || "An unexpected error occurred. Please try again.");
+  }
+}
