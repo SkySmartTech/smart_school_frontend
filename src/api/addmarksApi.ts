@@ -196,10 +196,10 @@ export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
   try {
     const res = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
     
-    if (res.data && Array.isArray(res.data.teacher_data)) {
+    if (res.data && Array.isArray(res.data.teacher_data.teacher_info)) {
       // Extract unique grades from teacher_data
       const uniqueGrades = Array.from(
-        new Set(res.data.teacher_data.map((item: TeacherDataItem) => item.teacherGrade))
+        new Set(res.data.teacher_data.teacher_info.map((item: TeacherDataItem) => item.teacherGrade))
       ).filter((grade): grade is string => typeof grade === 'string' && grade !== '');
       
       return uniqueGrades.map(grade => ({
@@ -219,9 +219,9 @@ export async function fetchClassesFromApi(grade?: string): Promise<DropdownOptio
   try {
     const res = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
     
-    if (res.data && Array.isArray(res.data.teacher_data)) {
-      let classes = res.data.teacher_data;
-      
+    if (res.data && Array.isArray(res.data.teacher_data.teacher_info)) {
+      let classes = res.data.teacher_data.teacher_info;
+
       // Filter by grade if provided
       if (grade) {
         classes = classes.filter((item: TeacherDataItem) => item.teacherGrade === grade);
@@ -249,8 +249,8 @@ export async function fetchSubjectsFromApi(grade: string, classValue: string): P
   try {
     const res = await axios.get(`${API_BASE_URL}/api/user`, getAuthHeader());
     
-    if (res.data && Array.isArray(res.data.teacher_data)) {
-      const subjects = res.data.teacher_data.filter((item: TeacherDataItem) => 
+    if (res.data && Array.isArray(res.data.teacher_data.teacher_info)) {
+      const subjects = res.data.teacher_data.teacher_info.filter((item: TeacherDataItem) => 
         item.teacherGrade === grade && item.teacherClass === classValue
       );
       

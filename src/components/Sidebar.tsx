@@ -55,6 +55,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     enqueueSnackbar("You have been logged out", { variant: "info" });
     navigate("/login", { replace: true });
   };
+  
 
   const StyledListItemIcon = styled(ListItemIcon)({
     minWidth: 0,

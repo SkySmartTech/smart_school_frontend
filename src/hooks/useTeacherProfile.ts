@@ -3,17 +3,16 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-interface TeacherData {
+interface TeacherInfo {
   id: number;
-  teacherGrades: string[];
-  teacherClass: string[];
-  subjects: string[];
+  teacherGrade: string;
+  teacherClass: string;
+  subject: string;
+  medium: string;
   staffNo: string;
-  medium: string[];
   userId: string;
   userType: string;
-  userRole: string;
-  modifiedBy: string;
+  modifiedBy: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -27,14 +26,15 @@ interface UserProfile {
   contact: string;
   userType: string;
   gender: string;
-  location: string;
+  location: string | null;
   username: string;
   photo: string | null;
   userRole: string;
   status: boolean;
   created_at: string;
   updated_at: string;
-  teacher_data: TeacherData;
+  // Normalized: components expect an array of teacher entries
+  teacher_data: TeacherInfo[];
   access: any[];
 }
 
@@ -60,7 +60,43 @@ const fetchTeacherProfile = async (): Promise<UserProfile> => {
 
   try {
     const response = await axios.get(`${API_BASE_URL}/api/user`, headers);
-    return response.data;
+    const raw = response.data || {};
+
+    // Normalize teacher_data to always be an array of teacher entries.
+    // Backend sometimes returns { teacher_info: [...] , class_teacher_info: {...} }
+    // or an array directly — handle both.
+    let normalizedTeacherData: TeacherInfo[] = [];
+
+    if (Array.isArray(raw.teacher_data)) {
+      normalizedTeacherData = raw.teacher_data;
+    } else if (raw.teacher_data && Array.isArray(raw.teacher_data.teacher_info)) {
+      normalizedTeacherData = raw.teacher_data.teacher_info;
+    } else {
+      // fallback: try to detect an array at other reasonable locations
+      normalizedTeacherData = [];
+    }
+
+    const userProfile: UserProfile = {
+      id: raw.id,
+      name: raw.name,
+      address: raw.address,
+      email: raw.email,
+      birthDay: raw.birthDay,
+      contact: raw.contact,
+      userType: raw.userType,
+      gender: raw.gender,
+      location: raw.location ?? null,
+      username: raw.username,
+      photo: raw.photo ?? null,
+      userRole: raw.userRole,
+      status: !!raw.status,
+      created_at: raw.created_at,
+      updated_at: raw.updated_at,
+      teacher_data: normalizedTeacherData,
+      access: raw.access ?? [],
+    };
+
+    return userProfile;
   } catch (error: any) {
     if (error.response?.status === 401) {
       throw new Error('Authentication failed. Please login again.');
