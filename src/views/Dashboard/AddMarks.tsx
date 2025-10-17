@@ -20,15 +20,21 @@ import {
     Radio,
     RadioGroup,
     FormControlLabel,
-    FormControl
+    FormControl,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    AlertTitle,
 } from '@mui/material';
-
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { DataGrid } from '@mui/x-data-grid';
 import type {
     GridColDef,
     GridRenderCellParams,
     GridRowId,
 } from '@mui/x-data-grid';
+import * as XLSX from 'xlsx';
 
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
@@ -98,6 +104,19 @@ interface ExtendedStudentMark extends StudentMark {
     status?: boolean; // true = present, false = absent
 }
 
+interface ExcelRow {
+    'Admission No': string;
+    'Student Name': string;
+    'Grade': string;
+    'Class': string;
+    'Subject': string;
+    'Term': string;
+    'Month'?: string;
+    'Year': string;
+    'Marks': string;
+    'Attendance': string;
+}
+
 const TeacherDashboard: React.FC = () => {
     const { data: teacherProfile, isLoading: profileLoading } = useTeacherProfile();
     const [loading, setLoading] = useState(false);
@@ -110,6 +129,10 @@ const TeacherDashboard: React.FC = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+    const [, setExcelFile] = useState<File | null>(null);
+    const [excelError, setExcelError] = useState<string>('');
+    const [showExcelPreview, setShowExcelPreview] = useState(false);
+    const [excelData, setExcelData] = useState<ExtendedStudentMark[]>([]);
     
     // Refs to prevent unnecessary re-renders and manage timeouts
     const admissionDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -443,6 +466,146 @@ const TeacherDashboard: React.FC = () => {
         showSnackbar('All unsaved marks cleared', 'info');
     }, [showSnackbar]);
 
+    // Add this function to validate Excel data
+    const validateExcelData = (data: ExcelRow[]): string | null => {
+        if (!data || data.length === 0) return "Excel file is empty";
+        
+        const requiredColumns = [
+            'Admission No', 'Student Name', 'Grade', 'Class', 
+            'Subject', 'Term', 'Year', 'Marks', 'Attendance'
+        ];
+        
+        // Check headers
+        const headers = Object.keys(data[0]);
+        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+        if (missingColumns.length > 0) {
+            return `Missing columns: ${missingColumns.join(', ')}`;
+        }
+
+        // Validate each row
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            
+            // Check required fields
+            if (!row['Admission No'] || !row['Student Name'] || !row['Grade'] || 
+                !row['Class'] || !row['Subject'] || !row['Term'] || !row['Year']) {
+                return `Row ${i + 1}: Missing required fields`;
+            }
+
+            // Validate marks
+            if (row['Marks']) {
+                const marks = Number(row['Marks']);
+                if (isNaN(marks) || marks < 0 || marks > 100) {
+                    return `Row ${i + 1}: Invalid marks value (should be between 0-100)`;
+                }
+            }
+
+            // Validate attendance
+            if (row['Attendance'] && !['present', 'absent'].includes(row['Attendance'].toLowerCase())) {
+                return `Row ${i + 1}: Invalid attendance value (should be present/absent)`;
+            }
+        }
+
+        return null;
+    };
+
+    // Add this function to handle Excel file upload
+    const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setExcelFile(file);
+        setExcelError('');
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
+
+                // Validate the Excel data
+                const validationError = validateExcelData(jsonData);
+                if (validationError) {
+                    setExcelError(validationError);
+                    return;
+                }
+
+                // Transform Excel data to match our format
+                const transformedData: ExtendedStudentMark[] = jsonData.map((row, index) => ({
+                    id: index + 1,
+                    student_admission: row['Admission No'],
+                    student_name: row['Student Name'],
+                    student_grade: row['Grade'],
+                    student_class: row['Class'],
+                    subject: row['Subject'],
+                    term: row['Term'],
+                    marks: row['Marks'],
+                    month: row['Month'],
+                    year: row['Year'],
+                    attendance: (row['Attendance']?.toLowerCase() || 'present') as 'present' | 'absent',
+                    status: row['Attendance']?.toLowerCase() !== 'absent',
+                    student_grade_value: calculateGrade(Number(row['Marks']))
+                }));
+
+                setExcelData(transformedData);
+                setShowExcelPreview(true);
+            } catch (error) {
+                setExcelError('Failed to read Excel file. Please check the format.');
+                console.error('Excel parsing error:', error);
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    };
+
+    // Add this function to handle Excel data submission
+    const handleExcelSubmit = async () => {
+        if (excelData.length === 0) {
+            showSnackbar('No data to submit', 'error');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await submitStudentMarks(excelData);
+            showSnackbar('Successfully uploaded marks from Excel', 'success');
+            setShowExcelPreview(false);
+            setExcelFile(null);
+            setExcelData([]);
+        } catch (error) {
+            showSnackbar(
+                `Failed to upload Excel data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                'error'
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Add this function to your component to generate a template
+    const downloadTemplate = () => {
+        const template: ExcelRow[] = [{
+            'Admission No': 'STU001',
+            'Student Name': 'John Doe',
+            'Grade': 'Grade 8',
+            'Class': 'Araliya',
+            'Subject': 'Mathematics',
+            'Term': 'First',
+            'Month': 'January',
+            'Year': '2025',
+            'Marks': '85',
+            'Attendance': 'present'
+        }];
+
+        const ws = XLSX.utils.json_to_sheet(template);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Template');
+        XLSX.writeFile(wb, 'marks_template.xlsx');
+    };
+
     // Effect 1: Fetch grades only once when component mounts and profile loads
     useEffect(() => {
         if (!profileLoading && gradeOptions.length === 0) {
@@ -691,6 +854,75 @@ const TeacherDashboard: React.FC = () => {
 
                 <Stack spacing={3} sx={{ px: 2, py: 3, maxWidth: '100%' }}>
                     <Paper elevation={2} sx={{ p: 2, borderRadius: '10px' }}>
+                        
+            <Paper elevation={2} sx={{ p: 2, mb: 2, borderRadius: '10px' }}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <Button
+                        variant="contained"
+                        component="label"
+                        startIcon={<UploadFileIcon />}
+                        sx={{ height: 45 }}
+                    >
+                        Upload Excel
+                        <input
+                            type="file"
+                            hidden
+                            accept=".xlsx,.xls"
+                            onChange={handleExcelUpload}
+                        />
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={downloadTemplate}
+                        sx={{ height: 45 }}
+                    >
+                        Download Template
+                    </Button>
+                    <Typography variant="body2" color="textSecondary">
+                        Upload marks from Excel file (.xlsx, .xls)
+                    </Typography>
+                </Stack>
+                {excelError && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                        <AlertTitle>Error</AlertTitle>
+                        {excelError}
+                    </Alert>
+                )}
+            </Paper>
+
+            {/* Add Excel Preview Dialog */}
+            <Dialog 
+                open={showExcelPreview} 
+                onClose={() => setShowExcelPreview(false)}
+                maxWidth="lg"
+                fullWidth
+            >
+                <DialogTitle>Preview Excel Data</DialogTitle>
+                <DialogContent>
+                    <DataGrid
+                        rows={excelData}
+                        columns={columns}
+                        autoHeight
+                        initialState={{
+                            pagination: { paginationModel: { pageSize: 10, page: 0 } },
+                        }}
+                        pageSizeOptions={[10]}
+                        disableRowSelectionOnClick
+                        sx={{ mt: 2 }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowExcelPreview(false)}>Cancel</Button>
+                    <Button 
+                        onClick={handleExcelSubmit}
+                        variant="contained"
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : null}
+                    >
+                        Upload Marks
+                    </Button>
+                </DialogActions>
+            </Dialog>
                         <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary }}>
                             Filter Student Data
                         </Typography>
@@ -1161,6 +1393,7 @@ const TeacherDashboard: React.FC = () => {
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
+
         </Box>
     );
 };

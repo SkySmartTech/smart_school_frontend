@@ -42,7 +42,7 @@ import {
   promoteStudents,
   getAvailableGrades,
   getAvailableClasses,
-  fetchClassStudents,        // NEW
+  fetchClassStudents,       
   type Student,
   type PromoteStudentsRequest
 } from "../api/studentApi";
@@ -60,7 +60,7 @@ const AddStudent = () => {
 
   // Available options
   // Year dropdown must be hardcoded
-  const YEARS = ["2023", "2024", "2025", "2026"];
+  const YEARS = ["2023", "2024", "2025", "2026", "2027", "2028", "2029", "2030"];
   const [years] = useState<string[]>(YEARS);
   const [grades, setGrades] = useState<(string | GradeOption)[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
@@ -411,7 +411,7 @@ const AddStudent = () => {
       >
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">Promote Students to Next Year...</Typography>
+            <Typography variant="h6">Promote Students to Next Year</Typography>
             <IconButton onClick={handleCloseDialog}>
               <Close />
             </IconButton>

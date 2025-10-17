@@ -55,6 +55,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     enqueueSnackbar("You have been logged out", { variant: "info" });
     navigate("/login", { replace: true });
   };
+  
 
   const StyledListItemIcon = styled(ListItemIcon)({
     minWidth: 0,
@@ -104,6 +105,12 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       icon: <NoteAddIcon fontSize="small" />,
       href: "/addClassTeacher",
       permission: "addClassTeacher"
+    },
+    { type: "item",
+      title: "Add Student",
+      icon: <NoteAddIcon fontSize="small" />,
+      href: "/addStudent",
+      permission: "addStudent"
     },
     { type: "divider" },
     { type: "headline", text: "Configuration" },
