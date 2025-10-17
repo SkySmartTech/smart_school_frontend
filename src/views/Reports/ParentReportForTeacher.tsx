@@ -334,7 +334,7 @@ const ParentReport: React.FC = () => {
                         borderBottom: `1px solid ${theme.palette.divider}`,
                         color: theme.palette.text.primary
                     }}>
-                        <Navbar title="Parent Report For Principal" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+                        <Navbar title="Parent Report For Teacher" sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
                     </AppBar>
 
                     <Stack spacing={3} sx={{ px: { xs: 2, md: 4 }, py: 3 }}>

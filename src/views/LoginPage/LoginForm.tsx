@@ -23,7 +23,7 @@ import { useForm } from "react-hook-form";
 import { useSnackbar } from "notistack";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { login } from "../../services/authService";
+import { login, validateUser } from "../../services/authService";
 import { motion } from "framer-motion";
 
 interface LoginFormProps {
@@ -76,94 +76,139 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
 
   const { mutate: loginMutation, isPending } = useMutation({
     mutationFn: login,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // Refresh current-user cache (react-query)
       queryClient.invalidateQueries({ queryKey: ["current-user"] });
-      
+
       if (rememberMe && data.username) {
         localStorage.setItem("rememberedUsername", data.username);
       } else {
         localStorage.removeItem("rememberedUsername");
       }
 
-      // Store user data
+      // Store whatever came back from login (if any)
       if (data) {
-        localStorage.setItem('userData', JSON.stringify(data));
-        
-        // Improved permission handling with better error handling
-        if (data.access) {
-          try {
-            let userPermissions = [];
-            
-            // Handle array of permissions
-            if (Array.isArray(data.access)) {
-              // Try to parse the first element if it's a JSON string
-              try {
-                userPermissions = typeof data.access[0] === 'string' 
-                  ? JSON.parse(data.access[0])
-                  : data.access[0];
-              } catch (e) {
-                // If parsing fails, use the raw access array
-                userPermissions = data.access;
-              }
-            } else if (typeof data.access === 'string') {
-              // If access is a single string, try to parse it
-              try {
-                userPermissions = JSON.parse(data.access);
-              } catch (e) {
-                userPermissions = [data.access];
-              }
-            }
+        localStorage.setItem("userData", JSON.stringify(data));
+      }
 
-            // Ensure permissions is always an array
-            if (!Array.isArray(userPermissions)) {
-              userPermissions = [userPermissions];
-            }
+      // helper to parse all shapes of access into an array of allowed permission keys
+      const parseAccessToAllowedKeys = (accessRaw: any): string[] => {
+        if (!accessRaw) return [];
 
-            // Store permissions
-            localStorage.setItem('userPermissions', JSON.stringify(userPermissions));
-
-            // Navigate based on permissions
-            if (userPermissions.length === 0) {
-              enqueueSnackbar("No permissions assigned to your account. Please contact administrator.", {
-                variant: "warning"
-              });
-              navigate('/unauthorized');
-              return;
+        // If access is an array-of-things:
+        if (Array.isArray(accessRaw) && accessRaw.length > 0) {
+          const first = accessRaw[0];
+          // If first is a stringified JSON, parse it
+          let parsed = first;
+          if (typeof first === "string") {
+            try {
+              parsed = JSON.parse(first);
+            } catch {
+              parsed = first;
             }
-
-            // Navigation based on permissions
-            if (userPermissions.includes('teacherDashboard')) {
-              navigate('/teacher-dashboard');
-            } else if (userPermissions.includes('studentDashboard')) {
-              navigate('/student-dashboard');
-            } else {
-              navigate('/dashboard');
-            }
-          } catch (error) {
-            console.error('Error handling permissions:', error);
-            enqueueSnackbar("Error processing permissions. Please try logging in again.", {
-              variant: "error"
-            });
-            // Clear stored data on error
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
-            localStorage.removeItem('userPermissions');
-            navigate('/login');
           }
-        } else {
-          enqueueSnackbar("No permissions found in user data. Please contact administrator.", {
-            variant: "warning"
-          });
-          navigate('/unauthorized');
+
+          // If parsed is an object of booleans, collect keys with true
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return Object.entries(parsed)
+              .filter(([_, v]) => v === true)
+              .map(([k]) => k);
+          }
+
+          // If parsed is an array of strings, return as-is
+          if (Array.isArray(parsed)) {
+            return parsed.map(String);
+          }
+
+          // If parsed is a single string (permission), return array with it
+          if (typeof parsed === "string") {
+            return [parsed];
+          }
+
+          return [];
         }
+
+        // If access is an object directly { dashboard: true, ... }
+        if (typeof accessRaw === "object" && !Array.isArray(accessRaw)) {
+          return Object.entries(accessRaw)
+            .filter(([_, v]) => v === true)
+            .map(([k]) => k);
+        }
+
+        // If access is a single stringified object
+        if (typeof accessRaw === "string") {
+          try {
+            const parsed = JSON.parse(accessRaw);
+            if (Array.isArray(parsed)) return parsed.map(String);
+            if (typeof parsed === "object") {
+              return Object.entries(parsed)
+                .filter(([_, v]) => v === true)
+                .map(([k]) => k);
+            }
+          } catch {
+            return [accessRaw];
+          }
+        }
+
+        return [];
+      };
+
+      // 1) Try to get allowedPermissions from login response (fast path)
+      let allowedPermissions = parseAccessToAllowedKeys(data?.access);
+
+      // 2) If none found, attempt to validateUser() a couple of times (short retry loop)
+      if (!allowedPermissions || allowedPermissions.length === 0) {
+        let freshUser = null;
+        const maxRetries = 2;
+        for (let i = 0; i <= maxRetries; i++) {
+          try {
+            // Ask server for canonical user (validateUser fetches /api/user and persists access)
+            freshUser = await validateUser();
+          } catch (err) {
+            freshUser = null;
+          }
+
+          if (freshUser) {
+            allowedPermissions = parseAccessToAllowedKeys(freshUser.access);
+            if (allowedPermissions && allowedPermissions.length > 0) {
+              break;
+            }
+          }
+
+          // small delay between retries (only if we'll retry)
+          if (i < maxRetries) {
+            await new Promise((res) => setTimeout(res, 400));
+          }
+        }
+      }
+
+      // Persist canonical permission array used by the rest of the app
+      localStorage.setItem("userPermissions", JSON.stringify(allowedPermissions || []));
+
+      // If still empty, show the Unauthorized page (no permissions)y
+      if (!allowedPermissions || allowedPermissions.length === 0) {
+        enqueueSnackbar("No permissions assigned to your account. Please contact administrator.", {
+          variant: "warning",
+        });
+        navigate("/unauthorized");
+        return;
+      }
+
+      // Navigate based on permissions (teacher -> student -> default dashboard)
+      if (allowedPermissions.includes("teacherDashboard")) {
+        navigate("/teacher-dashboard");
+      } else if (allowedPermissions.includes("studentDashboard")) {
+        navigate("/student-dashboard");
+      } else {
+        navigate("/dashboard");
       }
 
       enqueueSnackbar("Welcome Back!", {
         variant: "success",
         anchorOrigin: {
-          vertical: 'bottom',
-          horizontal: 'right',
-        }
+          vertical: "bottom",
+          horizontal: "right",
+        },
       });
     },
     onError: (error: any) => {

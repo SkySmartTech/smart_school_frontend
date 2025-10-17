@@ -7,10 +7,6 @@ const api = axios.create({
   }
 });
 
-
-
-// Function to setup activity listeners
-
 // Login function
 export async function login({
   username,
@@ -37,16 +33,17 @@ export async function login({
     // Store the complete user data
     localStorage.setItem('userData', JSON.stringify(userData));
 
-    // Handle permissions
+    // Handle permissions: support both stringified JSON and an object in access[0]
     if (userData.access && userData.access.length > 0) {
+      const first = userData.access[0];
       try {
-        // The access array contains a JSON string that needs to be parsed
-        const permissionsArray = JSON.parse(userData.access[0]);
-        // Store the parsed permissions array
-        localStorage.setItem('userPermissions', JSON.stringify(permissionsArray));
+        const permissions = typeof first === 'string' ? JSON.parse(first) : first;
+        // store parsed permissions (array or object) as-is
+        localStorage.setItem('userPermissions', JSON.stringify(permissions));
       } catch (error) {
         console.error('Error parsing permissions:', error);
-        localStorage.setItem('userPermissions', '[]');
+        // fallback to empty object
+        localStorage.setItem('userPermissions', JSON.stringify({}));
       }
     }
 
@@ -60,8 +57,6 @@ export async function login({
 // Logout function (unchanged)
 export async function logout() {
   const token = localStorage.getItem('token');
-  
-
 
   if (!token) return;
 
@@ -84,14 +79,22 @@ export async function logout() {
 export async function validatePermissions() {
   const token = localStorage.getItem('token');
   const userPermissions = localStorage.getItem('userPermissions');
-  
+
   if (!token || !userPermissions) {
     return false;
   }
 
   try {
-    const permissions = JSON.parse(userPermissions);
-    return Array.isArray(permissions) && permissions.length > 0;
+    const perms = JSON.parse(userPermissions);
+    if (Array.isArray(perms)) {
+      // permissions stored as an array (legacy): treat as present
+      return perms.length >= 0;
+    }
+    // object shaped permissions: check keys exist (we consider presence of the object valid)
+    if (perms && typeof perms === 'object') {
+      return Object.keys(perms).length >= 0;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -113,30 +116,27 @@ export async function validateUser() {
       const userData = response.data;
       localStorage.setItem('userData', JSON.stringify(userData));
 
-      // Enhanced permission handling
+      // Enhanced permission handling: accept array/object/string
       if (userData.access) {
-        let userPermissions = [];
+        let userPermissions: any = {};
         try {
           if (Array.isArray(userData.access)) {
-            userPermissions = typeof userData.access[0] === 'string'
-              ? JSON.parse(userData.access[0])
-              : userData.access[0];
+            const first = userData.access[0];
+            userPermissions = typeof first === 'string' ? JSON.parse(first) : first;
           } else {
-            userPermissions = JSON.parse(userData.access);
+            // access not an array - may be stringified or an object
+            userPermissions = typeof userData.access === 'string' ? JSON.parse(userData.access) : userData.access;
           }
 
-          if (!Array.isArray(userPermissions)) {
-            userPermissions = [userPermissions];
-          }
-
+          // store parsed permissions (may be array or object)
           localStorage.setItem('userPermissions', JSON.stringify(userPermissions));
         } catch (error) {
           console.error('Error parsing permissions:', error);
-          localStorage.setItem('userPermissions', '[]');
+          localStorage.setItem('userPermissions', JSON.stringify({}));
           return null;
         }
       } else {
-        localStorage.setItem('userPermissions', '[]');
+        localStorage.setItem('userPermissions', JSON.stringify({}));
         return null;
       }
 
