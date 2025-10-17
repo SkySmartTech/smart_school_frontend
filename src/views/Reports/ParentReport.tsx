@@ -150,8 +150,8 @@ const ParentReport: React.FC = () => {
                 endDateValue,
                 examValue,
                 monthValue,
-                studentGrade, 
-                studentClass 
+                studentGrade,
+                studentClass
             );
         },
         enabled: Boolean(selectedChild?.admissionNo) && hasValidFilters(),

@@ -1,5 +1,6 @@
 import axios from "axios";
 
+// A more generic interface for line chart data
 export interface LineChartData {
     x: string;
     y: number;
@@ -37,19 +38,21 @@ export interface ParentReportData {
 
 export interface ChildDetails {
     studentId?: string;
-    admissionNo: string;
+    admissionNo?: string;
     studentName: string;
     grade: string;
     className: string;
 }
 
+// Helper function to transform backend data to detailed marks table
 const transformToDetailedMarksTable = (
     highestMarksData: any[],
     marksAndGradesData: any[]
 ): DetailedMarksTableRow[] => {
     const result: DetailedMarksTableRow[] = [];
+
+    // Create a map for student marks by subject
     const studentMarksMap = new Map();
-    
     marksAndGradesData.forEach(item => {
         studentMarksMap.set(item.subject, {
             marks: item.marks,
@@ -57,6 +60,7 @@ const transformToDetailedMarksTable = (
         });
     });
 
+    // Combine highest marks with student marks
     highestMarksData.forEach(highestItem => {
         const studentData = studentMarksMap.get(highestItem.subject) || { marks: 0, grade: 'N/A' };
 
@@ -72,6 +76,7 @@ const transformToDetailedMarksTable = (
     return result;
 };
 
+// Helper function to transform subject yearly marks to line chart format
 const transformSubjectYearlyMarks = (subjectYearlyMarks: any): { [subjectName: string]: LineChartData[] } => {
     const result: { [subjectName: string]: LineChartData[] } = {};
 
@@ -90,6 +95,7 @@ const transformSubjectYearlyMarks = (subjectYearlyMarks: any): { [subjectName: s
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// Auth Helper function
 export const getAuthHeader = () => {
     const token = localStorage.getItem('authToken') || localStorage.getItem('token') || localStorage.getItem('access_token');
 
@@ -108,7 +114,7 @@ export const getAuthHeader = () => {
 
 /**
  * Fetch list of all children for the logged-in parent
- * This extracts all students associated with the parent from the API response
+ * Extracts all students from all parent_data entries
  */
 export const fetchChildrenList = async (): Promise<ChildDetails[]> => {
     try {
@@ -117,36 +123,36 @@ export const fetchChildrenList = async (): Promise<ChildDetails[]> => {
             headers: authHeader.headers,
         });
 
-        const parentData = response.data?.parent_data;
+        const parentDataArray = response.data?.parent_data;
         
-        // Check if multiple children are returned (adjust based on actual API structure)
-        // Option 1: If API returns array of students
-        if (parentData?.students && Array.isArray(parentData.students)) {
-            return parentData.students.map((student: any) => ({
-                studentId: student.studentId || student.student_id,
-                admissionNo: student.admissionNo || student.admission_no || student.studentAdmissionNo || '',
-                studentName: student.name || student.studentName || student.student_name || '',
-                grade: student.grade || '',
-                className: student.class || student.className || student.class_name || '',
-            }));
-        }
-        
-        // Option 2: If API returns single student (current structure) - wrap in array
-        const studentInfo = parentData?.student_info;
-        const parentInfo = parentData?.parent_info;
-
-        if (!studentInfo) {
-            throw new Error("Student information not found in API response.");
+        if (!parentDataArray || !Array.isArray(parentDataArray)) {
+            throw new Error("Parent data not found in API response.");
         }
 
-        // Return as array for consistency
-        return [{
-            studentId: studentInfo.studentId || studentInfo.student_id,
-            admissionNo: parentInfo?.studentAdmissionNo || parentInfo?.student_admission_no || '',
-            studentName: studentInfo.name || studentInfo.studentName || '',
-            grade: studentInfo.grade || '',
-            className: studentInfo.class || studentInfo.className || '',
-        }];
+        // Extract all students from all parent_data entries
+        const children: ChildDetails[] = [];
+        
+        parentDataArray.forEach((parentEntry: any) => {
+            const studentsInfo = parentEntry.students_info;
+            
+            if (Array.isArray(studentsInfo)) {
+                studentsInfo.forEach((student: any) => {
+                    children.push({
+                        studentId: student.studentId || student.student_id,
+                        admissionNo: student.studentAdmissionNo || student.student_admission_no || '',
+                        studentName: student.name || student.studentName || '',
+                        grade: student.grade || '',
+                        className: student.class || student.className || '',
+                    });
+                });
+            }
+        });
+
+        if (children.length === 0) {
+            throw new Error("No student information found.");
+        }
+
+        return children;
 
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -164,7 +170,7 @@ export const fetchChildrenList = async (): Promise<ChildDetails[]> => {
 
 /**
  * API call to fetch parent report data
- * Route: /api/parent-report-data/{studentAdmissionNo}/{start_date}/{end_date}/{exam}/{month}/{student_grade}/{student_class}
+ * Route format: /api/parent-report-data/{studentAdmissionNo}/{start_date}/{end_date}/{exam}/{month}/{student_grade}/{student_class}
  */
 export const fetchParentReport = async (
     studentAdmissionNo: string,
@@ -176,10 +182,11 @@ export const fetchParentReport = async (
     studentClass: string
 ): Promise<ParentReportData> => { 
     try {
-        // Convert empty month to "null" string for the API
+        // Convert empty/null values to "null" string for URL path
         const sanitizedMonth = month || 'null';
 
-        // Construct URL with studentAdmissionNo as the FIRST parameter
+        // Constructing the URL according to your backend route format:
+        // /api/parent-report-data/{studentAdmissionNo}/{start_date}/{end_date}/{exam}/{month}/{student_grade}/{student_class}
         const urlPath = `${API_BASE_URL}/api/parent-report-data/${encodeURIComponent(studentAdmissionNo)}/${startDate}/${endDate}/${exam}/${sanitizedMonth}/${encodeURIComponent(studentGrade)}/${encodeURIComponent(studentClass)}`;
 
         console.log('API URL:', urlPath);
@@ -257,5 +264,55 @@ export const fetchParentReport = async (
         }
 
         throw new Error("Network error or unknown error occurred");
+    }
+};
+
+/**
+ * DEPRECATED: Use fetchChildrenList() instead
+ * This function is kept for backward compatibility but will be removed
+ */
+export const fetchChildDetails = async (): Promise<ChildDetails> => {
+    try {
+        const authHeader = getAuthHeader();
+        const response = await axios.get(`${API_BASE_URL}/api/user`, {
+            headers: authHeader.headers,
+        });
+
+        const parentDataArray = response.data?.parent_data;
+        
+        if (!parentDataArray || !Array.isArray(parentDataArray) || parentDataArray.length === 0) {
+            throw new Error("Student details not found in API response.");
+        }
+
+        // Get first student from first parent entry
+        const firstParentEntry = parentDataArray[0];
+        const studentsInfo = firstParentEntry.students_info;
+        
+        if (!Array.isArray(studentsInfo) || studentsInfo.length === 0) {
+            throw new Error("Student details not found in API response.");
+        }
+
+        const studentInfo = studentsInfo[0];
+
+        const transformedData: ChildDetails = {
+            studentId: studentInfo.studentId || studentInfo.student_id,
+            admissionNo: studentInfo.studentAdmissionNo || studentInfo.student_admission_no || '',
+            studentName: studentInfo.name || studentInfo.studentName || '',
+            grade: studentInfo.grade || '',
+            className: studentInfo.class || studentInfo.className || '',
+        };
+
+        return transformedData;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            if (error.response?.status === 401) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('token');
+                localStorage.removeItem('access_token');
+                throw new Error('Session expired. Please login again.');
+            }
+            throw new Error(error.response?.data?.message || 'Request failed');
+        }
+        throw new Error("Network error occurred");
     }
 };
