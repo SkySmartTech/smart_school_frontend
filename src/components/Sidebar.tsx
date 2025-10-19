@@ -94,34 +94,39 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       ],
     },
     {
-      type: "item",
-      title: "Add Marks",
+      type: "nested",
+      title: "Academic ",
       icon: <NoteAddIcon fontSize="small" />,
-      href: "/addmarks",
-      permission: "addMarks"
+      children: [
+        {
+          title: "Add Marks",
+          icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/addmarks",
+          permission: "addMarks"
+        },
+        {
+          title: "Add Class Teacher",
+          icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/addClassTeacher",
+          permission: "addClassTeacher"
+        },
+        {
+          title: "Add Student",
+          icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/addStudent",
+          permission: "addStudent"
+        },
+        {
+          title: "Marks Checking",
+          icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/marksChecking",
+          permission: "marksChecking"
+        },
+      ],
     },
     {
-      type: "item",
-      title: "Add Class Teacher",
-      icon: <NoteAddIcon fontSize="small" />,
-      href: "/addClassTeacher",
-      permission: "addClassTeacher"
+      type: "divider"
     },
-    {
-      type: "item",
-      title: "Add Student",
-      icon: <NoteAddIcon fontSize="small" />,
-      href: "/addStudent",
-      permission: "addStudent"
-    },
-    {
-      type: "item",
-      title: "Marks Checking",
-      icon: <NoteAddIcon fontSize="small" />,
-      href: "/marksChecking",
-      permission: "marksChecking"
-    },
-    { type: "divider" },
     { type: "headline", text: "Configuration" },
     {
       type: "nested",
@@ -280,7 +285,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         }}
       >
         <Avatar
-          src="/images/logo.png"
+          src="/images/schoolLogo.png"
           alt="Company Logo"
           sx={{
             width: open ? 80 : 40,

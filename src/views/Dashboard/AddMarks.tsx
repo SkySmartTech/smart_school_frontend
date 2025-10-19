@@ -407,7 +407,7 @@ const TeacherDashboard: React.FC = () => {
                     student_class: selectedClass,
                     subject: formatSubjectName(selectedSubject), 
                     term: formatExamName(selectedExam), 
-                    month: isMonthFilterEnabled ? selectedMonth : null, 
+                    month: isMonthFilterEnabled ? selectedMonth : "0", 
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
                     year: selectedYear,

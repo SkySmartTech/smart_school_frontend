@@ -90,18 +90,20 @@ export async function fetchGradesFromApi(): Promise<DropdownOption[]> {
  * Fetch marks status data.
  * year: string (hardcoded value from UI)
  * grade: string (value from grades dropdown)
+ * examYear: string (added examYear parameter)
  * exam: string (e.g., "First", "Mid", "End", "Monthly")
  * month: string, two-digit month like "01".."12". If exam !== "Monthly" pass ignored and backend receives "null".
  */
 export const fetchMarksStatus = async (
   year: string,
   grade: string,
+  examYear: string, // Added examYear parameter
   exam: string,
   month: string = "01"
 ): Promise<MarksStatusItem[]> => {
   try {
-    if (!year || !grade || !exam) {
-      throw new Error("Missing required parameters: year, grade, or exam");
+    if (!year || !grade || !examYear || !exam) {
+      throw new Error("Missing required parameters: year, grade, examYear, or exam");
     }
 
     // If Monthly exam, use month as provided ("01".."12"), else send "null"
@@ -109,7 +111,7 @@ export const fetchMarksStatus = async (
 
     const url = `${API_BASE_URL}/api/marks-status/${encodeURIComponent(year)}/${encodeURIComponent(
       grade
-    )}/${encodeURIComponent(exam)}/${encodeURIComponent(monthParam)}`.replace(/([^:]\/)\/+/g, "$1");
+    )}/${encodeURIComponent(examYear)}/${encodeURIComponent(exam)}/${encodeURIComponent(monthParam)}`.replace(/([^:]\/)\/+/g, "$1");
 
     const res = await axios.get(url, {
       ...getAuthHeader(),
