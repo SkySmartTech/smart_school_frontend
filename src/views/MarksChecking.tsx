@@ -31,7 +31,6 @@ const exams = [
 
 const months = [
     { label: "Select Month", value: "" },
-    { label: "Not Applicale", value: "Not Applicable" },
     { label: "January", value: "01" },
     { label: "February", value: "02" },
     { label: "March", value: "03" },

@@ -1,8 +1,8 @@
 import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import SchoolIcon from '@mui/icons-material/School';
 import { keyframes } from '@mui/system';
+import logo from "/images/schoolLogo.png" 
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(20px); }
@@ -35,13 +35,20 @@ const WelcomePage = () => {
             backgroundColor: 'rgba(255,255,255,0.9)',
           }}
         >
-          <SchoolIcon
+          {/* ✅ School Logo Section */}
+          <Box
+            component="img"
+            src={logo}
+            alt="School Logo"
             sx={{
-              fontSize: 80,
-              color: theme.palette.primary.main,
+              width: 120,
+              height: 120,
+              objectFit: 'contain',
               mb: 2,
+              animation: `${fadeIn} 1s ease-in-out`,
             }}
           />
+
           <Typography
             variant="h3"
             sx={{
@@ -50,8 +57,9 @@ const WelcomePage = () => {
               mb: 1,
             }}
           >
-            Welcome to Smart School
+            Welcome to The Smart School
           </Typography>
+
           <Typography
             variant="body1"
             sx={{
