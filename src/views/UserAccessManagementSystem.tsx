@@ -46,6 +46,8 @@ const defaultPermissions: Record<PermissionKey, boolean> = {
     userManagement: false,
     userAccessManagement: false,
 
+    marksChecking: false,
+
     // System Management
     systemManagement: false,
 
@@ -375,6 +377,8 @@ const UserAccessManagementSystem = () => {
                                         {renderCheckbox("addClassTeacher", "Add Class Teacher", true)}
 
                                         {renderCheckbox("addStudent", "Add Student", true)}
+
+                                        {renderCheckbox("marksChecking", "Marks Checking", true)}
 
                                         {renderParentCheckbox(
                                             "userManagement",

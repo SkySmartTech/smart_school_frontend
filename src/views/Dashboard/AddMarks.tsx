@@ -306,8 +306,8 @@ const TeacherDashboard: React.FC = () => {
                 student_grade_value: '',
                 month: isMonthFilterEnabled ? selectedMonth : undefined,
                 year: year,
-                attendance: 'present', // Default to present
-                status: true // Default to present (true)
+                attendance: 'present',
+                status: true 
             }));
 
             setStudents(initialStudents);
@@ -405,9 +405,9 @@ const TeacherDashboard: React.FC = () => {
                     student_name: student.student_name,
                     student_grade: selectedGrade,
                     student_class: selectedClass,
-                    subject: formatSubjectName(selectedSubject), // Ensure proper capitalization
+                    subject: formatSubjectName(selectedSubject), 
                     term: formatExamName(selectedExam), 
-                    month: isMonthFilterEnabled ? selectedMonth : 'Not Applicable',
+                    month: isMonthFilterEnabled ? selectedMonth : null, 
                     marks: mark.marks || '0',
                     student_grade_value: mark.student_grade_value || 'N/A',
                     year: selectedYear,
