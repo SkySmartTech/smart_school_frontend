@@ -203,7 +203,7 @@ const ParentReport: React.FC = () => {
         if (!reportData || !reportData.studentMarksDetailedTable || reportData.studentMarksDetailedTable.length === 0) {
             return (
                 <TableRow>
-                    <TableCell colSpan={5} align="center">No detailed marks available for this period.</TableCell>
+                    <TableCell colSpan={5} align="center">No detailed marks available for this period</TableCell>
                 </TableRow>
             );
         }
