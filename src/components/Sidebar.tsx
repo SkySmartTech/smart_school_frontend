@@ -55,7 +55,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     enqueueSnackbar("You have been logged out", { variant: "info" });
     navigate("/login", { replace: true });
   };
-  
+
 
   const StyledListItemIcon = styled(ListItemIcon)({
     minWidth: 0,
@@ -82,7 +82,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         {
           title: "Teacher Dashboard",
           icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/teacherdashboard", 
+          href: "/teacherdashboard",
           permission: "teacherDashboard"
         },
         {
@@ -100,17 +100,26 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       href: "/addmarks",
       permission: "addMarks"
     },
-    { type: "item",
+    {
+      type: "item",
       title: "Add Class Teacher",
       icon: <NoteAddIcon fontSize="small" />,
       href: "/addClassTeacher",
       permission: "addClassTeacher"
     },
-    { type: "item",
+    {
+      type: "item",
       title: "Add Student",
       icon: <NoteAddIcon fontSize="small" />,
       href: "/addStudent",
       permission: "addStudent"
+    },
+    {
+      type: "item",
+      title: "Marks Checking",
+      icon: <NoteAddIcon fontSize="small" />,
+      href: "/marksChecking",
+      permission: "marksChecking"
     },
     { type: "divider" },
     { type: "headline", text: "Configuration" },
@@ -119,10 +128,14 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "User Management",
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
-        { title: "User Management", icon: <SubdirectoryArrowRight fontSize="small" />,
-           href: "/userManagement", permission: "userManagement" },
-        { title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/userAccessManagement", permission: "userAccessManagement" },
+        {
+          title: "User Management", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/userManagement", permission: "userManagement"
+        },
+        {
+          title: "User Access Management", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/userAccessManagement", permission: "userAccessManagement"
+        },
       ],
     },
     {
@@ -130,16 +143,26 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       title: "Reports",
       icon: <SupervisedUserCircleTwoTone fontSize="small" />,
       children: [
-        { title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/managementStaffReport", permission: "managementStaffReport" },
-        { title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/classTeacherReport", permission: "classTeacherReport" },
-        { title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/parentReport", permission: "parentReport" },
-        { title: "Parent Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/parentTeacherReport", permission: "parentTeacherReport" },
-        { title: "Parent Principal Report", icon: <SubdirectoryArrowRight fontSize="small" />,
-          href: "/parentPrincipalReport", permission: "parentPrincipalReport" },
+        {
+          title: "Management Staff Report", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/managementStaffReport", permission: "managementStaffReport"
+        },
+        {
+          title: "Class Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/classTeacherReport", permission: "classTeacherReport"
+        },
+        {
+          title: "Parent Report", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/parentReport", permission: "parentReport"
+        },
+        {
+          title: "Parent Teacher Report", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/parentTeacherReport", permission: "parentTeacherReport"
+        },
+        {
+          title: "Parent Principal Report", icon: <SubdirectoryArrowRight fontSize="small" />,
+          href: "/parentPrincipalReport", permission: "parentPrincipalReport"
+        },
       ],
     },
     {

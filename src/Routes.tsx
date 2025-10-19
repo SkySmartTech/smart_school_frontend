@@ -14,6 +14,7 @@ import HelpPage from "./views/HelpPage";
 import ParentReportForTeacher from "./views/Reports/ParentReportForTeacher";
 import ParentReportForPrincipal from "./views/Reports/ParentReportForPrincipal";
 import AddStudent from "./views/AddStudent";
+import MarksChecking from "./views/MarksChecking";
 
 // Public pages
 const LoginPage = React.lazy(() => import("./views/LoginPage/Login"));
@@ -186,6 +187,17 @@ function AppRoutes() {
             <ProtectedRoute permission="parentReport">
               <Suspense fallback={<PageLoader />}>
                 <ParentReport />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/marksChecking"
+          element={
+            <ProtectedRoute permission="marksChecking">
+              <Suspense fallback={<PageLoader />}>
+                <MarksChecking />
               </Suspense>
             </ProtectedRoute>
           }
