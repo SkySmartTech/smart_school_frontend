@@ -226,7 +226,7 @@ const ParentReport: React.FC = () => {
             rows.push(
                 <TableRow sx={{ backgroundColor: theme.palette.action.hover }} key="average-row">
                     <TableCell sx={{ fontWeight: 'bold' }}>Overall Average</TableCell>
-                    <TableCell align="center">N/A</TableCell>
+                    <TableCell align="center"></TableCell>
                     <TableCell align="center"></TableCell>
                     <TableCell align="center">{averageMarks}</TableCell>
                     <TableCell align="center"></TableCell>
