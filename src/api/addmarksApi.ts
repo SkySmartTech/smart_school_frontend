@@ -17,7 +17,7 @@ export interface StudentMark {
   term: string;
   marks: string;
   student_grade_value?: string;
-  month?: string;
+  month?: string | null; // allow null for month when not applicable
   year?: string;
   status?: boolean; // true = present, false = absent
 }
@@ -158,30 +158,45 @@ export async function fetchStudentMarks(filters: FetchMarksFilters): Promise<Stu
 
 export async function submitStudentMarks(marksToSubmit: Partial<StudentMark>[]): Promise<void> {
   try {
-    const formattedMarks = marksToSubmit.map(mark => ({
-      studentAdmissionNo: mark.student_admission?.trim(),
-      studentName: mark.student_name?.trim() || '',
-      studentGrade: mark.student_grade?.trim() || '',
-      studentClass: mark.student_class?.trim() || '',
-      term: mark.term?.trim() || '',
-      month: mark.month?.trim() || 'Not Applicable',
-      subject: mark.subject?.trim() || '',
-      medium: "English",
-      marks: parseInt(mark.marks || "0"),
-      marksGrade: mark.student_grade_value?.trim() || 'N/A',
-      year: mark.year?.trim() || '',
-      status: mark.status !== undefined ? mark.status : true // Default to present if not specified
-    }));
+    const formattedMarks = marksToSubmit.map(mark => {
+      // Normalize month to either trimmed string or null
+      const monthValue = mark.month ? String(mark.month).trim() : null;
 
-    const isValid = formattedMarks.every(mark => 
-      mark.studentName && 
-      mark.month && 
-      mark.marksGrade &&
-      mark.year
-    );
+      return {
+        studentAdmissionNo: mark.student_admission?.trim(),
+        studentName: mark.student_name?.trim() || '',
+        studentGrade: mark.student_grade?.trim() || '',
+        studentClass: mark.student_class?.trim() || '',
+        term: mark.term?.trim() || '',
+        month: monthValue, // null when not provided
+        subject: mark.subject?.trim() || '',
+        medium: "English",
+        marks: parseInt(mark.marks || "0"),
+        marksGrade: mark.student_grade_value?.trim() || 'N/A',
+        year: mark.year?.trim() || '',
+        status: mark.status !== undefined ? mark.status : true // Default to present if not specified
+      };
+    });
+
+    // Validation:
+    // - studentName, marksGrade, year must be present
+    // - month is required only when term indicates a Monthly term
+    const isValid = formattedMarks.every(mark => {
+      if (!mark.studentName) return false;
+      if (!mark.marksGrade) return false;
+      if (!mark.year) return false;
+
+      const term = (mark.term || '').toString().toLowerCase();
+      const requiresMonth = term.includes('monthly'); // treat any term containing 'monthly' as requiring month
+      if (requiresMonth && (mark.month === null || mark.month === undefined || String(mark.month).trim() === '')) {
+        return false;
+      }
+
+      return true;
+    });
 
     if (!isValid) {
-      throw new Error("Missing required fields in marks submission");
+      throw new Error("Missing required fields in marks submission (month is required for Monthly term)");
     }
 
     await axios.post(`${API_BASE_URL}/api/add-marks`, {
