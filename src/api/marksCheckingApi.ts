@@ -107,7 +107,7 @@ export const fetchMarksStatus = async (
     }
 
     // If Monthly exam, use month as provided ("01".."12"), else send "null"
-    const monthParam = exam === "Monthly" ? month : "null";
+    const monthParam = exam === "Monthly" ? month : "0";
 
     const url = `${API_BASE_URL}/api/marks-status/${encodeURIComponent(year)}/${encodeURIComponent(
       grade
