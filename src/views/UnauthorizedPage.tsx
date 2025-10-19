@@ -1,63 +1,89 @@
 import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import BlockIcon from '@mui/icons-material/Block';
+import SchoolIcon from '@mui/icons-material/School';
+import { keyframes } from '@mui/system';
 
-const UnauthorizedPage = () => {
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const WelcomePage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        minHeight="100vh"
-        textAlign="center"
-      >
-        <Paper 
-          elevation={3}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.dark} 100%)`,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={6}
           sx={{
-            p: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2
+            p: 6,
+            textAlign: 'center',
+            animation: `${fadeIn} 1s ease-in-out`,
+            borderRadius: 4,
+            backdropFilter: 'blur(10px)',
+            backgroundColor: 'rgba(255,255,255,0.9)',
           }}
         >
-          <BlockIcon 
-            sx={{ 
-              fontSize: 64,
-              color: theme.palette.error.main
-            }} 
+          <SchoolIcon
+            sx={{
+              fontSize: 80,
+              color: theme.palette.primary.main,
+              mb: 2,
+            }}
           />
-          <Typography variant="h4" gutterBottom>
-            Access Denied
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 600,
+              color: theme.palette.primary.dark,
+              mb: 1,
+            }}
+          >
+            Welcome to Smart School
           </Typography>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            You don't have permission to access this page. Please contact your administrator if you believe this is a mistake.
+          <Typography
+            variant="body1"
+            sx={{
+              color: 'text.secondary',
+              mb: 4,
+            }}
+          >
+            Manage your school operations efficiently with our modern School Management System.
           </Typography>
-          <Box sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              onClick={() => navigate('/dashboard')}
-              sx={{ mr: 2 }}
-            >
-              Go to Dashboard
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => navigate(-1)}
-            >
-              Go Back
-            </Button>
-          </Box>
+
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => navigate('/dashboard')}
+            sx={{
+              px: 5,
+              py: 1.5,
+              fontSize: '1.1rem',
+              borderRadius: 3,
+              textTransform: 'none',
+              transition: '0.3s',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              },
+            }}
+          >
+            Click Here to Continue
+          </Button>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 };
 
-export default UnauthorizedPage;
+export default WelcomePage;

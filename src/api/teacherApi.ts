@@ -33,6 +33,12 @@ export interface SearchTeachersParams {
   grade?: string;
 }
 
+// NEW: Normalized type for a grade + single class entry
+export interface GradeClass {
+  grade: string;
+  className: string;
+}
+
 // Raw API response shape for /api/class-teachers
 interface ApiClassTeacher {
   teacherClass: any;
@@ -65,6 +71,42 @@ const getAuthHeader = () => {
     }
   };
 };
+
+/**
+ * Fetch all grades for dropdowns.
+ * Endpoint: GET /api/grades
+ * Returns normalized array of grade names (string[]).
+ */
+/**
+ * Fetch all grades from API.
+ * Endpoint: GET /api/grades
+ */
+export async function fetchGrades(): Promise<string[]> {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/grades`, getAuthHeader());
+    return Array.isArray(res.data) ? res.data.map(item => item.grade || '') : [];
+  } catch (error) {
+    handleApiError(error, "fetchGrades");
+    return [];
+  }
+}
+
+/**
+ * Fetch all grade-class mappings.
+ * Endpoint: GET /api/grade-classes
+ */
+export async function fetchGradeClasses(): Promise<GradeClass[]> {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/grade-classes`, getAuthHeader());
+    return Array.isArray(res.data) ? res.data.map(item => ({
+      grade: item.gradeId || '',
+      className: item.class || ''
+    })) : [];
+  } catch (error) {
+    handleApiError(error, "fetchGradeClasses");
+    return [];
+  }
+}
 
 // Fetch all teachers with search and filter capabilities
 export async function fetchTeachers(params?: SearchTeachersParams): Promise<Teacher[]> {

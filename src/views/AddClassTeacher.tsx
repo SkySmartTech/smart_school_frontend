@@ -26,11 +26,11 @@ import {
   InputLabel,
   IconButton
 } from "@mui/material";
-import { Search, Close } from "@mui/icons-material";
+import { Search, Close, Add as AddIcon } from "@mui/icons-material";
 import Sidebar from "../components/Sidebar";
 import { useCustomTheme } from "../context/ThemeContext";
 import Navbar from "../components/Navbar";
-import { fetchTeachers, fetchTeachersByGradeAndClass, assignClassTeacher, deleteClassTeacher, getAllClassTeachers, type Teacher } from "../api/teacherApi";
+import { fetchTeachersByGradeAndClass, assignClassTeacher, deleteClassTeacher, getAllClassTeachers, fetchGrades, fetchGradeClasses, type Teacher, type GradeClass } from "../api/teacherApi";
 
 // Note: removed import of global `classOptions` — we'll compute class list per grade from API data
 
@@ -64,6 +64,7 @@ const AddClassTeacher = () => {
   // Popup states
   const [popupOpen, setPopupOpen] = useState(false);
   const [currentClass, setCurrentClass] = useState<{grade: string; className: string; teacherId: string} | null>(null);
+  const [isNewAssignment, setIsNewAssignment] = useState(false); // new mode vs edit mode
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupFormData, setPopupFormData] = useState<PopupFormData>({
     searchTerm: "",
@@ -73,6 +74,10 @@ const AddClassTeacher = () => {
   });
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false); // loading flag for delete action
+
+  // New states for grades and classes
+  const [allGrades, setAllGrades] = useState<string[]>([]);
+  const [allClasses, setAllClasses] = useState<GradeClass[]>([]);
 
   const theme = useTheme();
   useCustomTheme();
@@ -114,14 +119,13 @@ const AddClassTeacher = () => {
     void refreshClassTeachers();
   }, []);
 
-  // Get classes for a grade (derived from fetched classTeachers)
-  const getClassesForGrade = (grade: string) => {
-    const gd = classTeachers.find(g => g.grade === grade);
-    return gd ? gd.classes.map(c => c.className) : [];
-  };
+  // Get all classes across grades (unique)
 
-  // Make handleOpenPopup async so we can prefetch teachers for the selected grade+class
+  // Get classes for a grade (derived from fetched classTeachers)
+
+  // Make handleOpenPopup async so we can prefetch teachers for the selected grade+class (edit mode)
   const handleOpenPopup = async (grade: string, className: string, teacherId: string) => {
+    setIsNewAssignment(false);
     setCurrentClass({ grade, className, teacherId });
     setPopupFormData({
       searchTerm: "",
@@ -147,9 +151,63 @@ const AddClassTeacher = () => {
     }
   };
 
+  // New assignment opener (no preselected grade/class)
+  const handleOpenNew = async () => {
+    setIsNewAssignment(true);
+    setCurrentClass(null);
+    setPopupFormData({
+      searchTerm: "",
+      selectedGrade: "",
+      selectedClass: "",
+      teachers: [] // Start with empty teachers list
+    });
+    setSelectedTeacher(null);
+    setPopupOpen(true);
+
+    // Only load grades and classes when opening the form
+    await loadGradesAndClasses();
+  };
+
+  // Load grades and classes for the form
+  const loadGradesAndClasses = async () => {
+    try {
+      setPopupLoading(true);
+      const [grades, classes] = await Promise.all([
+        fetchGrades(),
+        fetchGradeClasses()
+      ]);
+      setAllGrades(grades);
+      setAllClasses(classes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load grades and classes");
+    } finally {
+      setPopupLoading(false);
+    }
+  };
+
+  // Add helper to get classes for selected grade
+const getAvailableClasses = (grade: string) => {
+  // collect unique class names from API data
+  const allUniqueClasses = Array.from(new Set(allClasses.map(c => c.className).filter(Boolean)));
+
+  // If no grade selected, show all classes (makes class dropdown usable even if grades->classes mapping is missing)
+  if (!grade) return allUniqueClasses.sort();
+
+  // Try to find classes that have a non-empty grade and match the selected grade (case-insensitive)
+  const filtered = allClasses
+    .filter(c => c.grade && String(c.grade).toLowerCase() === String(grade).toLowerCase())
+    .map(c => c.className)
+    .filter(Boolean);
+
+  // If we found classes specifically linked to the grade, return them; otherwise fall back to showing all classes.
+  const result = filtered.length ? Array.from(new Set(filtered)) : allUniqueClasses;
+  return result.sort();
+};
+
   const handleClosePopup = () => {
     setPopupOpen(false);
     setCurrentClass(null);
+    setIsNewAssignment(false);
     setPopupFormData({
       searchTerm: "",
       selectedGrade: "",
@@ -164,15 +222,29 @@ const AddClassTeacher = () => {
       setPopupLoading(true);
 
       let searchedTeachers: Teacher[] = [];
+      
+      // Case 1: Both grade and class are selected
       if (popupFormData.selectedGrade && popupFormData.selectedClass) {
-        // call specific endpoint
-        searchedTeachers = await fetchTeachersByGradeAndClass(popupFormData.selectedGrade, popupFormData.selectedClass);
-      } else {
-        // fallback to general teacher search endpoint with optional grade filter
-        searchedTeachers = await fetchTeachers({
-          search: popupFormData.searchTerm,
-          grade: popupFormData.selectedGrade || undefined
-        });
+        searchedTeachers = await fetchTeachersByGradeAndClass(
+          popupFormData.selectedGrade, 
+          popupFormData.selectedClass
+        );
+      }
+      // Case 2: Only grade is selected
+      else if (popupFormData.selectedGrade) {
+        searchedTeachers = await fetchTeachersByGradeAndClass(
+          popupFormData.selectedGrade,
+          "" // empty class name
+        );
+      }
+      // Case 3: Neither grade nor class is selected (search by term only)
+      else if (popupFormData.searchTerm) {
+        // Use the search term to filter teachers
+        searchedTeachers = await fetchTeachersByGradeAndClass("", "");
+      }
+      // Case 4: Default - return empty array if no filters
+      else {
+        searchedTeachers = [];
       }
 
       setPopupFormData(prev => ({
@@ -188,33 +260,73 @@ const AddClassTeacher = () => {
 
   // auto-select first class when grade changes (auto-fill Class)
   const onGradeChange = (newGrade: string) => {
-    const classes = getClassesForGrade(newGrade);
+    // Update selected grade and clear selected class/teachers
     setPopupFormData(prev => ({
       ...prev,
       selectedGrade: newGrade,
-      selectedClass: classes.length > 0 ? classes[0] : ""
+      selectedClass: "",
+      teachers: []
     }));
 
-    if (classes.length > 0) {
-      void (async () => {
+    // No additional action needed here; user can pick class next.
+    // For better UX, if you want to auto-fetch teachers for a grade-only selection, you can uncomment the block below.
+    /*
+    if (newGrade) {
+      (async () => {
         try {
           setPopupLoading(true);
-          const t = await fetchTeachersByGradeAndClass(newGrade, classes[0]);
-          setPopupFormData(prev => ({ ...prev, teachers: t }));
+          const teachers = await fetchTeachers({ grade: newGrade });
+          setPopupFormData(prev => ({ ...prev, teachers }));
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to fetch teachers for selected grade/class");
+          setError(err instanceof Error ? err.message : "Failed to fetch teachers");
         } finally {
           setPopupLoading(false);
         }
       })();
-    } else {
-      setPopupFormData(prev => ({ ...prev, teachers: [] }));
     }
+    */
   };
 
+  // Replace onClassChange with:
+const onClassChange = async (newClass: string) => {
+  // Read the currently selected grade synchronously (this is the current state, not the value we just set)
+  const currentGrade = popupFormData.selectedGrade;
+
+  // Update UI state immediately
+  setPopupFormData(prev => ({
+    ...prev,
+    selectedClass: newClass,
+    teachers: []
+  }));
+
+  // Only call grade-class specific endpoint when both grade and class are present
+  if (currentGrade && newClass) {
+    try {
+      setPopupLoading(true);
+      const teachers = await fetchTeachersByGradeAndClass(currentGrade, newClass);
+      setPopupFormData(prev => ({ ...prev, teachers }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch teachers");
+    } finally {
+      setPopupLoading(false);
+    }
+  } else {
+    // If grade->class mapping not available, you may choose to fetch by class-only or by grade-only.
+    // For now we do nothing and let the user click Search (Search will call handleSearch).
+  }
+};
+
   const handleSaveAssignment = async () => {
-    if (!selectedTeacher || !currentClass) {
+    if (!selectedTeacher) {
       setError("Please select a teacher");
+      return;
+    }
+
+    const gradeToAssign = currentClass?.grade ?? popupFormData.selectedGrade;
+    const classToAssign = currentClass?.className ?? popupFormData.selectedClass;
+
+    if (!gradeToAssign || !classToAssign) {
+      setError("Please select both Grade and Class to assign the teacher.");
       return;
     }
 
@@ -223,15 +335,15 @@ const AddClassTeacher = () => {
       
       const assignment = {
         // keep the original fields the backend may expect
-        grade: currentClass.grade,                // e.g. "Grade 10"
-        class: currentClass.className,            // e.g. "Olu"
-        teacherId: selectedTeacher.id,            // mapped id (prefer inner teacher id)
+        grade: gradeToAssign,
+        class: classToAssign,
+        teacherId: selectedTeacher.id,
         staffNo: selectedTeacher.staffNo,
         teacherName: selectedTeacher.name,
 
         // add validation fields your backend requires:
-        teacherGrade: selectedTeacher.grade || currentClass.grade,
-        teacherClass: selectedTeacher.class || currentClass.className,
+        teacherGrade: selectedTeacher.grade || gradeToAssign,
+        teacherClass: selectedTeacher.class || classToAssign,
         name: selectedTeacher.name
       };
 
@@ -330,7 +442,6 @@ const AddClassTeacher = () => {
   }
 
   // Compose grade options from the fetched data
-  const gradeOptions = classTeachers.map(g => g.grade);
 
   return (
     <Box sx={{ display: "flex", width: "100vw", minHeight: "100vh", bgcolor: theme.palette.background.default }}>
@@ -369,6 +480,18 @@ const AddClassTeacher = () => {
               {success}
             </Alert>
           )}
+
+          {/* Header row with Add New button on right */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Class Teacher Assignments</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenNew}
+            >
+              Add new teacher
+            </Button>
+          </Box>
 
           <TableContainer component={Paper} sx={{ mt: 2 }}>
             <Table>
@@ -447,7 +570,7 @@ const AddClassTeacher = () => {
           <DialogTitle>
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography variant="h6">
-                Assign Class Teacher - {currentClass?.grade} - {currentClass?.className}
+                {isNewAssignment ? "Assign Class Teacher - New" : `Assign Class Teacher - ${currentClass?.grade} - ${currentClass?.className}`}
               </Typography>
               <IconButton onClick={handleClosePopup}>
                 <Close />
@@ -474,6 +597,7 @@ const AddClassTeacher = () => {
                 }}
               />
               
+              {/* Grade Dropdown */}
               <FormControl sx={{ minWidth: 160 }} size="small">
                 <InputLabel>Grade</InputLabel>
                 <Select
@@ -482,26 +606,26 @@ const AddClassTeacher = () => {
                   onChange={(e) => onGradeChange(e.target.value as string)}
                 >
                   <MenuItem value="">All Grades</MenuItem>
-                  {/* Grade select: use index fallback for key */}
-                  {gradeOptions.map((grade, gIdx) => (
-                    <MenuItem key={grade || `grade-${gIdx}`} value={grade}>
+                  {allGrades.map((grade) => (
+                    <MenuItem key={`grade-${grade}`} value={grade}>
                       {grade}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
 
+              {/* Class Dropdown */}
               <FormControl sx={{ minWidth: 160 }} size="small">
                 <InputLabel>Class</InputLabel>
                 <Select
                   value={popupFormData.selectedClass}
                   label="Class"
-                  onChange={(e) => setPopupFormData(prev => ({ ...prev, selectedClass: e.target.value as string }))}
+                  onChange={(e) => onClassChange(e.target.value as string)}
+                  disabled={!popupFormData.selectedGrade} // Disable if no grade selected
                 >
-                  <MenuItem value="">All Classes</MenuItem>
-                  {/* Class select inside popup: use index fallback for key */}
-                  {getClassesForGrade(popupFormData.selectedGrade).map((cls, cIdx) => (
-                    <MenuItem key={cls || `class-${cIdx}`} value={cls}>
+                  <MenuItem value="">Select Class</MenuItem>
+                  {getAvailableClasses(popupFormData.selectedGrade).map((cls) => (
+                    <MenuItem key={`class-${cls}`} value={cls}>
                       {cls}
                     </MenuItem>
                   ))}
@@ -594,7 +718,7 @@ const AddClassTeacher = () => {
             <Button 
               onClick={handleSaveAssignment} 
               variant="contained"
-              disabled={popupLoading || !selectedTeacher}
+              disabled={popupLoading || !selectedTeacher || !(popupFormData.selectedGrade || currentClass?.grade) || !(popupFormData.selectedClass || currentClass?.className)}
             >
               {popupLoading ? <CircularProgress size={24} /> : "Assign Teacher"}
             </Button>
