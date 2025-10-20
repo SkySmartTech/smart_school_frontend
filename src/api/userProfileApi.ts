@@ -109,28 +109,35 @@ export const fetchUserProfile = async (): Promise<User> => {
     
     console.log('User profile fetched successfully:', response.data);
     
+    // Handle the new backend data structure
+    const userData = response.data;
+    
     return {
-      id: response.data.id,
-      name: response.data.name || "",
-      address: response.data.address || "",
-      birthDay: response.data.birthDay || "",
-      userType: response.data.userType || "",
-      gender: response.data.gender || "",
-      userRole: response.data.userRole || "",
-      username: response.data.username || "",
+      id: userData.id,
+      name: userData.name || "",
+      address: userData.address || "",
+      birthDay: userData.birthDay || "",
+      userType: userData.userType || "",
+      gender: userData.gender || "",
+      userRole: userData.userRole || "",
+      username: userData.username || "",
       password: "********", // Masked
-      email: response.data.email || "",
-      location: response.data.location || "",
-      grade: response.data.grade || "",
-      contact: response.data.contact || "",
-      photo: response.data.photo || "",
-      subject: response.data.subject || "",
-      class: response.data.class || "",
-      epf: response.data.epf || "",
-      // <-- ADDED: include nested profile data the UI expects
-      teacher_data: response.data.teacher_data ?? [], 
-      parent_data: response.data.parent_data ?? null, 
-      student_data: response.data.student_data ?? null,
+      email: userData.email || "",
+      location: userData.location || "",
+      grade: userData.grade || "",
+      contact: userData.contact || "",
+      photo: userData.photo || "",
+      subject: userData.subject || "",
+      class: userData.class || "",
+      epf: userData.epf || "",
+      status: userData.status,
+      created_at: userData.created_at,
+      updated_at: userData.updated_at,
+      access: userData.access,
+      // Handle the new nested data structure from backend
+      teacher_data: userData.teacher_data || null,
+      parent_data: userData.parent_data || null,
+      student_data: userData.student_data || null,
     };
   } catch (error) {
     console.error('Error fetching user profile:', error);

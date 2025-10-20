@@ -33,7 +33,7 @@ import {
   checkAuthStatus,
   updateUserProfileDetails,
 } from "../api/userProfileApi";
-import type { User, TeacherData, ParentData, StudentData } from "../types/userTypes";
+import type { User, TeacherData, ParentData, StudentData, TeacherInfo } from "../types/userTypes";
 
 // Custom Dialog component with proper focus management
 const Dialog: React.FC<{
@@ -82,7 +82,7 @@ const defaultUser: User = {
   photo: "",
   subject: "",
   class: "",
-  teacher_data: [],
+  teacher_data: null,
   parent_data: null,
   student_data: null,
 };
@@ -108,8 +108,8 @@ const UserProfile: React.FC = () => {
   const [editingParent, setEditingParent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(false);
 
-  const [localTeacherData, setLocalTeacherData] = useState<TeacherData[] | null>(null);
-  const [localParentData, setLocalParentData] = useState<ParentData | null>(null);
+  const [localTeacherData, setLocalTeacherData] = useState<TeacherData | null>(null);
+  const [localParentData, setLocalParentData] = useState<ParentData[]>([]);
   const [localStudentData, setLocalStudentData] = useState<StudentData | null>(null);
 
   const theme = useTheme();
@@ -148,12 +148,16 @@ const UserProfile: React.FC = () => {
   // Initialize local editable data when Other dialog opens
   useEffect(() => {
     if (openOther && user) {
-      // Deep copy to avoid mutating query data directly
-      setLocalTeacherData(user.teacher_data ? JSON.parse(JSON.stringify(user.teacher_data)) : []);
-      setLocalParentData(user.parent_data ? JSON.parse(JSON.stringify(user.parent_data)) : null);
+      setLocalTeacherData(user.teacher_data ? JSON.parse(JSON.stringify(user.teacher_data)) : null);
+      setLocalParentData(
+        user.parent_data 
+          ? Array.isArray(user.parent_data) 
+            ? JSON.parse(JSON.stringify(user.parent_data))
+            : [JSON.parse(JSON.stringify(user.parent_data))]
+          : []
+      );
       setLocalStudentData(user.student_data ? JSON.parse(JSON.stringify(user.student_data)) : null);
 
-      // Reset editing flags
       setEditingTeacher(false);
       setEditingParent(false);
       setEditingStudent(false);
@@ -328,43 +332,111 @@ const UserProfile: React.FC = () => {
     </Box>
   );
 
+  // CRITICAL FIX: Handle teacher data structure properly
+  const getTeacherInfoArray = (teacherData: TeacherData | null | undefined): TeacherInfo[] => {
+    if (!teacherData) return [];
+    
+    // Handle both old array format and new object format with teacher_info array
+    if (Array.isArray(teacherData)) {
+      return teacherData as any; // Legacy format
+    } else if (teacherData.teacher_info && Array.isArray(teacherData.teacher_info)) {
+      return teacherData.teacher_info;
+    } else if (teacherData.id) {
+      // Single teacher info object - convert to array
+      return [teacherData as any];
+    }
+    
+    return [];
+  };
+
   // Editable handlers for teacher data
-  const handleTeacherFieldChange = (index: number, field: keyof TeacherData, value: any) => {
+  const handleTeacherFieldChange = (index: number, field: keyof TeacherInfo, value: any) => {
     setLocalTeacherData((prev) => {
-      const copy = prev ? JSON.parse(JSON.stringify(prev)) : [];
-      copy[index] = { ...(copy[index] || {}), [field]: value };
+      // parse a deep copy safely and type it
+      const copy = prev ? (JSON.parse(JSON.stringify(prev)) as TeacherData) : ({ teacher_info: [] } as TeacherData);
+
+      const teacherInfoArray = getTeacherInfoArray(copy);
+
+      if (!teacherInfoArray[index]) {
+        teacherInfoArray[index] = {} as TeacherInfo;
+      }
+
+      // field is a known key, but the runtime object may be a plain object - cast only where needed
+      (teacherInfoArray[index] as any)[field] = value;
+      copy.teacher_info = teacherInfoArray;
       return copy;
     });
   };
 
   const addTeacherRow = () => {
-    setLocalTeacherData((prev) => (prev ? [...prev, {} as TeacherData] : [{ } as TeacherData]));
+    setLocalTeacherData((prev) => {
+      const copy = prev ? (JSON.parse(JSON.stringify(prev)) as TeacherData) : ({ teacher_info: [] } as TeacherData);
+      const teacherInfoArray = getTeacherInfoArray(copy);
+      teacherInfoArray.push({} as TeacherInfo);
+      copy.teacher_info = teacherInfoArray;
+      return copy;
+    });
   };
 
   const removeTeacherRow = (index: number) => {
     setLocalTeacherData((prev) => {
       if (!prev) return prev;
-      const copy = [...prev];
-      copy.splice(index, 1);
+      const copy = (JSON.parse(JSON.stringify(prev)) as TeacherData);
+      const teacherInfoArray = getTeacherInfoArray(copy);
+      if (teacherInfoArray.length > index) {
+        teacherInfoArray.splice(index, 1);
+        copy.teacher_info = teacherInfoArray;
+      }
       return copy;
     });
   };
 
   const handleParentFieldChange = (fieldPath: string, value: any) => {
     setLocalParentData((prev) => {
-      const copy = prev ? JSON.parse(JSON.stringify(prev)) : { parent_info: {}, student_info: {} };
-      // fieldPath like "parent_info.relation" or "student_info.name"
-      const [top, rest] = fieldPath.split(".");
-      if (!copy[top]) copy[top] = {};
-      copy[top][rest] = value;
+      const copy = prev ? JSON.parse(JSON.stringify(prev)) : [];
+      
+      const [parentIndex, ...path] = fieldPath.split('.');
+      const pIndex = parseInt(parentIndex, 10);
+      
+      if (!copy[pIndex]) {
+        copy[pIndex] = { parent_info: {}, students_info: [] };
+      }
+      
+      let target = copy[pIndex];
+      let current = target;
+      
+      for (let i = 0; i < path.length - 1; i++) {
+        const key = path[i];
+        if (key === 'students_info') {
+          const studentIndex = parseInt(path[i + 1], 10);
+          if (!current.students_info[studentIndex]) {
+            current.students_info[studentIndex] = {
+              name: null,
+              studentAdmissionNo: '',
+              grade: '',
+              class: null
+            };
+          }
+          current = current.students_info[studentIndex];
+          i++; // Skip the next index since we've handled it
+        } else {
+          if (!current[key]) current[key] = {};
+          current = current[key];
+        }
+      }
+      
+      const lastKey = path[path.length - 1];
+      current[lastKey] = value;
+      
       return copy;
     });
   };
 
   const handleStudentFieldChange = (field: keyof StudentData, value: any) => {
     setLocalStudentData((prev) => {
-      const copy = prev ? JSON.parse(JSON.stringify(prev)) : ({} as StudentData);
-      copy[field] = value;
+      const copy = prev ? (JSON.parse(JSON.stringify(prev)) as StudentData) : ({} as StudentData);
+      // single-field assignment, cast only here to keep types elsewhere
+      (copy as any)[field] = value;
       return copy;
     });
   };
@@ -456,17 +528,20 @@ const UserProfile: React.FC = () => {
 
   const handleCancelOtherEdit = () => {
     // revert to last fetched user data
-    setLocalTeacherData(user?.teacher_data ? JSON.parse(JSON.stringify(user.teacher_data)) : []);
-    setLocalParentData(user?.parent_data ? JSON.parse(JSON.stringify(user.parent_data)) : null);
+    setLocalTeacherData(user?.teacher_data ? JSON.parse(JSON.stringify(user.teacher_data)) : null);
+    setLocalParentData(user?.parent_data ? JSON.parse(JSON.stringify(user.parent_data)) : []);
     setLocalStudentData(user?.student_data ? JSON.parse(JSON.stringify(user.student_data)) : null);
     setEditingTeacher(false);
     setEditingParent(false);
     setEditingStudent(false);
   };
 
-  const renderTeacherEditable = (teacherData: TeacherData[] | undefined | null) => {
-    const rows = localTeacherData ?? (teacherData ?? []);
-    if (!rows || rows.length === 0) {
+  // CRITICAL FIX: Updated renderTeacherEditable function
+  const renderTeacherEditable = (teacherData: TeacherData | undefined | null) => {
+    const dataToRender = editingTeacher ? localTeacherData : teacherData;
+    const teacherInfoArray = getTeacherInfoArray(dataToRender);
+    
+    if (!teacherInfoArray || teacherInfoArray.length === 0) {
       return (
         <Stack spacing={2}>
           <Typography>No teacher profile data available.</Typography>
@@ -481,7 +556,7 @@ const UserProfile: React.FC = () => {
 
     return (
       <Stack spacing={2}>
-        {rows.map((t, idx) => (
+        {teacherInfoArray.map((t, idx) => (
           <Paper key={t.id ?? `t-${idx}`} variant="outlined" sx={{ p: 2 }}>
             <Stack spacing={2}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -562,105 +637,162 @@ const UserProfile: React.FC = () => {
     );
   };
 
-  const renderParentEditable = (parentData: ParentData | undefined | null) => {
-    const p = localParentData ?? parentData;
-    if (!p || !p.parent_info) {
+  const renderParentEditable = (parentData: ParentData[] | undefined | null) => {
+    // Handle both edit mode and view mode data consistently
+    const data = editingParent 
+      ? localParentData 
+      : (Array.isArray(parentData) 
+          ? parentData 
+          : parentData 
+            ? [parentData] 
+            : []);
+    
+    if (!data || data.length === 0) {
       return <Typography>No parent profile data available.</Typography>;
     }
 
-    const parentInfo = p.parent_info;
-    const studentInfo = p.student_info;
-
     return (
-      <Stack spacing={2}>
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Stack spacing={1}>
-            <Typography variant="subtitle1" fontWeight={600}>Parent Info</Typography>
-            {editingParent ? (
-              <>
-                <TextField
-                  label="Relation"
-                  value={parentInfo.relation || ""}
-                  onChange={(e) => handleParentFieldChange("parent_info.relation", e.target.value)}
-                  fullWidth
-                />
-                <TextField
-                  label="Profession"
-                  value={parentInfo.profession || ""}
-                  onChange={(e) => handleParentFieldChange("parent_info.profession", e.target.value)}
-                  fullWidth
-                />
-                <TextField
-                  label="Contact"
-                  value={parentInfo.parentContact || ""}
-                  onChange={(e) => handleParentFieldChange("parent_info.parentContact", e.target.value)}
-                  fullWidth
-                />
-                <TextField
-                  label="Student Admission No"
-                  value={parentInfo.studentAdmissionNo || ""}
-                  onChange={(e) => handleParentFieldChange("parent_info.studentAdmissionNo", e.target.value)}
-                  fullWidth
-                />
-              </>
-            ) : (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="space-between">
-                <Stack spacing={0.5}>
-                  <Typography variant="body2"><strong>Relation:</strong> {parentInfo.relation || "-"}</Typography>
-                  <Typography variant="body2"><strong>Profession:</strong> {parentInfo.profession || "-"}</Typography>
-                  <Typography variant="body2"><strong>Contact:</strong> {parentInfo.parentContact || "-"}</Typography>
-                  <Typography variant="body2"><strong>Student Admission No:</strong> {parentInfo.studentAdmissionNo || "-"}</Typography>
-                </Stack>
-                <Stack spacing={0.5} alignItems="flex-end">
-                  <Typography variant="body2"><strong>Created:</strong> {parentInfo.created_at ? new Date(parentInfo.created_at).toLocaleString() : "-"}</Typography>
-                  <Typography variant="body2"><strong>Updated:</strong> {parentInfo.updated_at ? new Date(parentInfo.updated_at).toLocaleString() : "-"}</Typography>
+      <Stack spacing={3}>
+        {data.map((parentEntry, parentIndex) => (
+          <Stack key={parentEntry.parent_info?.id || parentIndex} spacing={2}>
+            {/* Parent Information Card */}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6" gutterBottom>
+                  Parent Information #{parentIndex + 1}
+                </Typography>
+                
+                <Stack spacing={2}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {editingParent ? (
+                      <>
+                        <TextField
+                          fullWidth
+                          label="Profession"
+                          value={parentEntry.parent_info?.profession || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(`${parentIndex}.parent_info.profession`, e.target.value)}
+                        />
+                        
+                        <TextField
+                          fullWidth
+                          label="Relation"
+                          value={parentEntry.parent_info?.relation || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(`${parentIndex}.parent_info.relation`, e.target.value)}
+                        />
+                        
+                        <TextField
+                          fullWidth
+                          label="Contact"
+                          value={parentEntry.parent_info?.parent_contact || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(`${parentIndex}.parent_info.parent_contact`, e.target.value)}
+                        />
+                      </>
+                    ) : (
+                      // View mode - display as text
+                      <>
+                        <Typography><strong>Profession:</strong> {parentEntry.parent_info?.profession || '-'}</Typography>
+                        <Typography><strong>Relation:</strong> {parentEntry.parent_info?.relation || '-'}</Typography>
+                        <Typography><strong>Contact:</strong> {parentEntry.parent_info?.parent_contact || '-'}</Typography>
+                      </>
+                    )}
+                  </Box>
                 </Stack>
               </Stack>
-            )}
-          </Stack>
-        </Paper>
+            </Paper>
 
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Stack spacing={1}>
-            <Typography variant="subtitle1" fontWeight={600}>Student Info</Typography>
-            {editingParent ? (
-              <>
-                <TextField
-                  label="Student Name"
-                  value={studentInfo?.name || ""}
-                  onChange={(e) => handleParentFieldChange("student_info.name", e.target.value)}
-                  fullWidth
-                />
-                <TextField
-                  label="Grade"
-                  value={studentInfo?.grade || ""}
-                  onChange={(e) => handleParentFieldChange("student_info.grade", e.target.value)}
-                  fullWidth
-                />
-                <TextField
-                  label="Class"
-                  value={studentInfo?.class || ""}
-                  onChange={(e) => handleParentFieldChange("student_info.class", e.target.value)}
-                  fullWidth
-                />
-              </>
-            ) : (
-              <Stack direction="row" spacing={2} justifyContent="space-between">
-                <Stack spacing={0.5}>
-                  <Typography variant="body2"><strong>Name:</strong> {studentInfo?.name || "-"}</Typography>
-                  <Typography variant="body2"><strong>Grade:</strong> {studentInfo?.grade || "-"}</Typography>
-                  <Typography variant="body2"><strong>Class:</strong> {studentInfo?.class || "-"}</Typography>
-                </Stack>
+            {/* Students Information Card */}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Typography variant="h6" gutterBottom>
+                  Associated Students
+                </Typography>
+                
+                {parentEntry.students_info?.map((student, studentIndex) => (
+                  <Stack 
+                    key={student.studentAdmissionNo || studentIndex} 
+                    spacing={2}
+                    sx={{ 
+                      p: 2, 
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1
+                    }}
+                  >
+                    <Typography variant="subtitle1">
+                      Student #{studentIndex + 1}
+                    </Typography>
+                    
+                    {editingParent ? (
+                      // Edit mode - show text fields
+                      <>
+                        <TextField
+                          fullWidth
+                          label="Name"
+                          value={student.name || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(
+                            `${parentIndex}.students_info.${studentIndex}.name`,
+                            e.target.value
+                          )}
+                        />
+                        
+                        <TextField
+                          fullWidth
+                          label="Admission No"
+                          value={student.studentAdmissionNo || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(
+                            `${parentIndex}.students_info.${studentIndex}.studentAdmissionNo`,
+                            e.target.value
+                          )}
+                        />
+                        
+                        <TextField
+                          fullWidth
+                          label="Grade"
+                          value={student.grade || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(
+                            `${parentIndex}.students_info.${studentIndex}.grade`,
+                            e.target.value
+                          )}
+                        />
+                        
+                        <TextField
+                          fullWidth
+                          label="Class"
+                          value={student.class || ''}
+                          disabled={!editingParent}
+                          onChange={(e) => handleParentFieldChange(
+                            `${parentIndex}.students_info.${studentIndex}.class`,
+                            e.target.value
+                          )}
+                        />
+                      </>
+                    ) : (
+                      // View mode - display as text
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Typography><strong>Name:</strong> {student.name || '-'}</Typography>
+                        <Typography><strong>Admission No:</strong> {student.studentAdmissionNo || '-'}</Typography>
+                        <Typography><strong>Grade:</strong> {student.grade || '-'}</Typography>
+                        <Typography><strong>Class:</strong> {student.class || '-'}</Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                ))}
               </Stack>
-            )}
+            </Paper>
           </Stack>
-        </Paper>
+        ))}
       </Stack>
     );
   };
 
   const renderStudentEditable = (studentData: StudentData | undefined | null) => {
-    const s = localStudentData ?? studentData;
+    const s = editingStudent ? localStudentData : studentData;
     if (!s) {
       return <Typography>No student profile data available.</Typography>;
     }
@@ -676,7 +808,6 @@ const UserProfile: React.FC = () => {
               <TextField label="Class" value={s.studentClass || ""} onChange={(e) => handleStudentFieldChange("studentClass", e.target.value)} fullWidth />
               <TextField label="Medium" value={s.medium || ""} onChange={(e) => handleStudentFieldChange("medium", e.target.value)} fullWidth />
               <TextField label="Year" value={s.year || ""} onChange={(e) => handleStudentFieldChange("year", e.target.value)} fullWidth />
-              <TextField label="Modified By" value={s.modifiedBy || ""} onChange={(e) => handleStudentFieldChange("modifiedBy", e.target.value)} fullWidth />
             </Stack>
           ) : (
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="space-between">
@@ -775,6 +906,7 @@ const UserProfile: React.FC = () => {
                 <Typography><strong>Gender:</strong> {user?.gender || "-"}</Typography>
                 <Typography><strong>User Role:</strong> {user?.userRole || "-"}</Typography>
                 <Typography><strong>Location:</strong> {user?.location || "-"}</Typography>
+                {user?.status !== undefined && <Typography><strong>Status:</strong> {user.status ? "Active" : "Inactive"}</Typography>}
               </Box>
             )}
 
@@ -836,13 +968,13 @@ const UserProfile: React.FC = () => {
                   <Button
                     onClick={() => {
                       // enable editing only for sections that exist in data
-                      if (localTeacherData && localTeacherData.length > 0) setEditingTeacher(true);
+                      if (localTeacherData) setEditingTeacher(true);
                       if (localParentData) setEditingParent(true);
                       if (localStudentData) setEditingStudent(true);
                       // if none exist, allow user to add teacher row (useful in some flows)
-                      if ((!localTeacherData || localTeacherData.length === 0) && !localParentData && !localStudentData) {
+                      if (!localTeacherData && !localParentData && !localStudentData) {
                         setEditingTeacher(true);
-                        setLocalTeacherData([]);
+                        setLocalTeacherData({ teacher_info: [] });
                       }
                     }}
                     startIcon={<EditIcon />}
@@ -863,15 +995,15 @@ const UserProfile: React.FC = () => {
                 </Stack>
               ) : (
                 <>
-                  {(user?.userType === "Teacher" || (user?.teacher_data && user.teacher_data.length > 0)) && (
+                  {(user?.userType === "Teacher" || user?.teacher_data) && (
                     <Stack spacing={1}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="h6">Teacher Profile</Typography>
-                        {localTeacherData && localTeacherData.length > 0 && !editingTeacher && (
+                        {localTeacherData && !editingTeacher && (
                           <Button onClick={() => setEditingTeacher(true)} disabled={isMutating}>Edit Teacher</Button>
                         )}
                       </Stack>
-                      {editingTeacher ? renderTeacherEditable(user?.teacher_data) : renderTeacherEditable(user?.teacher_data)}
+                      {renderTeacherEditable(user?.teacher_data)}
                     </Stack>
                   )}
 
@@ -881,7 +1013,7 @@ const UserProfile: React.FC = () => {
                         <Typography variant="h6">Parent Profile</Typography>
                         {localParentData && !editingParent && <Button onClick={() => setEditingParent(true)} disabled={isMutating}>Edit Parent</Button>}
                       </Stack>
-                      {editingParent ? renderParentEditable(user?.parent_data) : renderParentEditable(user?.parent_data)}
+                      {renderParentEditable(user?.parent_data ? (Array.isArray(user.parent_data) ? user.parent_data : [user.parent_data]) : null)}
                     </Stack>
                   )}
 
@@ -891,11 +1023,11 @@ const UserProfile: React.FC = () => {
                         <Typography variant="h6">Student Profile</Typography>
                         {localStudentData && !editingStudent && <Button onClick={() => setEditingStudent(true)} disabled={isMutating}>Edit Student</Button>}
                       </Stack>
-                      {editingStudent ? renderStudentEditable(user?.student_data) : renderStudentEditable(user?.student_data)}
+                      {renderStudentEditable(user?.student_data)}
                     </Stack>
                   )}
 
-                  {!((user?.userType === "Teacher" || (user?.teacher_data && user.teacher_data.length > 0)) ||
+                  {!((user?.userType === "Teacher" || user?.teacher_data) ||
                     (user?.userType === "Parent" || user?.parent_data) ||
                     (user?.userType === "Student" || user?.student_data)
                   ) && (

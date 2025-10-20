@@ -56,6 +56,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import SaveIcon from '@mui/icons-material/Save';
 
 import useTeacherProfile from '../../hooks/useTeacherProfile';
+import Footer from '../../components/Footer';
 
 const examOptions = [
     { label: 'First Term', value: 'First' },
@@ -1375,6 +1376,7 @@ const TeacherDashboard: React.FC = () => {
                         </Paper>
                     )}
                 </Stack>
+                <Footer />
             </Box>
 
             <Snackbar 
@@ -1392,10 +1394,13 @@ const TeacherDashboard: React.FC = () => {
                 >
                     {snackbarMessage}
                 </Alert>
+                
             </Snackbar>
+           
+    </Box>
+ 
+);
 
-        </Box>
-    );
-};
-
+}
+   <Footer />
 export default TeacherDashboard;
