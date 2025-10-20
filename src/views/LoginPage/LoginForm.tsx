@@ -285,7 +285,7 @@ const LoginForm = ({ onForgotPasswordClick }: LoginFormProps) => {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <img src="/images/lgo1.png" alt="Buildtek Logo" width="50px" />
+          <img src="/images/schoolLogo.png" alt="Buildtek Logo" width="50px" />
           <Typography variant="subtitle1" fontWeight="bold">
             Student Management System
           </Typography>

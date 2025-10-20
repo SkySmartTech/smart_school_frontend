@@ -252,47 +252,56 @@ const getTypeSpecificFields = (user: any, userType: UserType) => {
 export const createUser = async (userData: User): Promise<User> => {
   const url = `${API_BASE_URL}${createEndpointForUserType(userData.userType)}`;
   
-  const baseData = {
-    name: userData.name,
-    username: userData.username,
-    email: userData.email,
-    password: userData.password,
-    address: userData.address || '',
-    birthDay: userData.birthDay || '',
-    contact: userData.contact || '',
-    gender: userData.gender || '',
-    status: userData.status,
-    location: userData.location || '',
-    userType: userData.userType,
-    userRole: getUserRole(userData.userType),
-    // Always include photo key. Convert empty string -> null, keep null if passed.
-    photo: userData.photo === "" ? null : (userData.photo ?? null),
-  };
-
+const baseData = {
+  name: userData.name,
+  username: userData.username,
+  email: userData.email,
+  password: userData.password,
+  address: userData.address || '',
+  birthDay: userData.birthDay || '',
+  contact: userData.contact || '',
+  gender: userData.gender || '',
+  status: userData.status,
+  location: userData.location || '',
+  userType: userData.userType,
+  userRole: userData.userRole, // Use the role from userData, not getUserRole
+  photo: userData.photo === "" ? null : (userData.photo ?? null),
+};
   let formattedData: any = { ...baseData };
 
   switch (userData.userType) {
     case "Student":
-      // Create properly formatted student data
-      const studentData = {
-        studentGrade: userData.grade || userData.studentGrade || '',
-        studentClass: userData.class || userData.studentClass || '',
-        medium: userData.medium || '',
-        studentAdmissionNo: userData.studentAdmissionNo || ''
-      };
-
-      // Include data both at root level and in studentData
+      // Base user data that matches the backend's userData structure
       formattedData = {
         ...formattedData,
-        // keep these keys present even if empty - backend expects them to exist
-        studentGrade: studentData.studentGrade,
-        studentClass: studentData.studentClass,
-        grade: studentData.studentGrade,
-        class: studentData.studentClass,
-        medium: studentData.medium,
-        studentAdmissionNo: studentData.studentAdmissionNo,
-        studentData: { ...studentData }
+        name: userData.name,
+        address: userData.address || '',
+        email: userData.email,
+        birthDay: userData.birthDay || '',
+        contact: userData.contact || '',
+        userType: userData.userType,
+        gender: userData.gender || '',
+        location: userData.location || '',
+        username: userData.username,
+        photo: userData.photo === "" ? null : (userData.photo ?? null),
+        // Prefer explicit role from the form (userData.userRole). Fall back to default for the type.
+        userRole: userData.userRole ?? getUserRole(userData.userType),
+        status: userData.status,
+        // Student specific fields that need to be at root level
+        studentGrade: safeString(userData.grade) || safeString(userData.studentGrade) || '',
+        studentClass: safeString(userData.class) || safeString(userData.studentClass) || '',
+        medium: safeString(userData.medium) || '',
+        studentAdmissionNo: safeString(userData.studentAdmissionNo) || '',
+        // Additional required fields from backend
+        modifiedBy: localStorage.getItem('userName') || 'System'
       };
+
+      // Clean up undefined/null values but keep empty strings as backend expects them
+      Object.keys(formattedData).forEach(key => {
+        if (formattedData[key] === undefined || formattedData[key] === null) {
+          formattedData[key] = '';
+        }
+      });
       break;
 
     case "Teacher":
@@ -449,14 +458,13 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
   const currentUser = localStorage.getItem('userName') || 'System';
 
   // Base data for all user types - always include photo key (null when missing)
-  const baseData: Record<string, any> = {
-    id, // Include ID in the payload
-    userType: userData.userType,
-    userRole: getUserRole(userData.userType),
-    modifiedBy: currentUser,
-    // Always include photo key; convert empty string -> null, keep null if passed.
-    photo: userData.photo === "" ? null : (userData.photo ?? null),
-  };
+const baseData: Record<string, any> = {
+  id,
+  userType: userData.userType,
+  userRole: userData.userRole, // Use the role from userData, not getUserRole
+  modifiedBy: currentUser,
+  photo: userData.photo === "" ? null : (userData.photo ?? null),
+};
 
   // Helper function to safely handle string or string array
   const safeString = (value: string | string[] | undefined | null): string | null => {
@@ -498,45 +506,40 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
 
   switch (userData.userType) {
     case "Student":
-      const studentData: Record<string, any> = {};
-      
-      const studentGrade = safeString(userData.grade);
-      const studentClass = safeString(userData.class);
-      const studentMedium = safeString(userData.medium);
-      const admissionNo = safeString(userData.studentAdmissionNo);
+      // Format data exactly as the backend's UserStudentUpdateRequest expects
+      formattedData = {
+        ...formattedData,
+        // User data fields
+        name: userData.name,
+        address: userData.address,
+        email: userData.email,
+        birthDay: userData.birthDay,
+        contact: userData.contact,
+        userType: userData.userType,
+        gender: userData.gender,
+        location: userData.location,
+        username: userData.username,
+        photo: userData.photo === "" ? null : (userData.photo ?? null),
+        // Keep any explicit role provided by the UI (e.g. "admin"); otherwise use default mapping.
+        userRole: userData.userRole ?? getUserRole(userData.userType),
+        status: userData.status,
+        
+        // Student specific fields - these need to be at the root level
+        // as the backend validation expects them directly
+        studentGrade: safeString(userData.grade) || safeString(userData.studentGrade),
+        studentClass: safeString(userData.class) || safeString(userData.studentClass),
+        medium: safeString(userData.medium),
+        studentAdmissionNo: safeString(userData.studentAdmissionNo),
+        modifiedBy: localStorage.getItem('userName') || 'System'
+      };
 
-      if (studentGrade) {
-        studentData.studentGrade = studentGrade;
-        formattedData.studentGrade = studentGrade;
-      } else {
-        // keep key present for backend (null when missing)
-        formattedData.studentGrade = null;
-        studentData.studentGrade = null;
-      }
-      if (studentClass) {
-        studentData.studentClass = studentClass;
-        formattedData.studentClass = studentClass;
-      } else {
-        formattedData.studentClass = null;
-        studentData.studentClass = null;
-      }
-      if (studentMedium) {
-        studentData.medium = studentMedium;
-        formattedData.medium = studentMedium;
-      } else {
-        formattedData.medium = null;
-        studentData.medium = null;
-      }
-      if (admissionNo) {
-        studentData.studentAdmissionNo = admissionNo;
-        formattedData.studentAdmissionNo = admissionNo;
-      } else {
-        formattedData.studentAdmissionNo = null;
-        studentData.studentAdmissionNo = null;
-      }
-
-      // Always include studentData (may contain nulls) so backend validation sees keys
-      formattedData.studentData = studentData;
+      // Remove any undefined or null values but keep empty strings
+      // as the backend validation may require these fields
+      Object.keys(formattedData).forEach(key => {
+        if (formattedData[key] === undefined) {
+          delete formattedData[key];
+        }
+      });
       break;
 
     case "Teacher":
@@ -693,8 +696,6 @@ export const deactivateUser = async (id: number, userType: UserType): Promise<vo
   );
 };
 
-// ...existing code...
-
 export const searchUsers = async (searchTerm: string, userType: UserType): Promise<User[]> => {
   let endpoint = '';
   
@@ -736,8 +737,6 @@ export const searchUsers = async (searchTerm: string, userType: UserType): Promi
     throw error;
   }
 };
-
-// ...existing code...
 
 export const bulkDeactivateUsers = async (ids: number[], userType: UserType): Promise<void> => {
   const promises = ids.map(id => deactivateUser(id, userType));

@@ -30,6 +30,7 @@ const exams = [
 ];
 
 const months = [
+    { label: "Select Month", value: "" },
     { label: "January", value: "01" },
     { label: "February", value: "02" },
     { label: "March", value: "03" },
@@ -46,9 +47,13 @@ const months = [
 
 const hardcodedYears = (() => {
     const thisYear = new Date().getFullYear();
-    // last 5 years including current
-    return Array.from({ length: 5 }).map((_, i) => String(thisYear - i));
+    const startYear = thisYear - 5;
+    const endYear = thisYear + 5;
+    return Array.from({ length: endYear - startYear + 1 }, (_, i) =>
+        String(startYear + i)
+    );
 })();
+
 
 const MarksChecking = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -58,6 +63,7 @@ const MarksChecking = () => {
 
     // dropdown states
     const [year, setYear] = useState<string>(hardcodedYears[0]);
+    const [examYear, setExamYear] = useState<string>(hardcodedYears[0]);
     const [gradeOptions, setGradeOptions] = useState<DropdownOption[]>([]);
     const [grade, setGrade] = useState<string>("");
     const [exam, setExam] = useState<string>("");
@@ -102,8 +108,8 @@ const MarksChecking = () => {
 
     // fetch marks whenever required inputs change
     useEffect(() => {
-        // must have year, grade, exam (and month if monthly)
-        const shouldFetch = year && grade && exam && (!isMonthly || (isMonthly && month));
+        // must have year, grade, examYear, exam (and month if monthly)
+        const shouldFetch = year && grade && examYear && exam && (!isMonthly || (isMonthly && month));
         if (!shouldFetch) {
             setRows([]);
             return;
@@ -114,7 +120,7 @@ const MarksChecking = () => {
             setLoading(true);
             setError(null);
             try {
-                const data = await fetchMarksStatus(year, grade, exam, month);
+                const data = await fetchMarksStatus(year, grade, examYear, exam, month);
                 if (!mounted) return;
                 setRows(data);
             } catch (err: any) {
@@ -129,7 +135,7 @@ const MarksChecking = () => {
         return () => {
             mounted = false;
         };
-    }, [year, grade, exam, month, isMonthly]);
+    }, [year, grade, examYear, exam, month, isMonthly]);
 
     // handle exam change: set exam and reset month if not Monthly
     const handleExamChange = (value: string) => {
@@ -172,7 +178,7 @@ const MarksChecking = () => {
                                 {/* Year */}
                                 <TextField
                                     select
-                                    label="Year"
+                                    label="Student Year"
                                     variant="outlined"
                                     value={year}
                                     onChange={(e) => setYear(e.target.value)}
@@ -200,6 +206,7 @@ const MarksChecking = () => {
                                         </MenuItem>
                                     ))}
                                 </TextField>
+
 
                                 {/* Grade */}
                                 <TextField
@@ -240,6 +247,38 @@ const MarksChecking = () => {
                                             </MenuItem>
                                         ))
                                     )}
+                                </TextField>
+
+                                {/* Exam Year - new dropdown */}
+                                <TextField
+                                    select
+                                    label="Exam Year"
+                                    variant="outlined"
+                                    value={examYear}
+                                    onChange={(e) => setExamYear(e.target.value)}
+                                    disabled={isLoading}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <DateRange color="action" />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                    sx={{
+                                        minWidth: 150,
+                                        flex: 1,
+                                        maxWidth: 250,
+                                        "& .MuiOutlinedInput-root": {
+                                            borderRadius: "10px",
+                                            height: "45px",
+                                        },
+                                    }}
+                                >
+                                    {years.map((y) => (
+                                        <MenuItem key={y} value={y}>
+                                            {y}
+                                        </MenuItem>
+                                    ))}
                                 </TextField>
 
                                 {/* Exam */}

@@ -1,88 +1,106 @@
 // src/types/userTypes.ts
-export type TeacherData = {
+export interface User {
+  id: number;
+  name: string;
+  address: string;
+  password: string;
+  birthDay: string;
+  email: string;
+  userType: string;
+  gender: string;
+  userRole: string;
+  username: string;
+  location: string;
+  grade: string;
+  contact: string;
+  photo: string | null;
+  subject: string;
+  class: string;
+  epf?: string;
+  teacher_data: TeacherData | null;
+  parent_data: ParentData | null;
+  student_data: StudentData | null;
+  status?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  access?: any[];
+}
+
+export interface TeacherData {
+  teacher_info?: TeacherInfo[];
   id?: number;
   teacherGrade?: string;
   teacherClass?: string;
   subject?: string;
   medium?: string;
   staffNo?: string;
-  userId?: string | number;
-  userType?: string | null;
-  modifiedBy?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+  userId?: string;
+  userType?: string;
+  modifiedBy?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-export type StudentInfoNested = {
+export interface TeacherInfo {
   id: number;
-  studentGrade: string | null;
-  studentClass: string | null;
-  medium: string | null;
-  studentAdmissionNo: string | null;
-  year?: string | null;
-  userType?: string | null;
-  userId?: string | null;
-  modifiedBy?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  user?: any;
-};
-
-export type ParentInfo = {
-  id?: number;
-  studentAdmissionNo?: string;
-  profession?: string;
-  parentContact?: string;
-  relation?: string;
-  student?: any; // or a specific Student sub-type
-  userId?: string | number | null;
-  userType?: string | null;
-  modifiedBy?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
-export type ParentData = {
-  parent_info?: ParentInfo | null;
-  student_info?: { name?: string | null; grade?: string | null; class?: string | null } | null;
-};
-
-export type StudentData = {
-  id?: number;
-  studentGrade?: string;
-  studentClass?: string | null;
-  medium?: string | null;
-  studentAdmissionNo?: string;
-  year?: string;
-  modifiedBy?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
-export interface User {
-  id: number;
-  name: string;
-  address: string;
-  birthDay: string;
-  userType: string;
-  gender: string;
-  userRole: string;
-  username: string;
-  password: string;
-  email: string;
-  location: string;
-  grade: string;
-  contact: string;
-  photo: string;
+  teacherGrade: string;
+  teacherClass: string;
   subject: string;
-  class: string;
-  epf?: string;
-  // new optional profile details:
-  teacher_data?: TeacherData[] | null;
-  parent_data?: ParentData | null;
-  student_data?: StudentData | null;
+  medium: string;
+  staffNo: string;
+  userId: string;
+  userType: string;
+  modifiedBy: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// FIXED: Proper ParentData interface
+export interface ParentData {
+  parent_info?: ParentInfo;
+  students_info?: StudentInfo[];
+  id?: number;
+  profession?: string;
+  relation?: string;
+  parent_contact?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// FIXED: Added proper ParentInfo interface
+export interface ParentInfo {
+  id: number;
+  profession: string;
+  relation: string;
+  parent_contact: string;
+  created_at?: string;
+  updated_at?: string;
+  studentAdmissionNo?: string; // Added this field
+}
+
+// FIXED: Added proper StudentInfo interface for parent data
+export interface StudentInfo {
+  name: string | null;
+  studentAdmissionNo: string;
+  grade: string;
+  class: string | null;
+}
+
+export interface StudentData {
+  id: number;
+  studentGrade: string;
+  studentClass: string;
+  medium: string;
+  studentAdmissionNo: string;
+  year: string;
+  userType: string;
+  userId: string;
+  modifiedBy: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PhotoUploadResponse {
   photoUrl: string;
+  message?: string;
 }

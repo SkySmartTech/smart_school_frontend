@@ -53,6 +53,12 @@ interface ApiClassTeacher {
   updated_at?: string;
 }
 
+interface ClassResponse {
+  class: string;
+  grade: string;
+  id: number;
+}
+
 
 // Auth header function
 const getAuthHeader = () => {
@@ -253,6 +259,24 @@ export async function getAllClassTeachers(): Promise<ClassTeacher[]> {
     }));
   } catch (error) {
     handleApiError(error, "getAllClassTeachers");
+    return [];
+  }
+}
+
+export async function getAvailableClasses(grade: string): Promise<string[]> {
+  try {
+    const res = await axios.get(
+      `${API_BASE_URL}/api/grade-classes/${encodeURIComponent(grade)}`, 
+      getAuthHeader()
+    );
+    
+    // Check if response data is an array and map to get only class names
+    if (Array.isArray(res.data)) {
+      return res.data.map((item: ClassResponse) => item.class);
+    }
+    return [];
+  } catch (error) {
+    handleApiError(error, "getAvailableClasses");
     return [];
   }
 }

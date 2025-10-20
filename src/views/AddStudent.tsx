@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface GradeOption {
   id: string;
@@ -32,6 +32,7 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  Checkbox,
 } from "@mui/material";
 import { Close, Add, Delete } from "@mui/icons-material";
 
@@ -42,10 +43,12 @@ import {
   promoteStudents,
   getAvailableGrades,
   getAvailableClasses,
-  fetchClassStudents,       
+  fetchClassStudents,
   type Student,
   type PromoteStudentsRequest
 } from "../api/studentApi";
+
+import * as XLSX from "xlsx";
 
 const AddStudent = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,7 +62,6 @@ const AddStudent = () => {
   const [classFilter, setClassFilter] = useState("");
 
   // Available options
-  // Year dropdown must be hardcoded
   const YEARS = ["2023", "2024", "2025", "2026", "2027", "2028", "2029", "2030"];
   const [years] = useState<string[]>(YEARS);
   const [grades, setGrades] = useState<(string | GradeOption)[]>([]);
@@ -84,6 +86,11 @@ const AddStudent = () => {
   const [nextGrade, setNextGrade] = useState("");
   const [nextClass, setNextClass] = useState("");
 
+  // Excel upload states
+  const [excelUploaded, setExcelUploaded] = useState(false);
+  const [uploadedStudents, setUploadedStudents] = useState<Student[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Notification
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
@@ -104,12 +111,36 @@ const AddStudent = () => {
   // Load classes when grade changes
   useEffect(() => {
     if (grade) {
-      void loadClasses(grade);
+      const loadClassesForGrade = async () => {
+        try {
+          const classesData = await getAvailableClasses(grade);
+          setClasses(classesData);
+        } catch (error) {
+          showSnackbar("Failed to load classes", "error");
+          setClasses([]); // Clear classes on error
+        }
+      };
+      void loadClassesForGrade();
     } else {
       setClasses([]);
       setClassFilter("");
     }
   }, [grade]);
+
+  // Also add a similar effect for the promotion dialog's next grade
+  useEffect(() => {
+    if (nextGrade) {
+      const loadClassesForNextGrade = async () => {
+        try {
+          const classesData = await getAvailableClasses(nextGrade);
+          setClasses(classesData);
+        } catch (error) {
+          showSnackbar("Failed to load classes for next grade", "error");
+        }
+      };
+      void loadClassesForNextGrade();
+    }
+  }, [nextGrade]);
 
   const loadAvailableGrades = async () => {
     try {
@@ -117,15 +148,6 @@ const AddStudent = () => {
       setGrades(gradesData);
     } catch (error) {
       showSnackbar("Failed to load available grades", "error");
-    }
-  };
-
-  const loadClasses = async (grade: string) => {
-    try {
-      const classesData = await getAvailableClasses(grade);
-      setClasses(classesData);
-    } catch (error) {
-      showSnackbar("Failed to load classes", "error");
     }
   };
 
@@ -152,16 +174,22 @@ const AddStudent = () => {
     setCurrentGradeFilter(grade);
     setCurrentClassFilter(classFilter);
     setSelectedStudents([]);
+
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedStudents([]);
     setSearchTerm("");
+
   };
 
   const handleSelectStudent = (student: Student) => {
-    setSelectedStudents(prev => [...prev, student]);
+    // prevent duplicates
+    setSelectedStudents(prev => {
+      if (prev.some(s => s.id === student.id)) return prev;
+      return [...prev, student];
+    });
   };
 
   const handleRemoveStudent = (studentId: string) => {
@@ -197,6 +225,9 @@ const AddStudent = () => {
         handleCloseDialog();
         // Refresh the students list for the same filters
         void loadStudents();
+        // Also clear the uploaded state after a successful promotion (optional)
+        setExcelUploaded(false);
+        setUploadedStudents([]);
       } else {
         showSnackbar(result.message, "error");
       }
@@ -229,6 +260,163 @@ const AddStudent = () => {
     return String(g.grade ?? g.name ?? g.value ?? JSON.stringify(g));
   };
 
+  // Dialog display list:
+  const dialogDisplayStudents = (excelUploaded ? uploadedStudents : filteredStudents)
+    .filter(student => !selectedStudents.some(s => s.id === student.id)) // exclude already selected
+    .filter(student =>
+      !searchTerm ||
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.admissionNo.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+  // Select all toggle
+  const isAllSelected = dialogDisplayStudents.length > 0 && dialogDisplayStudents.every(s => selectedStudents.some(sel => sel.id === s.id));
+
+  const handleToggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // add all visible ones (avoid duplicates)
+      setSelectedStudents(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const toAdd = dialogDisplayStudents.filter(s => !existingIds.has(s.id));
+        return [...prev, ...toAdd];
+      });
+    } else {
+      // remove all visible ones from selectedStudents
+      setSelectedStudents(prev => prev.filter(s => !dialogDisplayStudents.some(ds => ds.id === s.id)));
+    }
+  };
+
+  // First, add this function after handleToggleSelectAll
+  const handleSelectAllAction = () => {
+    // Get all unselected students from the current display list
+    const unselectedStudents = dialogDisplayStudents.filter(
+      student => !selectedStudents.some(s => s.id === student.id)
+    );
+    
+    // Add all unselected students to selection
+    if (unselectedStudents.length > 0) {
+      setSelectedStudents(prev => [...prev, ...unselectedStudents]);
+    } else {
+      // If all are selected, remove all displayed students from selection
+      setSelectedStudents(prev => 
+        prev.filter(selected => 
+          !dialogDisplayStudents.some(ds => ds.id === selected.id)
+        )
+      );
+    }
+  };
+
+  // Excel parsing utilities
+  const getCellValue = (row: any, variants: string[]) => {
+    for (const v of variants) {
+      if (row[v] !== undefined && row[v] !== null) return String(row[v]);
+      // also try lowercase / trimmed keys
+      const lowerKey = Object.keys(row).find(k => k && k.toLowerCase().replace(/\s+/g, "") === v.toLowerCase().replace(/\s+/g, ""));
+      if (lowerKey) return String(row[lowerKey]);
+    }
+    return "";
+  };
+
+  const parseExcelFile = async (file: File) => {
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      // map rows to Student
+      const mapped: Student[] = rawJson.map((row: any, idx: number) => {
+        const admissionNo = getCellValue(row, ["admissionNo", "AdmissionNo", "Admission No", "studentAdmissionNo", "student_admission_no"]);
+        const name = getCellValue(row, ["name", "Name", "studentName", "student_name"]);
+        const gradeVal = getCellValue(row, ["grade", "Grade", "studentGrade", "student_grade"]);
+        const classVal = getCellValue(row, ["class", "Class", "studentClass", "student_class"]);
+        const medium = getCellValue(row, ["medium", "Medium"]);
+        const yearVal = getCellValue(row, ["year", "Year"]);
+
+        return {
+          id: String(row.id ?? row.ID ?? admissionNo ?? `uploaded-${idx}`),
+          admissionNo: admissionNo || "",
+          name: name || "",
+          grade: gradeVal || "",
+          class: classVal || "",
+          medium: medium || "",
+          year: yearVal || ""
+        } as Student;
+      });
+
+      // Filter out completely empty rows
+      const cleaned = mapped.filter(m => (m.admissionNo || m.name));
+
+      if (cleaned.length === 0) {
+        showSnackbar("No valid student rows found in the uploaded Excel.", "error");
+        return;
+      }
+
+      setUploadedStudents(cleaned);
+      setExcelUploaded(true);
+      showSnackbar(`Loaded ${cleaned.length} students from Excel.`, "success");
+    } catch (e) {
+      console.error(e);
+      showSnackbar("Failed to parse Excel file. Make sure it's a valid .xlsx or .xls file.", "error");
+    }
+  };
+
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    // basic file type check
+    if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+      showSnackbar("Unsupported file format. Upload .xlsx, .xls or .csv", "error");
+      return;
+    }
+    void parseExcelFile(file);
+    // reset input so same file can be uploaded again if needed
+    e.target.value = "";
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  // new: download a sample Excel file with expected headers and one example row
+  const downloadSampleExcel = () => {
+    try {
+      const sample = [
+        {
+          "Admission No": "A001",
+          "Name": "Sunita Suren",
+          "Grade": "Grade 1",
+          "Class": "A",
+          "Medium": "English",
+          "Year": "2024"
+        }
+      ];
+
+      const worksheet = XLSX.utils.json_to_sheet(sample, { header: ["Admission No", "Name", "Grade", "Class", "Medium", "Year"] });
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+      // triggers browser download
+      XLSX.writeFile(workbook, "student_promotion_sample.xlsx");
+    } catch (err) {
+      console.error("Failed to generate sample Excel", err);
+      showSnackbar("Failed to generate sample file", "error");
+    }
+  };
+
+  const clearUploadedData = () => {
+    setExcelUploaded(false);
+    setUploadedStudents([]);
+  };
+
+  // new: clear the main filter dropdowns and clear the students list
+  const clearFilters = () => {
+    setYear("");
+    setGrade("");
+    setClassFilter("");
+    // clear currently loaded students (so user knows filters are cleared)
+    setStudents([]);
+  };
 
   return (
     <Box sx={{ display: "flex", width: "100vw", height: "100vh", minHeight: "100vh", bgcolor: theme.palette.background.default }}>
@@ -353,6 +541,42 @@ const AddStudent = () => {
                   </Select>
                 </FormControl>
               </Stack>
+
+              {/* Clear button styled like the dropdown */}
+              <Stack sx={{ flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
+                <FormControl
+                  sx={{
+                    minWidth: 250,
+                    maxWidth: 350,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "10px",
+                      height: "50px",
+                    },
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={clearFilters}
+                    sx={{
+                      borderRadius: "10px",
+                      height: "50px",
+                      width: "100%",
+                      textTransform: "none",
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                      borderWidth: 2,
+                      "&:hover": {
+                        borderWidth: 2,
+                        backgroundColor: "rgba(25, 118, 210, 0.08)", // subtle hover like select
+                      },
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </FormControl>
+              </Stack>
+
             </Stack>
           </Paper>
 
@@ -421,9 +645,34 @@ const AddStudent = () => {
         <DialogContent>
           {/* Current Year Details */}
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Current Year Details
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="h6" gutterBottom>
+                Current Year Details
+              </Typography>
+
+              <Stack direction="row" spacing={1} alignItems="center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  style={{ display: "none" }}
+                  onChange={onFileInputChange}
+                />
+                <Button variant="outlined" onClick={triggerFileSelect}>
+                  Upload Excel
+                </Button>
+
+                <Button variant="outlined" onClick={downloadSampleExcel}>
+                  Download Sample
+                </Button>
+
+                {excelUploaded && (
+                  <Button color="error" variant="text" onClick={clearUploadedData}>
+                    Clear Upload
+                  </Button>
+                )}
+              </Stack>
+            </Box>
 
             {/* Filters */}
             <Stack direction="row" spacing={2}>
@@ -494,30 +743,61 @@ const AddStudent = () => {
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={isAllSelected}
+                        indeterminate={!isAllSelected && dialogDisplayStudents.length > 0 && dialogDisplayStudents.some(s => selectedStudents.some(sel => sel.id === s.id))}
+                        onChange={(e) => handleToggleSelectAll(e.target.checked)}
+                        inputProps={{ 'aria-label': 'select all students' }}
+                      />
+                    </TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Admission No</TableCell>
-                    <TableCell>Action</TableCell>
+                    <TableCell>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleSelectAllAction}
+                        sx={{ minWidth: 85 }}
+                      >
+                        {isAllSelected ? "Unselect All" : "Select All"}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>{student.name}</TableCell>
-                      <TableCell>{student.admissionNo}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleSelectStudent(student)}
-                        >
-                          Select
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredStudents.length === 0 && (
+                  {dialogDisplayStudents.map((student) => {
+                    const alreadySelected = selectedStudents.some(s => s.id === student.id);
+                    return (
+                      <TableRow key={student.id}>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={alreadySelected}
+                            onChange={(e) => {
+                              if (e.target.checked) handleSelectStudent(student);
+                              else handleRemoveStudent(student.id);
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{student.name}</TableCell>
+                        <TableCell>{student.admissionNo}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleSelectStudent(student)}
+                            disabled={alreadySelected}
+                            sx={{ minWidth: 85 }}
+                          >
+                            {alreadySelected ? "Selected" : "Select"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {dialogDisplayStudents.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} align="center">
+                      <TableCell colSpan={4} align="center">
                         No students found
                       </TableCell>
                     </TableRow>
