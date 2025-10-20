@@ -4,7 +4,6 @@ import {
     Typography,
     Paper,
     Divider,
-    Button,
     Link as MuiLink,
     Stack,
     CssBaseline,
@@ -17,26 +16,28 @@ import {
     HelpOutline as HelpOutlineIcon
 } from '@mui/icons-material';
 
-// Assume these components are imported from your existing structure
-import Sidebar from "../components/Sidebar"; // Adjust path as necessary
-import Navbar from "../components/Navbar";   // Adjust path as necessary
-import { useCustomTheme } from '../context/ThemeContext'; // Assuming you have this context
+import Sidebar from "../components/Sidebar";
+import Navbar from "../components/Navbar";
+import { useCustomTheme } from '../context/ThemeContext';
 
-// Define the structure for a single manual link
 interface ManualLinkProps {
     title: string;
     description: string;
-    onClick: () => void; // Function to handle navigation/opening PDF
+    pdfUrl: string; 
 }
 
-// Helper component for a single manual link, designed to be clickable
-const ManualLink: React.FC<ManualLinkProps> = ({ title, description, onClick }) => {
+const ManualLink: React.FC<ManualLinkProps> = ({ title, description, pdfUrl }) => {
     const theme = useTheme();
+
+    const handleClick = () => {
+        // Open PDF in new tab
+        window.open(pdfUrl, '_blank');
+    };
 
     return (
         <MuiLink
             component="button"
-            onClick={onClick}
+            onClick={handleClick}
             sx={{
                 width: '100%',
                 textAlign: 'left',
@@ -72,43 +73,31 @@ const ManualLink: React.FC<ManualLinkProps> = ({ title, description, onClick }) 
 
 const HelpPage: React.FC = () => {
     const theme = useTheme();
-    useCustomTheme(); // Initialize custom theme/mode logic
+    useCustomTheme();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // --- Manual Handlers (Placeholders) ---
-    const handleManualClick = (manualType: string) => {
-        // In a real application, this would navigate to a specific route 
-        // or open a PDF/external link for the manual.
-        console.log(`Opening ${manualType} Manual...`);
-        alert(`Simulating opening ${manualType} Manual.`);
-    };
-    // -------------------------------------
-
     const manuals = [
-        { 
-            title: "Parent's Manual", 
+        {
+            title: "Parent's Manual",
             description: "Guide for parents on viewing reports and interacting with the system.",
-            handler: () => handleManualClick("Parent") 
+            pdfUrl: "/manuals/parent's manual.pdf"
         },
-        { 
-            title: "Student's Manual", 
+        {
+            title: "Student's Manual",
             description: "Instructions for students on accessing lessons and checking homework.",
-            handler: () => handleManualClick("Student") 
+            pdfUrl: "/manuals/student's manual.pdf"
         },
-        { 
-            title: "Teacher's Manual", 
+        {
+            title: "Teacher's Manual",
             description: "Detailed guide for teachers on grading, attendance, and content management.",
-            handler: () => handleManualClick("Teacher") 
+            pdfUrl: "/manuals/teacher's manual.pdf"
         },
     ];
 
     return (
         <Box sx={{ display: "flex", width: "100vw", height: "100vh", minHeight: "100vh" }}>
             <CssBaseline />
-            <Sidebar
-                open={sidebarOpen}
-                setOpen={setSidebarOpen}
-            />
+            <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
             <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
                 <AppBar
                     position="static"
@@ -127,60 +116,46 @@ const HelpPage: React.FC = () => {
                     />
                 </AppBar>
 
-                {/* Main Content Area */}
                 <Box
                     sx={{
                         p: 3,
                         flexGrow: 1,
                         overflow: "auto",
                         display: 'flex',
-                        justifyContent: 'center', // Center card horizontally
-                        alignItems: 'flex-start', // Align card to the top
-                        backgroundColor: theme.palette.background.default, // Match overall background
+                        justifyContent: 'center',
+                        alignItems: 'flex-start',
+                        backgroundColor: theme.palette.background.default,
                     }}
                 >
-                    {/* The minimalist Card based on User Profile screenshot */}
                     <Paper
                         elevation={2}
                         sx={{
                             p: 4,
-                            width: { xs: '95%', sm: 600, md: 700 }, // Max width for minimalist look
+                            width: { xs: '95%', sm: 600, md: 700 },
                             borderRadius: 2,
                         }}
                     >
                         <Stack direction="row" spacing={2} alignItems="center" mb={3}>
                             <HelpOutlineIcon sx={{ fontSize: 32, color: theme.palette.primary.main }} />
                             <Typography variant="h5" fontWeight={700}>
-                                System Manuals...!
+                                System Manuals
                             </Typography>
                         </Stack>
-                        
+
                         <Divider sx={{ mb: 3 }} />
 
-                        {/* Manual Links Section */}
                         <Stack spacing={1}>
                             {manuals.map((manual, index) => (
                                 <React.Fragment key={manual.title}>
                                     <ManualLink
                                         title={manual.title}
                                         description={manual.description}
-                                        onClick={manual.handler}
+                                        pdfUrl={manual.pdfUrl}
                                     />
-                                    {/* Add divider between items, but not after the last one */}
                                     {index < manuals.length - 1 && <Divider component="li" />}
                                 </React.Fragment>
                             ))}
                         </Stack>
-
-                        <Divider sx={{ mt: 3, mb: 2 }} />
-
-                        <Box sx={{ textAlign: 'right' }}>
-                            {/* Optional button for further help/contact */}
-                            <Button variant="outlined" color="primary">
-                                Contact Support..
-                            </Button>
-                        </Box>
-
                     </Paper>
                 </Box>
             </Box>
