@@ -9,7 +9,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  MenuItem,
   CssBaseline,
   Paper,
   Table,
@@ -23,11 +22,7 @@ import {
   Alert,
   Tabs,
   Tab,
-  useTheme,
-  Select,
-  InputLabel,
-  FormControl,
-  type SelectChangeEvent
+  useTheme
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -60,7 +55,6 @@ import {
 import Navbar from '../components/Navbar';
 
 const SystemManagement = () => {
-  // Start at Tab 0 (Grades)
   const [activeTab, setActiveTab] = useState(0); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hovered] = useState(false);
@@ -95,7 +89,6 @@ const SystemManagement = () => {
     const fetchData = async () => {
       try {
         setLoading(prev => ({ ...prev, table: true }));
-        // Tab indexes are now 0, 1, 2, 3
         switch (activeTab) {
           case 0: // Grades
             const gradesData = await fetchGrades();
@@ -135,7 +128,6 @@ const SystemManagement = () => {
   };
 
   const handleAddClick = () => {
-    // Reset formData
     setFormData({});
     setFieldErrors({});
     setEditId(null);
@@ -143,14 +135,10 @@ const SystemManagement = () => {
   };
 
   const handleEditClick = (item: any) => {
-    // Normalize data: handle both camelCase and snake_case from backend
     const normalizedData = { ...item };
     
-    // For subjects (Tab 1), map the API's 'subSubject' to the frontend's 'subjectName'
     if (activeTab === 1 && item) {
-      // FIX: Use the 'subSubject' field from the API response for the Subject Name
       normalizedData.subjectName = item.subSubject || item.subjectName || item.subject_name || item.name || '';
-      // Ensure other required fields are set for a successful update
       normalizedData.mainSubject = item.mainSubject || '';
       normalizedData.grade = item.grade || '';
     }
@@ -164,13 +152,12 @@ const SystemManagement = () => {
   const handleDeleteClick = async (id: number) => {
     try {
       setLoading(prev => ({ ...prev, delete: true }));
-      // NOTE: Tab indexes are 0, 1, 2, 3
       switch (activeTab) {
         case 0: await deleteGrade(id); break; 
         case 1: await deleteSubject(id); break; 
         case 2: await deleteClass(id); break; 
         case 3: await deleteCommonSetting(id); break; 
-        default: await deleteSchool(id); break; // Fallback
+        default: await deleteSchool(id); break;
       }
       showSnackbar('Item deleted successfully', 'success');
 
@@ -196,18 +183,15 @@ const SystemManagement = () => {
 
       if (editId) {
         // Update existing item
-        // NOTE: Tab indexes are 0, 1, 2, 3
         switch (activeTab) {
           case 0: await updateGrade(editId, formData); break; 
           case 1: await updateSubject(editId, formData); break; 
           case 2: await updateClass(editId, formData); break; 
           case 3: await updateCommonSetting(editId, formData); break; 
-          default: await updateSchool(editId, formData); break; // Fallback
+          default: await updateSchool(editId, formData); break;
         }
       } else {
         // Create new item
-        // NOTE: The createGrade API endpoint requires both 'grade' and 'gradeId'. 
-        // We ensure formData contains both if we are creating.
         switch (activeTab) {
           case 0: 
               if (!formData.gradeId) {
@@ -219,7 +203,7 @@ const SystemManagement = () => {
           case 1: await createSubject(formData); break; 
           case 2: await createClass(formData); break; 
           case 3: await createCommonSetting(formData); break; 
-          default: await createSchool(formData); break; // Fallback
+          default: await createSchool(formData); break;
         }
       }
 
@@ -240,12 +224,10 @@ const SystemManagement = () => {
           showSnackbar('Please fill out all required fields.', 'error');
       } else if (error.response && error.response.data) {
         if (error.response.data.errors) {
-          // FIX: Handle errors from the backend which use 'subSubject', 'mainSubject', 'grade'
           const apiErrors = error.response.data.errors;
           const normalizedErrors: Record<string, string> = {};
 
           if (apiErrors.subSubject) {
-             // Map backend 'subSubject' error to frontend 'subjectName' field
              normalizedErrors.subjectName = apiErrors.subSubject[0];
           }
           if (apiErrors.mainSubject) {
@@ -254,7 +236,6 @@ const SystemManagement = () => {
           if (apiErrors.grade) {
              normalizedErrors.grade = apiErrors.grade[0];
           }
-          // Add other errors directly
           Object.keys(apiErrors).forEach(key => {
              if (key !== 'subSubject' && key !== 'mainSubject' && key !== 'grade') {
                  normalizedErrors[key] = apiErrors[key][0];
@@ -287,21 +268,7 @@ const SystemManagement = () => {
     }
   };
 
-  const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    if (fieldErrors[name]) {
-      setFieldErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
   const renderTable = () => {
-    // NOTE: Tab indexes start at 0 (Grades)
     switch (activeTab) {
       case 0: // Grades
         return (
@@ -309,7 +276,6 @@ const SystemManagement = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  {/* REMOVED GRADE ID COLUMN FROM TABLE */}
                   <TableCell>Grade Name</TableCell>
                   <TableCell>Updated At</TableCell>
                   <TableCell>Created At</TableCell>
@@ -319,7 +285,6 @@ const SystemManagement = () => {
               <TableBody>
                 {grades.map((grade) => (
                   <TableRow key={grade.id}>
-                    {/* REMOVED GRADE ID CELL */}
                     <TableCell>{grade.grade}</TableCell> 
                     <TableCell>{grade.updated_at}</TableCell>
                     <TableCell>{grade.created_at}</TableCell>
@@ -353,7 +318,6 @@ const SystemManagement = () => {
               <TableBody>
                 {subjects.map((subject) => (
                   <TableRow key={subject.id}>
-                    {/* FIX: Use the 'subSubject' field from the API response for display, with fallback to subjectName */}
                     <TableCell>{subject.subSubject || subject.subjectName || ''}</TableCell>
                     <TableCell>{subject.medium}</TableCell>
                     <TableCell>{subject.updated_at}</TableCell>
@@ -379,7 +343,6 @@ const SystemManagement = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Class Name</TableCell>
-                  <TableCell>Grade</TableCell>
                   <TableCell>Updated At</TableCell>
                   <TableCell>Created At</TableCell>
                   <TableCell>Actions</TableCell>
@@ -388,8 +351,7 @@ const SystemManagement = () => {
               <TableBody>
                 {classes.map((cls) => (
                   <TableRow key={cls.id}>
-                    <TableCell>{cls.class}</TableCell> 
-                    <TableCell>{cls.grade}</TableCell> 
+                    <TableCell>{cls.class}</TableCell>
                     <TableCell>{cls.updated_at}</TableCell>
                     <TableCell>{cls.created_at}</TableCell>
                     <TableCell>
@@ -401,7 +363,7 @@ const SystemManagement = () => {
                       </IconButton>
                     </TableCell>
                   </TableRow>
-))}
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -435,7 +397,7 @@ const SystemManagement = () => {
                       </IconButton>
                     </TableCell>
                   </TableRow>
-))}
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -446,12 +408,10 @@ const SystemManagement = () => {
   };
 
   const renderForm = () => {
-    // NOTE: Tab indexes start at 0 (Grades)
     switch (activeTab) {
       case 0: // Grades
         return (
           <>
-            {/* Conditional Grade ID field: Visible only for ADD (editId is null) */}
             {!editId && (
               <TextField
                 fullWidth
@@ -487,11 +447,9 @@ const SystemManagement = () => {
               value={formData.subjectName || ''}
               onChange={handleFormChange}
               margin="normal"
-              // FIX: Check for 'subjectName' (local) and 'subSubject' (API error name)
               error={!!fieldErrors.subjectName}
               helperText={fieldErrors.subjectName}
             />
-            {/* Added 'Medium' field for database validation */}
             <TextField
               fullWidth
               label="Medium"
@@ -502,7 +460,6 @@ const SystemManagement = () => {
               error={!!fieldErrors.medium}
               helperText={fieldErrors.medium}
             />
-            {/* ADDED Main Subject to satisfy API validation */}
             <TextField
               fullWidth
               label="Main Subject"
@@ -513,7 +470,6 @@ const SystemManagement = () => {
               error={!!fieldErrors.mainSubject}
               helperText={fieldErrors.mainSubject}
             />
-            {/* ADDED Grade to satisfy API validation */}
             <TextField
               fullWidth
               label="Grade (e.g. Grade 1)"
@@ -526,7 +482,7 @@ const SystemManagement = () => {
             />
           </>
         );
-      case 2: // Classes
+      case 2: // Classes - GRADE FIELD REMOVED
         return (
           <>
             <TextField
@@ -539,22 +495,6 @@ const SystemManagement = () => {
               error={!!fieldErrors.class}
               helperText={fieldErrors.class}
             />
-            {/* Dropdown for grades */}
-            <FormControl fullWidth margin="normal" error={!!fieldErrors.grade}>
-              <InputLabel>Grade</InputLabel>
-              <Select
-                name="grade"
-                value={formData.grade || ''}
-                label="Grade"
-                onChange={handleSelectChange}
-              >
-                {grades.map((grade) => (
-                  <MenuItem key={grade.id} value={grade.grade}>
-                    {grade.grade}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
           </>
         );
       case 3: // Common Settings

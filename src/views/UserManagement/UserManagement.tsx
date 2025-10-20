@@ -90,7 +90,7 @@ const UserManagement: React.FC = () => {
     address: "",
     birthDay: "",
     gender: "",
-    location: "" ,
+    location: "",
     photo: null,
     grade: "",
     class: "",
@@ -288,13 +288,14 @@ const UserManagement: React.FC = () => {
       }
     }
 
+    // Use form.userRole instead of getUserRole(activeTab)
     const baseUserData: Omit<User, 'id'> = {
       name: form.name,
       username: form.username,
       email: form.email,
       password: form.password,
       userType: activeTab,
-      userRole: getUserRole(activeTab),
+      userRole: form.userRole, // CHANGED: Use the role from form state
       status: form.status,
       contact: form.contact || '',
       address: form.address || '',
@@ -305,6 +306,7 @@ const UserManagement: React.FC = () => {
       parentContact: form.parentContact || ''
     };
 
+    // ... rest of the function remains the same
     let userData: User;
 
     switch (activeTab) {
@@ -359,17 +361,17 @@ const UserManagement: React.FC = () => {
           parentContact: form.parentContact || (firstParent?.parentContact ?? ''),
           parentEntries: parentEntries.length > 0
             ? parentEntries.map(p => ({
-                relation: p.relation,
-                profession: p.profession,
-                parentContact: p.parentContact,
-                studentAdmissionNo: p.studentAdmissionNo
-              }))
+              relation: p.relation,
+              profession: p.profession,
+              parentContact: p.parentContact,
+              studentAdmissionNo: p.studentAdmissionNo
+            }))
             : (firstParent ? [{
-                relation: firstParent.relation,
-                profession: firstParent.profession,
-                parentContact: firstParent.parentContact,
-                studentAdmissionNo: firstParent.studentAdmissionNo
-              }] : []),
+              relation: firstParent.relation,
+              profession: firstParent.profession,
+              parentContact: firstParent.parentContact,
+              studentAdmissionNo: firstParent.studentAdmissionNo
+            }] : []),
           parentData: firstParent ? {
             studentAdmissionNo: firstParent.studentAdmissionNo || '',
             parentContact: firstParent.parentContact || '',
@@ -578,7 +580,8 @@ const UserManagement: React.FC = () => {
     setForm(prev => ({
       ...prev,
       userType: newValue,
-      userRole: getUserRole(newValue)
+      // Only set default role if we're creating a new user, otherwise keep existing role
+      userRole: editId === null ? getUserRole(newValue) : prev.userRole
     }));
     setSearchTerm("");
   };
