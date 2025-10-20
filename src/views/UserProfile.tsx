@@ -242,9 +242,6 @@ const UserProfile: React.FC = () => {
         if (!value.trim()) error = "Contact is required";
         else if (!/^\+?[0-9]{10,15}$/.test(value.replace(/\s|-/g, ""))) error = "Please enter a valid phone number (10-15 digits)";
         break;
-      case "grade":
-        if (!value.trim()) error = "Grade is required";
-        break;
       case "address":
         if (!value.trim()) error = "Address is required";
         else if (value.trim().length < 2) error = "Address must be at least 2 characters";
@@ -269,7 +266,7 @@ const UserProfile: React.FC = () => {
   };
 
   const validateAllFields = () => {
-    const requiredFields = ["name", "username", "email", "contact", "grade", "address", "birthDay"];
+    const requiredFields = ["name", "username", "email", "contact", "grade", "address", "birthDay", "location"];
     return requiredFields.every((field) => validateField(field as keyof User, editUser[field as keyof User] as string));
   };
 
@@ -936,6 +933,7 @@ const UserProfile: React.FC = () => {
               <TextField fullWidth label="Contact" name="contact" value={editUser.contact} onChange={handleEditChange} error={!!validationErrors.contact} helperText={validationErrors.contact} required />
               <TextField fullWidth label="Address" name="address" multiline rows={2} value={editUser.address} onChange={handleEditChange} error={!!validationErrors.address} helperText={validationErrors.address} required sx={{ gridColumn: { md: "1 / -1" } }} />
               <TextField fullWidth label="Birthday" name="birthDay" type="date" value={editUser.birthDay} onChange={handleEditChange} error={!!validationErrors.birthDay} helperText={validationErrors.birthDay} InputLabelProps={{ shrink: true }} required />
+              <TextField fullWidth label="Location" name="location" value={editUser.location} onChange={handleEditChange} error={!!validationErrors.location} helperText={validationErrors.location} required />
             </Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -962,28 +960,28 @@ const UserProfile: React.FC = () => {
           <DialogTitle id="other-profile-title">
             <Stack direction="row" alignItems="center" justifyContent="space-between">
               <Typography>Other Profile Data</Typography>
-              <Stack direction="row" spacing={1}>
+              {/* <Stack direction="row" spacing={1}>
                 {!editingTeacher && !editingParent && !editingStudent ? (
                   // Show a single Edit button that toggles editing for sections that exist
-                  <Button
-                    onClick={() => {
-                      // enable editing only for sections that exist in data
-                      if (localTeacherData) setEditingTeacher(true);
-                      if (localParentData) setEditingParent(true);
-                      if (localStudentData) setEditingStudent(true);
-                      // if none exist, allow user to add teacher row (useful in some flows)
-                      if (!localTeacherData && !localParentData && !localStudentData) {
-                        setEditingTeacher(true);
-                        setLocalTeacherData({ teacher_info: [] });
-                      }
-                    }}
-                    startIcon={<EditIcon />}
-                    disabled={isMutating}
-                  >
-                    Edit
-                  </Button>
+                  // <Button
+                  //   onClick={() => {
+                  //     // enable editing only for sections that exist in data
+                  //     if (localTeacherData) setEditingTeacher(true);
+                  //     if (localParentData) setEditingParent(true);
+                  //     if (localStudentData) setEditingStudent(true);
+                  //     // if none exist, allow user to add teacher row (useful in some flows)
+                  //     if (!localTeacherData && !localParentData && !localStudentData) {
+                  //       setEditingTeacher(true);
+                  //       setLocalTeacherData({ teacher_info: [] });
+                  //     }
+                  //   }}
+                  //   startIcon={<EditIcon />}
+                  //   disabled={isMutating}
+                  // >
+                  //   Edit
+                  // </Button>
                 ) : null}
-              </Stack>
+              </Stack> */}
             </Stack>
           </DialogTitle>
           <DialogContent dividers>
@@ -999,9 +997,9 @@ const UserProfile: React.FC = () => {
                     <Stack spacing={1}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="h6">Teacher Profile</Typography>
-                        {localTeacherData && !editingTeacher && (
-                          <Button onClick={() => setEditingTeacher(true)} disabled={isMutating}>Edit Teacher</Button>
-                        )}
+                        {/* {localTeacherData && !editingTeacher && (
+                          // <Button onClick={() => setEditingTeacher(true)} disabled={isMutating}>Edit Teacher</Button>
+                        )} */}
                       </Stack>
                       {renderTeacherEditable(user?.teacher_data)}
                     </Stack>
@@ -1011,7 +1009,7 @@ const UserProfile: React.FC = () => {
                     <Stack spacing={1}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="h6">Parent Profile</Typography>
-                        {localParentData && !editingParent && <Button onClick={() => setEditingParent(true)} disabled={isMutating}>Edit Parent</Button>}
+                        {/* {localParentData && !editingParent && <Button onClick={() => setEditingParent(true)} disabled={isMutating}>Edit Parent</Button>} */}
                       </Stack>
                       {renderParentEditable(user?.parent_data ? (Array.isArray(user.parent_data) ? user.parent_data : [user.parent_data]) : null)}
                     </Stack>
@@ -1021,7 +1019,7 @@ const UserProfile: React.FC = () => {
                     <Stack spacing={1}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="h6">Student Profile</Typography>
-                        {localStudentData && !editingStudent && <Button onClick={() => setEditingStudent(true)} disabled={isMutating}>Edit Student</Button>}
+                        {/* {localStudentData && !editingStudent && <Button onClick={() => setEditingStudent(true)} disabled={isMutating}>Edit Student</Button>} */}
                       </Stack>
                       {renderStudentEditable(user?.student_data)}
                     </Stack>

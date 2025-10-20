@@ -90,7 +90,7 @@ const UserManagement: React.FC = () => {
     address: "",
     birthDay: "",
     gender: "",
-    location: "",
+    location: "" ,
     photo: null,
     grade: "",
     class: "",
