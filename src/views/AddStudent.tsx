@@ -111,12 +111,36 @@ const AddStudent = () => {
   // Load classes when grade changes
   useEffect(() => {
     if (grade) {
-      void loadClasses(grade);
+      const loadClassesForGrade = async () => {
+        try {
+          const classesData = await getAvailableClasses(grade);
+          setClasses(classesData);
+        } catch (error) {
+          showSnackbar("Failed to load classes", "error");
+          setClasses([]); // Clear classes on error
+        }
+      };
+      void loadClassesForGrade();
     } else {
       setClasses([]);
       setClassFilter("");
     }
   }, [grade]);
+
+  // Also add a similar effect for the promotion dialog's next grade
+  useEffect(() => {
+    if (nextGrade) {
+      const loadClassesForNextGrade = async () => {
+        try {
+          const classesData = await getAvailableClasses(nextGrade);
+          setClasses(classesData);
+        } catch (error) {
+          showSnackbar("Failed to load classes for next grade", "error");
+        }
+      };
+      void loadClassesForNextGrade();
+    }
+  }, [nextGrade]);
 
   const loadAvailableGrades = async () => {
     try {
@@ -124,15 +148,6 @@ const AddStudent = () => {
       setGrades(gradesData);
     } catch (error) {
       showSnackbar("Failed to load available grades", "error");
-    }
-  };
-
-  const loadClasses = async (grade: string) => {
-    try {
-      const classesData = await getAvailableClasses(grade);
-      setClasses(classesData);
-    } catch (error) {
-      showSnackbar("Failed to load classes", "error");
     }
   };
 
@@ -159,18 +174,14 @@ const AddStudent = () => {
     setCurrentGradeFilter(grade);
     setCurrentClassFilter(classFilter);
     setSelectedStudents([]);
-    // reset excel upload for dialog open (optional; keep uploaded if you want persistence)
-    // setExcelUploaded(false);
-    // setUploadedStudents([]);
+
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedStudents([]);
     setSearchTerm("");
-    // Optionally clear uploaded data when dialog closes:
-    // setExcelUploaded(false);
-    // setUploadedStudents([]);
+
   };
 
   const handleSelectStudent = (student: Student) => {
@@ -250,8 +261,6 @@ const AddStudent = () => {
   };
 
   // Dialog display list:
-  // If an Excel was uploaded, show uploadedStudents (filtered by search only)
-  // Otherwise show the filtered students pulled from API + filters.
   const dialogDisplayStudents = (excelUploaded ? uploadedStudents : filteredStudents)
     .filter(student => !selectedStudents.some(s => s.id === student.id)) // exclude already selected
     .filter(student =>
@@ -274,6 +283,26 @@ const AddStudent = () => {
     } else {
       // remove all visible ones from selectedStudents
       setSelectedStudents(prev => prev.filter(s => !dialogDisplayStudents.some(ds => ds.id === s.id)));
+    }
+  };
+
+  // First, add this function after handleToggleSelectAll
+  const handleSelectAllAction = () => {
+    // Get all unselected students from the current display list
+    const unselectedStudents = dialogDisplayStudents.filter(
+      student => !selectedStudents.some(s => s.id === student.id)
+    );
+    
+    // Add all unselected students to selection
+    if (unselectedStudents.length > 0) {
+      setSelectedStudents(prev => [...prev, ...unselectedStudents]);
+    } else {
+      // If all are selected, remove all displayed students from selection
+      setSelectedStudents(prev => 
+        prev.filter(selected => 
+          !dialogDisplayStudents.some(ds => ds.id === selected.id)
+        )
+      );
     }
   };
 
@@ -724,7 +753,16 @@ const AddStudent = () => {
                     </TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Admission No</TableCell>
-                    <TableCell>Action</TableCell>
+                    <TableCell>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleSelectAllAction}
+                        sx={{ minWidth: 85 }}
+                      >
+                        {isAllSelected ? "Unselect All" : "Select All"}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -749,6 +787,7 @@ const AddStudent = () => {
                             size="small"
                             onClick={() => handleSelectStudent(student)}
                             disabled={alreadySelected}
+                            sx={{ minWidth: 85 }}
                           >
                             {alreadySelected ? "Selected" : "Select"}
                           </Button>

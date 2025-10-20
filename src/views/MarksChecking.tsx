@@ -178,7 +178,7 @@ const MarksChecking = () => {
                                 {/* Year */}
                                 <TextField
                                     select
-                                    label="Student Registered Year"
+                                    label="Student Year"
                                     variant="outlined"
                                     value={year}
                                     onChange={(e) => setYear(e.target.value)}
