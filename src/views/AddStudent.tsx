@@ -292,14 +292,14 @@ const AddStudent = () => {
     const unselectedStudents = dialogDisplayStudents.filter(
       student => !selectedStudents.some(s => s.id === student.id)
     );
-    
+
     // Add all unselected students to selection
     if (unselectedStudents.length > 0) {
       setSelectedStudents(prev => [...prev, ...unselectedStudents]);
     } else {
       // If all are selected, remove all displayed students from selection
-      setSelectedStudents(prev => 
-        prev.filter(selected => 
+      setSelectedStudents(prev =>
+        prev.filter(selected =>
           !dialogDisplayStudents.some(ds => ds.id === selected.id)
         )
       );
@@ -594,11 +594,11 @@ const AddStudent = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Admission No</TableCell>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Grade</TableCell>
-                      <TableCell>Class</TableCell>
-                      <TableCell>Medium</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Admission No</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Grade</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Class</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Medium</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
