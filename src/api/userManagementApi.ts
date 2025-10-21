@@ -252,23 +252,21 @@ const getTypeSpecificFields = (user: any, userType: UserType) => {
 export const createUser = async (userData: User): Promise<User> => {
   const url = `${API_BASE_URL}${createEndpointForUserType(userData.userType)}`;
   
-  const baseData = {
-    name: userData.name,
-    username: userData.username,
-    email: userData.email,
-    password: userData.password,
-    address: userData.address || '',
-    birthDay: userData.birthDay || '',
-    contact: userData.contact || '',
-    gender: userData.gender || '',
-    status: userData.status,
-    location: userData.location || '',
-    userType: userData.userType,
-    userRole: getUserRole(userData.userType),
-    // Always include photo key. Convert empty string -> null, keep null if passed.
-    photo: userData.photo === "" ? null : (userData.photo ?? null),
-  };
-
+const baseData = {
+  name: userData.name,
+  username: userData.username,
+  email: userData.email,
+  password: userData.password,
+  address: userData.address || '',
+  birthDay: userData.birthDay || '',
+  contact: userData.contact || '',
+  gender: userData.gender || '',
+  status: userData.status,
+  location: userData.location || '',
+  userType: userData.userType,
+  userRole: userData.userRole, // Use the role from userData, not getUserRole
+  photo: userData.photo === "" ? null : (userData.photo ?? null),
+};
   let formattedData: any = { ...baseData };
 
   switch (userData.userType) {
@@ -286,7 +284,8 @@ export const createUser = async (userData: User): Promise<User> => {
         location: userData.location || '',
         username: userData.username,
         photo: userData.photo === "" ? null : (userData.photo ?? null),
-        userRole: getUserRole(userData.userType),
+        // Prefer explicit role from the form (userData.userRole). Fall back to default for the type.
+        userRole: userData.userRole ?? getUserRole(userData.userType),
         status: userData.status,
         // Student specific fields that need to be at root level
         studentGrade: safeString(userData.grade) || safeString(userData.studentGrade) || '',
@@ -459,14 +458,13 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
   const currentUser = localStorage.getItem('userName') || 'System';
 
   // Base data for all user types - always include photo key (null when missing)
-  const baseData: Record<string, any> = {
-    id, // Include ID in the payload
-    userType: userData.userType,
-    userRole: getUserRole(userData.userType),
-    modifiedBy: currentUser,
-    // Always include photo key; convert empty string -> null, keep null if passed.
-    photo: userData.photo === "" ? null : (userData.photo ?? null),
-  };
+const baseData: Record<string, any> = {
+  id,
+  userType: userData.userType,
+  userRole: userData.userRole, // Use the role from userData, not getUserRole
+  modifiedBy: currentUser,
+  photo: userData.photo === "" ? null : (userData.photo ?? null),
+};
 
   // Helper function to safely handle string or string array
   const safeString = (value: string | string[] | undefined | null): string | null => {
@@ -522,7 +520,8 @@ export const updateUser = async (id: number, userData: User): Promise<User> => {
         location: userData.location,
         username: userData.username,
         photo: userData.photo === "" ? null : (userData.photo ?? null),
-        userRole: getUserRole(userData.userType),
+        // Keep any explicit role provided by the UI (e.g. "admin"); otherwise use default mapping.
+        userRole: userData.userRole ?? getUserRole(userData.userType),
         status: userData.status,
         
         // Student specific fields - these need to be at the root level
