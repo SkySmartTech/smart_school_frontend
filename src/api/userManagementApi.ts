@@ -126,7 +126,6 @@ export const fetchUsers = async (userType: UserType = "Teacher"): Promise<User[]
       birthDay: user.birthDay || '',
       contact: user.contact || '',
       gender: user.gender || '',
-      location: user.location || '',
       photo: user.photo || '',
       grade: '',
       class: '',
@@ -262,7 +261,6 @@ const baseData = {
   contact: userData.contact || '',
   gender: userData.gender || '',
   status: userData.status,
-  location: userData.location || '',
   userType: userData.userType,
   userRole: userData.userRole, // Use the role from userData, not getUserRole
   photo: userData.photo === "" ? null : (userData.photo ?? null),
@@ -281,7 +279,6 @@ const baseData = {
         contact: userData.contact || '',
         userType: userData.userType,
         gender: userData.gender || '',
-        location: userData.location || '',
         username: userData.username,
         photo: userData.photo === "" ? null : (userData.photo ?? null),
         // Prefer explicit role from the form (userData.userRole). Fall back to default for the type.
@@ -401,7 +398,7 @@ const baseData = {
 
   // Cleanup: remove undefined values but preserve keys the backend expects to exist
   // List of keys we must NOT remove (backend accesses them directly)
-  const requiredKeysToKeep = ['photo', 'teacherData', 'studentGrade', 'studentClass', 'studentData', 'studentAdmissionNo', 'relation', 'profession', 'parentContact'];
+  const requiredKeysToKeep = ['photo', 'teacherData', 'studentGrade', 'studentClass', 'studentData', 'studentAdmissionNo', 'relation', 'profession', 'parentContact', 'location'];
 
   Object.keys(formattedData).forEach(key => {
     if (
@@ -432,6 +429,11 @@ const baseData = {
   // Ensure teacherData key exists for Teacher payloads (even if empty array)
   if (userData.userType === "Teacher" && !Object.prototype.hasOwnProperty.call(formattedData, 'teacherData')) {
     formattedData.teacherData = Array.isArray(userData.teacherData) ? userData.teacherData : [];
+  }
+
+  // Ensure location key exists (backend may expect it)
+  if (!Object.prototype.hasOwnProperty.call(formattedData, 'location')) {
+    formattedData.location = null;
   }
 
   console.log('Creating user with data:', formattedData);
@@ -486,8 +488,7 @@ const baseData: Record<string, any> = {
     address: safeString(userData.address),
     birthDay: safeString(userData.birthDay),
     contact: safeString(userData.contact),
-    gender: safeString(userData.gender),
-    location: safeString(userData.location)
+    gender: safeString(userData.gender)
   };
 
   // Add non-empty fields to baseData
@@ -517,7 +518,6 @@ const baseData: Record<string, any> = {
         contact: userData.contact,
         userType: userData.userType,
         gender: userData.gender,
-        location: userData.location,
         username: userData.username,
         photo: userData.photo === "" ? null : (userData.photo ?? null),
         // Keep any explicit role provided by the UI (e.g. "admin"); otherwise use default mapping.
@@ -643,7 +643,7 @@ const baseData: Record<string, any> = {
     'studentGrade',
     'studentClass',
     'studentAdmissionNo',
-    // preserve parent-related keys as backend accesses them directly on update
+    'location',
     'parentContact',
     'profession',
     'relation',

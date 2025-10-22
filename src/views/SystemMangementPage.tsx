@@ -318,7 +318,7 @@ const SystemManagement = () => {
               <TableBody>
                 {subjects.map((subject) => (
                   <TableRow key={subject.id}>
-                    <TableCell>{subject.subSubject || subject.subjectName || ''}</TableCell>
+                    <TableCell>{subject.mainSubject || subject.subjectName || ''}</TableCell>
                     <TableCell>{subject.medium}</TableCell>
                     <TableCell>{subject.updated_at}</TableCell>
                     <TableCell>{subject.created_at}</TableCell>
