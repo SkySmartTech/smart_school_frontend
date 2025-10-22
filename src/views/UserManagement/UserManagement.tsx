@@ -90,7 +90,6 @@ const UserManagement: React.FC = () => {
     address: "",
     birthDay: "",
     gender: "",
-    location: "",
     photo: null,
     grade: "",
     class: "",
@@ -301,7 +300,6 @@ const UserManagement: React.FC = () => {
       address: form.address || '',
       birthDay: form.birthDay || '',
       gender: form.gender || '',
-      location: form.location || '',
       photo: form.photo || null,
       parentContact: form.parentContact || ''
     };
@@ -407,7 +405,6 @@ const UserManagement: React.FC = () => {
       address: "",
       birthDay: "",
       gender: "",
-      location: "",
       photo: null,
       grade: "",
       class: "",
@@ -434,7 +431,6 @@ const UserManagement: React.FC = () => {
       setForm({
         ...userToEdit,
         photo: userToEdit.photo || '',
-        ...(userToEdit.location ? { location: userToEdit.location } : {}),
         password: "",
         userRole: userToEdit.userRole || getUserRole(userToEdit.userType),
         teacherClass: userToEdit.teacherData?.map(td => td.teacherClass) || [],
@@ -774,14 +770,6 @@ const UserManagement: React.FC = () => {
           label="Address"
           name="address"
           value={form.address || ''}
-          onChange={handleChange}
-          sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
-          size="small"
-        />
-        <TextField
-          label="Location"
-          name="location"
-          value={form.location || ''}
           onChange={handleChange}
           sx={{ flex: '1 1 calc(33.33% - 16px)', minWidth: 120 }}
           size="small"

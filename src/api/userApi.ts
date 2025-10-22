@@ -84,7 +84,18 @@ export async function registerStudent(studentData: FormData) {
     let studentArr: any[] = [];
 
     if (raw) {
-      studentArr = JSON.parse(raw as string);
+      try {
+        studentArr = JSON.parse(raw as string);
+      } catch (e) {
+        // If parsing fails, try to treat raw as single JSON object string
+        const maybe = raw as string;
+        try {
+          const parsed = JSON.parse(maybe);
+          studentArr = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          studentArr = [];
+        }
+      }
     } else {
       // fallback: convert individual fields into a single-item array
       studentArr = [
@@ -99,20 +110,65 @@ export async function registerStudent(studentData: FormData) {
       ];
     }
 
+    // Ensure we have userId and userType (from FormData)
+    const headerUserId = studentData.get('userId') ? String(studentData.get('userId')) : (studentArr[0]?.userId ? String(studentArr[0].userId) : undefined);
+    const headerUserType = studentData.get('userType') ? String(studentData.get('userType')) : (studentArr[0]?.userType ? String(studentArr[0].userType) : undefined);
+
+    // If we have a single student payload, send its fields directly (backend store expects fields, not an array),
+    // and send userId/userType in headers because backend controller reads them from headers.
+    if (studentArr.length === 1) {
+      const item = studentArr[0];
+
+      const requestBody = {
+        studentGrade: item.studentGrade,
+        studentClass: item.studentClass,
+        medium: item.medium,
+        studentAdmissionNo: item.studentAdmissionNo,
+        // other optional fields accepted by backend can be included here if needed
+        parentContact: item.parentContact ?? null,
+        parentProfession: item.parentProfession ?? null,
+      };
+
+      const response = await API.post(
+        "/api/user-student-register",
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(headerUserId ? { 'userId': headerUserId } : {}),
+            ...(headerUserType ? { 'userType': headerUserType } : {}),
+          }
+        }
+      );
+
+      return response.data;
+    }
+
+    // If multiple entries (bulk) are provided, send them as studentData array.
+    // Again set headers for userId/userType if present (useful for some backend flows).
     const requestBody = {
       studentData: studentArr.map((item: any) => ({
         studentGrade: item.studentGrade,
         studentClass: item.studentClass,
         medium: item.medium,
         studentAdmissionNo: item.studentAdmissionNo,
-        userId: studentData.get('userId'),
-        userType: studentData.get('userType'),
-      })),
+        userId: item.userId ?? headerUserId,
+        userType: item.userType ?? headerUserType,
+      }))
     };
 
-    const response = await API.post("/api/user-student-register", requestBody, {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    const response = await API.post(
+      "/api/user-student-register",
+      requestBody,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(headerUserId ? { 'userId': headerUserId } : {}),
+          ...(headerUserType ? { 'userType': headerUserType } : {}),
+        }
+      }
+    );
+
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
