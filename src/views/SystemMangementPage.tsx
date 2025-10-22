@@ -318,7 +318,7 @@ const SystemManagement = () => {
               <TableBody>
                 {subjects.map((subject) => (
                   <TableRow key={subject.id}>
-                    <TableCell>{subject.subSubject || subject.subjectName || ''}</TableCell>
+                    <TableCell>{subject.mainSubject || subject.subjectName || ''}</TableCell>
                     <TableCell>{subject.medium}</TableCell>
                     <TableCell>{subject.updated_at}</TableCell>
                     <TableCell>{subject.created_at}</TableCell>
@@ -440,7 +440,7 @@ const SystemManagement = () => {
       case 1: // Subjects
         return (
           <>
-            <TextField
+            {/* <TextField
               fullWidth
               label="Subject Name"
               name="subjectName"
@@ -449,7 +449,7 @@ const SystemManagement = () => {
               margin="normal"
               error={!!fieldErrors.subjectName}
               helperText={fieldErrors.subjectName}
-            />
+            /> */}
             <TextField
               fullWidth
               label="Medium"
@@ -462,7 +462,7 @@ const SystemManagement = () => {
             />
             <TextField
               fullWidth
-              label="Main Subject"
+              label="Subject"
               name="mainSubject" 
               value={formData.mainSubject || ''}
               onChange={handleFormChange}
@@ -470,7 +470,7 @@ const SystemManagement = () => {
               error={!!fieldErrors.mainSubject}
               helperText={fieldErrors.mainSubject}
             />
-            <TextField
+            {/* <TextField
               fullWidth
               label="Grade (e.g. Grade 1)"
               name="grade" 
@@ -479,7 +479,7 @@ const SystemManagement = () => {
               margin="normal"
               error={!!fieldErrors.grade}
               helperText={fieldErrors.grade}
-            />
+            /> */}
           </>
         );
       case 2: // Classes - GRADE FIELD REMOVED
