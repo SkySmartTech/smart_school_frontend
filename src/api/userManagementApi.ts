@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { User, UserListResponse, UserResponse } from "../types/userManagementTypes";
+import type { Subject, User, UserListResponse, UserResponse } from "../types/userManagementTypes";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -39,6 +39,19 @@ export const getUserRole = (userType: UserType): UserRole => {
       return "userParent";
     default:
       return "user";
+  }
+};
+
+export const fetchSubjects = async (): Promise<Subject[]> => {
+  try {
+    const response = await axios.get<Subject[]>(
+      `${API_BASE_URL}/api/subjects`,
+      getAuthHeader()
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subjects:', error);
+    throw error;
   }
 };
 
@@ -457,232 +470,15 @@ const baseData = {
 
 export const updateUser = async (id: number, userData: User): Promise<User> => {
   const url = `${API_BASE_URL}${updateEndpointForUserType(userData.userType, id)}`;
-  const currentUser = localStorage.getItem('userName') || 'System';
-
-  // Base data for all user types - always include photo key (null when missing)
-const baseData: Record<string, any> = {
-  id,
-  userType: userData.userType,
-  userRole: userData.userRole, // Use the role from userData, not getUserRole
-  modifiedBy: currentUser,
-  photo: userData.photo === "" ? null : (userData.photo ?? null),
-};
-
-  // Helper function to safely handle string or string array
-  const safeString = (value: string | string[] | undefined | null): string | null => {
-    if (!value) {
-      return null;
-    }
-    if (Array.isArray(value)) {
-      return value.join(', ').trim() || null;
-    }
-    const trimmed = String(value).trim();
-    return trimmed || null;
-  };
-
-  // Handle required and optional fields
-  const fields = {
-    name: safeString(userData.name),
-    username: safeString(userData.username),
-    email: safeString(userData.email),
-    address: safeString(userData.address),
-    birthDay: safeString(userData.birthDay),
-    contact: safeString(userData.contact),
-    gender: safeString(userData.gender)
-  };
-
-  // Add non-empty fields to baseData
-  Object.entries(fields).forEach(([key, value]) => {
-    if (value !== undefined) {
-      baseData[key] = value;
-    }
-  });
-
-  // Handle status separately since it's a boolean
-  if (userData.status !== undefined) {
-    baseData.status = userData.status;
-  }
-
-  let formattedData: Record<string, any> = { ...baseData };
-
-  switch (userData.userType) {
-    case "Student":
-      // Format data exactly as the backend's UserStudentUpdateRequest expects
-      formattedData = {
-        ...formattedData,
-        // User data fields
-        name: userData.name,
-        address: userData.address,
-        email: userData.email,
-        birthDay: userData.birthDay,
-        contact: userData.contact,
-        userType: userData.userType,
-        gender: userData.gender,
-        username: userData.username,
-        photo: userData.photo === "" ? null : (userData.photo ?? null),
-        // Keep any explicit role provided by the UI (e.g. "admin"); otherwise use default mapping.
-        userRole: userData.userRole ?? getUserRole(userData.userType),
-        status: userData.status,
-        
-        // Student specific fields - these need to be at the root level
-        // as the backend validation expects them directly
-        studentGrade: safeString(userData.grade) || safeString(userData.studentGrade),
-        studentClass: safeString(userData.class) || safeString(userData.studentClass),
-        medium: safeString(userData.medium),
-        studentAdmissionNo: safeString(userData.studentAdmissionNo),
-        modifiedBy: localStorage.getItem('userName') || 'System'
-      };
-
-      // Remove any undefined or null values but keep empty strings
-      // as the backend validation may require these fields
-      Object.keys(formattedData).forEach(key => {
-        if (formattedData[key] === undefined) {
-          delete formattedData[key];
-        }
-      });
-      break;
-
-    case "Teacher":
-      // Prefer an explicit assignments array sent from the UI (teacherAssignments or teacherData).
-      // Fallback to single form fields (grade/class/subject/medium) if no array present.
-      let teacherAssignmentsSource: any[] = [];
-
-      if (Array.isArray(userData.teacherAssignments) && userData.teacherAssignments.length > 0) {
-        teacherAssignmentsSource = userData.teacherAssignments;
-      } else if (Array.isArray(userData.teacherData) && userData.teacherData.length > 0) {
-        teacherAssignmentsSource = userData.teacherData;
-      } else if (userData.grade || userData.class || userData.subject || userData.medium) {
-        teacherAssignmentsSource = [{
-          teacherGrade: userData.grade || '',
-          teacherClass: userData.class || '',
-          subject: userData.subject || '',
-          medium: userData.medium || '',
-          staffNo: userData.staffNo || '',
-        }];
-      }
-
-      const formattedTeacherAssignments = teacherAssignmentsSource
-        .map(a => ({
-          teacherGrade: safeString(a.teacherGrade || a.grade) || undefined,
-          teacherClass: a.teacherClass ? (Array.isArray(a.teacherClass) ? a.teacherClass.join(', ') : String(a.teacherClass)) : undefined,
-          subject: safeString(a.subject),
-          medium: safeString(a.medium),
-          staffNo: safeString(a.staffNo) || safeString(userData.staffNo),
-          modifiedBy: currentUser
-        }))
-        .filter(a => Object.keys(a).length > 0);
-
-      if (formattedTeacherAssignments.length > 0) {
-        // Send as an array to match createUser and backend expectations
-        formattedData.teacherData = formattedTeacherAssignments;
-      } else {
-        // ensure teacherData key exists (might be expected)
-        formattedData.teacherData = Array.isArray(userData.teacherData) ? userData.teacherData : [];
-      }
-      break;
-
-    case "Parent": {
-      // Prefer an explicit array sent from the UI (parentEntries or parentData)
-      let parentEntriesSource: any[] = [];
-
-      if (Array.isArray(userData.parentEntries) && userData.parentEntries.length > 0) {
-        parentEntriesSource = userData.parentEntries;
-      } else if (Array.isArray((userData as any).parentData) && (userData as any).parentData.length > 0) {
-        // backend or UI may use parentData as an array in some places
-        parentEntriesSource = (userData as any).parentData;
-      } else if (userData.relation || userData.parentContact || userData.profession || userData.studentAdmissionNo) {
-        // fallback to single root-level fields
-        parentEntriesSource = [{
-          relation: userData.relation || '',
-          profession: userData.profession || '',
-          parentContact: userData.parentContact || userData.contact || '',
-          studentAdmissionNo: userData.studentAdmissionNo || ''
-        }];
-      }
-
-      const formattedParentEntries = parentEntriesSource
-        .map(p => ({
-          // normalize and trim
-          studentAdmissionNo: safeString(p.studentAdmissionNo) ?? null,
-          parentContact: safeString(p.parentContact) ?? null,
-          profession: safeString(p.profession) ?? null,
-          relation: safeString(p.relation) ?? null,
-          // include metadata expected by backend
-          userType: userData.userType,
-          modifiedBy: currentUser
-        }))
-        // optional: drop entirely empty entries
-        .filter(entry => Object.values(entry).some(v => v !== null && v !== ''));
-
-      // Put first entry fields on root level for grid display (keep keys even if null)
-      const first = formattedParentEntries[0] ?? null;
-      formattedData.studentAdmissionNo = first ? first.studentAdmissionNo : (userData.studentAdmissionNo ?? null);
-      formattedData.parentContact = first ? first.parentContact : (userData.parentContact ?? (userData.contact ?? null));
-      formattedData.profession = first ? first.profession : (userData.profession ?? null);
-      formattedData.relation = first ? first.relation : (userData.relation ?? null);
-
-      // Send the full parent array as parentData (backend expects array for update/create)
-      formattedData.parentData = formattedParentEntries.length > 0 ? formattedParentEntries : [{
-        userType: userData.userType,
-        studentAdmissionNo: formattedData.studentAdmissionNo,
-        parentContact: formattedData.parentContact,
-        profession: formattedData.profession,
-        relation: formattedData.relation,
-        modifiedBy: currentUser
-      }];
-
-      break;
-    }
-  }
-
-  // Final cleanup - remove any remaining empty values BUT preserve keys backend expects to exist
-  const requiredKeysToKeep = [
-    'photo',
-    'teacherData',
-    'studentData',
-    'studentGrade',
-    'studentClass',
-    'studentAdmissionNo',
-    'location',
-    'parentContact',
-    'profession',
-    'relation',
-    'parentData'
-  ];
-
-  Object.keys(formattedData).forEach(key => {
-    if (requiredKeysToKeep.includes(key)) {
-      // preserve required keys even if null/empty
-      return;
-    }
-
-    if (
-      formattedData[key] === undefined || 
-      formattedData[key] === null || 
-      formattedData[key] === '' ||
-      (Array.isArray(formattedData[key]) && formattedData[key].length === 0)
-    ) {
-      delete formattedData[key];
-    }
-  });
-
-  console.log('Update payload:', formattedData);
-
   try {
     const response = await axios.post<UserResponse>(
       url,
-      formattedData,
-      {
-        ...getAuthHeader(),
-        withCredentials: true
-      }
+      userData,
+      getAuthHeader()
     );
     return response.data.data;
-  } catch (error: any) {
-    console.error('Update error:', error.response?.data);
-    if (error.response?.data?.errors) {
-      throw new Error(Object.values(error.response.data.errors).flat().join(', '));
-    }
+  } catch (error) {
+    console.error('Update user error:', error);
     throw error;
   }
 };

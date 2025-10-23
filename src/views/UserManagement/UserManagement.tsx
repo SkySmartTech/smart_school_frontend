@@ -52,8 +52,29 @@ import {
 import Sidebar from "../../components/Sidebar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCustomTheme } from "../../context/ThemeContext";
-import { type User, type UserRole, statusOptions, genderOptions, userRoleOptions, userTypeOptions, gradeOptions, mediumOptions, classOptions, subjectOptions, type TeacherAssignment } from "../../types/userManagementTypes";
-import { bulkDeactivateUsers, createUser, deactivateUser, fetchUsers, getUserRole, searchUsers, updateUser } from "../../api/userManagementApi";
+import { 
+  type User, 
+  type UserRole, 
+  type Subject, // This import is now used
+  statusOptions, 
+  genderOptions, 
+  userRoleOptions, 
+  userTypeOptions, 
+  gradeOptions, 
+  mediumOptions, 
+  classOptions, 
+  type TeacherAssignment
+} from "../../types/userManagementTypes";
+import { 
+  bulkDeactivateUsers, 
+  createUser, 
+  deactivateUser, 
+  fetchUsers, 
+  getUserRole, 
+  searchUsers,
+  fetchSubjects,
+  updateUser // Add this import
+} from "../../api/userManagementApi";
 import Navbar from "../../components/Navbar";
 import { debounce } from 'lodash';
 
@@ -134,6 +155,11 @@ const UserManagement: React.FC = () => {
     queryKey: ["searchUsers", searchTerm, activeTab],
     queryFn: () => searchUsers(searchTerm, activeTab),
     enabled: false,
+  });
+
+  const { data: subjects = [], isLoading: isLoadingSubjects } = useQuery<Subject[]>({
+    queryKey: ['subjects'],
+    queryFn: fetchSubjects
   });
 
   const createUserMutation = useMutation({
@@ -1019,9 +1045,12 @@ const UserManagement: React.FC = () => {
                     onChange={(e) => handleSelectChange(e, "subject")}
                     sx={{ flex: '1 1 calc(25% - 16px)', minWidth: 120 }}
                     size="small"
+                    disabled={isLoadingSubjects}
                   >
-                    {subjectOptions.map(subj => (
-                      <MenuItem key={subj} value={subj}>{subj}</MenuItem>
+                    {subjects.map((subject: Subject) => (
+                      <MenuItem key={subject.id} value={subject.mainSubject}>
+                        {subject.mainSubject}
+                      </MenuItem>
                     ))}
                   </TextField>
 

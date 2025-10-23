@@ -10,6 +10,18 @@ export interface TeacherAssignment {
   modifiedBy?: string;
 }
 
+export interface Subject {
+  id: number;
+  subjectId: number | null;
+  grade: string | null;
+  mainSubject: string;
+  subSubject: string | null;
+  description: string | null;
+  medium: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface BaseUser {
   id?: number;
   name: string;
@@ -131,21 +143,4 @@ export const userTypeOptions: string[] = [
   'Parent'
 ];
 
-export const subjectOptions: string[] = [
-  'Mathematics',
-  'Science',
-  'English',
-  'Sinhala',
-  'History',
-  'Geography',
-  'Commerce',
-  'ICT',
-  'Art',
-  'Music',
-  'Dancing',
-  'Physical Education',
-  'Buddhism',
-  'Christianity',
-  'Islam',
-  'Hinduism'
-];
+
